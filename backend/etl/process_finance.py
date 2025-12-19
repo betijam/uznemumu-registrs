@@ -85,10 +85,18 @@ def calculate_financial_ratios(df):
 
 
 def process_finance(statements_path: str, balance_path: str, income_path: str):
-    logger.info("Processing Finance with Enhanced Ratios...")
+    """
+    Process financial data with CHUNKED LOADING to prevent memory issues.
+    
+    This function loads large CSV files (1.8M+ rows) in chunks to avoid OOM errors.
+    """
+    logger.info("🔄 Processing Finance with Chunked Loading (Memory-Optimized)...")
 
     try:
-        # --- 1. Load Financial Statements (Headers) ---
+        CHUNK_SIZE = 50000  # Process 50k rows at a time
+        
+        # --- 1. Load Financial Statements (Headers) - Small file, load fully ---
+        logger.info("Loading financial statements headers...")
         df_stm = pd.read_csv(statements_path, sep=';', dtype=str)
         logger.info(f"Loaded {len(df_stm)} financial statements")
         
@@ -104,172 +112,168 @@ def process_finance(statements_path: str, balance_path: str, income_path: str):
             if c not in df_stm.columns:
                 df_stm[c] = None
                 
-        df_final = df_stm[base_cols].copy()
+        df_stm = df_stm[base_cols].copy()
+        
+        # Convert to numeric
+        for col in ['year', 'company_regcode', 'employees']:
+            if col in df_stm.columns:
+                df_stm[col] = pd.to_numeric(df_stm[col], errors='coerce')
 
-        # --- 2. Load Income Statements (Enhanced) ---
+        # --- 2. Build Income Data Dictionary (Chunked) ---
+        logger.info(f"Loading income statements in chunks of {CHUNK_SIZE}...")
+        income_data = {}  # statement_id -> {turnover, profit, ...}
+        
         try:
-            df_inc = pd.read_csv(income_path, sep=';', dtype=str)
-            logger.info(f"Loaded income statements with {len(df_inc.columns)} columns")
-            
-            # Column mapping for income statement
-            income_mapping = {
-                # Turnover
-                'net_turnover': 'turnover',
-                'neto_apgrozijums': 'turnover',
-                # Profit
-                'net_income': 'profit',
-                'net_profit': 'profit',
-                'neto_pelna': 'profit',
-                # Interest expenses
-                'interest_expenses': 'interest_expenses',
-                'procenti': 'interest_expenses',
-                # Depreciation
-                'by_nature_depreciation_expenses': 'depreciation_expenses',
-                'amortizacija': 'depreciation_expenses',
-                # Taxes
-                'provision_for_income_taxes': 'provision_for_income_taxes',
-                'nodokli': 'provision_for_income_taxes'
-            }
-            
-            # Find and rename columns
-            inc_cols = ['statement_id']
-            rename_map = {}
-            
-            for csv_col, our_col in income_mapping.items():
-                if csv_col in df_inc.columns:
-                    inc_cols.append(csv_col)
-                    rename_map[csv_col] = our_col
-            
-            if len(inc_cols) > 1:
-                df_inc_subset = df_inc[inc_cols].copy()
-                df_inc_subset = df_inc_subset.rename(columns=rename_map)
+            chunk_num = 0
+            for inc_chunk in pd.read_csv(income_path, sep=';', dtype=str, chunksize=CHUNK_SIZE):
+                chunk_num += 1
                 
-                # Convert to numeric
-                for col in ['turnover', 'profit', 'interest_expenses', 'depreciation_expenses', 'provision_for_income_taxes']:
-                    if col in df_inc_subset.columns:
-                        df_inc_subset[col] = pd.to_numeric(df_inc_subset[col], errors='coerce')
+                # Column mapping for income statement
+                income_mapping = {
+                    'net_turnover': 'turnover',
+                    'neto_apgrozijums': 'turnover',
+                    'net_income': 'profit',
+                    'net_profit': 'profit',
+                    'neto_pelna': 'profit',
+                    'interest_expenses': 'interest_expenses',
+                    'procenti': 'interest_expenses',
+                    'by_nature_depreciation_expenses': 'depreciation_expenses',
+                    'amortizacija': 'depreciation_expenses',
+                    'provision_for_income_taxes': 'provision_for_income_taxes',
+                    'nodokli': 'provision_for_income_taxes'
+                }
                 
-                df_final = pd.merge(df_final, df_inc_subset, on='statement_id', how='left')
-                logger.info(f"Merged income data - {df_final['turnover'].notna().sum()} records with turnover")
-            else:
-                logger.warning("No income statement columns found")
-                for col in ['turnover', 'profit', 'interest_expenses', 'depreciation_expenses', 'provision_for_income_taxes']:
-                    df_final[col] = None
+                # Extract relevant columns
+                for idx, row in inc_chunk.iterrows():
+                    if 'statement_id' not in row:
+                        continue
+                    
+                    stmt_id = row['statement_id']
+                    income_data[stmt_id] = {}
+                    
+                    for csv_col, our_col in income_mapping.items():
+                        if csv_col in row:
+                            income_data[stmt_id][our_col] = pd.to_numeric(row[csv_col], errors='coerce')
+                
+                if chunk_num % 10 == 0:
+                    logger.info(f"  Processed income chunk {chunk_num} ({len(income_data)} statements so far)")
+            
+            logger.info(f"✅ Loaded income data for {len(income_data)} statements")
                     
         except Exception as e:
             logger.warning(f"Could not process Income Statement: {e}")
-            for col in ['turnover', 'profit', 'interest_expenses', 'depreciation_expenses', 'provision_for_income_taxes']:
-                df_final[col] = None
+            income_data = {}
 
-        # --- 3. Load Balance Sheet (Enhanced) ---
-        try:
-            df_bal = pd.read_csv(balance_path, sep=';', dtype=str)
-            logger.info(f"Loaded balance sheets with {len(df_bal.columns)} columns")
-            
-            # Column mapping for balance sheet - using EXACT CSV column names
-            balance_mapping = {
-                # Assets
-                'total_assets': 'total_assets',
-                'total_current_assets': 'total_current_assets',
-                # Cash
-                'cash': 'cash_balance',
-                # Inventories
-                'inventories': 'inventories',
-                # Liabilities
-                'current_liabilities': 'current_liabilities',
-                'non_current_liabilities': 'non_current_liabilities',
-                # Equity
-                'equity': 'equity'
-            }
-            
-            bal_cols = ['statement_id']
-            rename_map = {}
-            
-            for csv_col, our_col in balance_mapping.items():
-                if csv_col in df_bal.columns:
-                    bal_cols.append(csv_col)
-                    rename_map[csv_col] = our_col
-            
-            if len(bal_cols) > 1:
-                df_bal_subset = df_bal[bal_cols].copy()
-                df_bal_subset = df_bal_subset.rename(columns=rename_map)
-                
-                # Convert to numeric
-                for col in ['total_assets', 'total_current_assets', 'cash_balance', 'inventories',
-                           'current_liabilities', 'non_current_liabilities', 'equity']:
-                    if col in df_bal_subset.columns:
-                        df_bal_subset[col] = pd.to_numeric(df_bal_subset[col], errors='coerce')
-                
-                df_final = pd.merge(df_final, df_bal_subset, on='statement_id', how='left')
-                logger.info(f"Merged balance data - {df_final['total_assets'].notna().sum()} records with assets")
-            else:
-                logger.warning("No balance sheet columns found")
-                for col in ['total_assets', 'total_current_assets', 'cash_balance', 'inventories',
-                           'current_liabilities', 'non_current_liabilities', 'equity']:
-                    df_final[col] = None
-                    
-        except Exception as e:
-            logger.warning(f"Could not process Balance Sheet: {e}")
-            for col in ['total_assets', 'total_current_assets', 'cash_balance', 'inventories',
-                       'current_liabilities', 'non_current_liabilities', 'equity']:
-                df_final[col] = None
-
-        # --- 4. Calculate Financial Ratios ---
-        df_final = calculate_financial_ratios(df_final)
-
-        # --- 5. Cleanup & Types ---
-        numeric_cols = ['year', 'company_regcode', 'employees']
-        for col in numeric_cols:
-            if col in df_final.columns:
-                df_final[col] = pd.to_numeric(df_final[col], errors='coerce')
+        # --- 3. Process Balance Sheets in Chunks and Merge/Load Incrementally ---
+        logger.info(f"Processing balance sheets in chunks of {CHUNK_SIZE}...")
         
-        # taxes_paid is from VID data (separate)
-        df_final['taxes_paid'] = None
-
-        logger.info(f"Before dropna: {len(df_final)} records")
-        df_final = df_final.dropna(subset=['company_regcode', 'year'])
-        logger.info(f"After dropna: {len(df_final)} records")
-        
-        # Deduplication
-        if 'statement_id' in df_final.columns:
-            df_final = df_final.sort_values('statement_id')
-            df_final = df_final.drop_duplicates(subset=['company_regcode', 'year'], keep='last')
-            logger.info(f"After deduplication: {len(df_final)} records")
-
-        # --- 6. Validate Foreign Keys ---
-        logger.info("Validating financial records against existing companies...")
+        # Get existing company regcodes for validation
         with engine.connect() as conn:
             result = conn.execute(text("SELECT regcode FROM companies"))
             existing_regcodes = set(row[0] for row in result)
         
-        initial_count = len(df_final)
-        df_final = df_final[df_final['company_regcode'].isin(existing_regcodes)]
-        filtered_count = initial_count - len(df_final)
+        logger.info(f"Found {len(existing_regcodes)} existing companies for validation")
         
-        if filtered_count > 0:
-            logger.warning(f"Filtered out {filtered_count} financial records with non-existent companies")
+        is_first_chunk = True
+        chunk_num = 0
+        total_loaded = 0
         
-        logger.info(f"Proceeding with {len(df_final)} valid financial records")
-
-        # --- 7. Final columns selection ---
-        final_cols = [
-            'company_regcode', 'year', 'employees', 'taxes_paid',
-            # Income Statement
-            'turnover', 'profit', 'interest_expenses', 'depreciation_expenses', 'provision_for_income_taxes',
-            # Balance Sheet
-            'total_assets', 'total_current_assets', 'cash_balance', 'inventories',
-            'current_liabilities', 'non_current_liabilities', 'equity',
-            # Calculated Ratios
-            'ebitda', 'current_ratio', 'quick_ratio', 'cash_ratio',
-            'net_profit_margin', 'roe', 'roa', 'debt_to_equity', 'equity_ratio'
-        ]
+        try:
+            for bal_chunk in pd.read_csv(balance_path, sep=';', dtype=str, chunksize=CHUNK_SIZE):
+                chunk_num += 1
+                logger.info(f"📊 Processing balance sheet chunk {chunk_num} ({len(bal_chunk)} rows)...")
+                
+                # Column mapping for balance sheet
+                balance_mapping = {
+                    'total_assets': 'total_assets',
+                    'total_current_assets': 'total_current_assets',
+                    'cash': 'cash_balance',
+                    'inventories': 'inventories',
+                    'current_liabilities': 'current_liabilities',
+                    'non_current_liabilities': 'non_current_liabilities',
+                    'equity': 'equity'
+                }
+                
+                bal_cols = ['statement_id']
+                rename_map = {}
+                
+                for csv_col, our_col in balance_mapping.items():
+                    if csv_col in bal_chunk.columns:
+                        bal_cols.append(csv_col)
+                        rename_map[csv_col] = our_col
+                
+                if len(bal_cols) > 1:
+                    df_bal_subset = bal_chunk[bal_cols].copy()
+                    df_bal_subset = df_bal_subset.rename(columns=rename_map)
+                    
+                    # Convert to numeric
+                    for col in ['total_assets', 'total_current_assets', 'cash_balance', 'inventories',
+                               'current_liabilities', 'non_current_liabilities', 'equity']:
+                        if col in df_bal_subset.columns:
+                            df_bal_subset[col] = pd.to_numeric(df_bal_subset[col], errors='coerce')
+                else:
+                    df_bal_subset = bal_chunk[['statement_id']].copy()
+                    for col in ['total_assets', 'total_current_assets', 'cash_balance', 'inventories',
+                               'current_liabilities', 'non_current_liabilities', 'equity']:
+                        df_bal_subset[col] = None
+                
+                # Merge with statements
+                df_merged = pd.merge(df_stm, df_bal_subset, on='statement_id', how='inner')
+                
+                # Add income data
+                for col in ['turnover', 'profit', 'interest_expenses', 'depreciation_expenses', 'provision_for_income_taxes']:
+                    df_merged[col] = df_merged['statement_id'].map(
+                        lambda x: income_data.get(x, {}).get(col)
+                    )
+                
+                # Calculate financial ratios
+                df_merged = calculate_financial_ratios(df_merged)
+                
+                # Add taxes_paid placeholder (populated by VID data separately)
+                df_merged['taxes_paid'] = None
+                
+                # Cleanup
+                df_merged = df_merged.dropna(subset=['company_regcode', 'year'])
+                
+                # Deduplication within chunk
+                if 'statement_id' in df_merged.columns:
+                    df_merged = df_merged.sort_values('statement_id')
+                    df_merged = df_merged.drop_duplicates(subset=['company_regcode', 'year'], keep='last')
+                
+                # Validate foreign keys (only keep records for existing companies)
+                df_merged = df_merged[df_merged['company_regcode'].isin(existing_regcodes)]
+                
+                # Final columns selection
+                final_cols = [
+                    'company_regcode', 'year', 'employees', 'taxes_paid',
+                    # Income Statement
+                    'turnover', 'profit', 'interest_expenses', 'depreciation_expenses', 'provision_for_income_taxes',
+                    # Balance Sheet
+                    'total_assets', 'total_current_assets', 'cash_balance', 'inventories',
+                    'current_liabilities', 'non_current_liabilities', 'equity',
+                    # Calculated Ratios
+                    'ebitda', 'current_ratio', 'quick_ratio', 'cash_ratio',
+                    'net_profit_margin', 'roe', 'roa', 'debt_to_equity', 'equity_ratio'
+                ]
+                
+                df_merged = df_merged[final_cols]
+                
+                if len(df_merged) > 0:
+                    # Load to DB (truncate only on first chunk, append for rest)
+                    load_to_db(df_merged, 'financial_reports', truncate=is_first_chunk)
+                    is_first_chunk = False
+                    total_loaded += len(df_merged)
+                    logger.info(f"  ✅ Chunk {chunk_num}: Loaded {len(df_merged)} records (Total: {total_loaded})")
+                else:
+                    logger.info(f"  ⚠️  Chunk {chunk_num}: No valid records to load")
         
-        df_final = df_final[final_cols]
+        except Exception as e:
+            logger.error(f"Error processing balance sheet chunks: {e}")
+            raise
         
-        logger.info(f"Final: {len(df_final)} records, {df_final['current_ratio'].notna().sum()} with ratios")
+        logger.info(f"✅ Financial data processing complete: {total_loaded} total records loaded")
             
-        load_to_db(df_final, 'financial_reports')
-
     except Exception as e:
         logger.error(f"Error processing finance: {e}")
         raise
+

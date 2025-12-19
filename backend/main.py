@@ -3,12 +3,16 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from contextlib import asynccontextmanager
 from asgi_correlation_id import CorrelationIdMiddleware
 import logging
+import os
 from etl import run_all_etl
 from app.routers import search, companies
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Check if ETL scheduler should be enabled (default: false for API-only mode)
+ENABLE_ETL_SCHEDULER = os.getenv("ENABLE_ETL_SCHEDULER", "false").lower() == "true"
 
 # Scheduler setup
 scheduler = BackgroundScheduler()
@@ -17,15 +21,21 @@ scheduler = BackgroundScheduler()
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting up Company Registry Backend...")
-    # Run ETL daily at 03:00
-    scheduler.add_job(run_all_etl, 'cron', hour=3, minute=0, id='daily_etl')
-    scheduler.start()
+    
+    # Only start ETL scheduler if explicitly enabled
+    if ENABLE_ETL_SCHEDULER:
+        logger.info("⚙️  ETL Scheduler ENABLED - Starting daily ETL job at 03:00")
+        scheduler.add_job(run_all_etl, 'cron', hour=3, minute=0, id='daily_etl')
+        scheduler.start()
+    else:
+        logger.info("🚀 ETL Scheduler DISABLED - Running in API-only mode")
     
     yield
     
     # Shutdown
     logger.info("Shutting down...")
-    scheduler.shutdown()
+    if ENABLE_ETL_SCHEDULER and scheduler.running:
+        scheduler.shutdown()
 
 app = FastAPI(title="Uzņēmumu Reģistrs API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(CorrelationIdMiddleware)
@@ -36,14 +46,13 @@ app.include_router(companies.router)
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "scheduler": "running" if scheduler.running else "stopped"}
+    """Health check endpoint showing service status"""
+    return {
+        "status": "ok",
+        "mode": "etl-enabled" if ENABLE_ETL_SCHEDULER else "api-only",
+        "scheduler": "running" if (ENABLE_ETL_SCHEDULER and scheduler.running) else "disabled"
+    }
 
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Company Registry API"}
-
-@app.post("/etl/run")
-def run_etl_manually():
-    """Manually trigger the ETL process immediately."""
-    job = scheduler.add_job(run_all_etl, 'date')
-    return {"message": "ETL job triggered", "job_id": job.id}
