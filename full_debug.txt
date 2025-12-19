@@ -1,0 +1,50 @@
+================================================================================
+FINANCIAL DATA PROCESSING DEBUG
+================================================================================
+
+[STEP 1] Loading financial_statements.csv...
+  Loaded: 1000 rows
+  Columns: ['id', 'file_id', 'legal_entity_registration_number', 'source_schema', 'source_type']
+  After column selection: 1000 rows, columns: ['statement_id', 'company_regcode', 'year', 'employees']
+  Sample company_regcode: ['40103504912', '40103466358', '40103476182']
+
+[STEP 2] Loading income_statements.csv...
+  Loaded: 1000 rows
+  Columns: ['statement_id', 'file_id', 'net_turnover', 'by_nature_inventory_change', 'by_nature_long_term_investment_expenses']
+  Found turnover column: net_turnover
+  Found profit column: net_income
+  After processing: 1000 rows
+  Non-null turnover: 1000
+  Sample turnover values: [135, 0, 37688]
+
+[STEP 3] Merging statements with income data...
+  Before merge - df_stm: 1000 rows
+  Before merge - df_inc_subset: 1000 rows
+  After merge: 1000 rows
+  Columns: ['statement_id', 'company_regcode', 'year', 'employees', 'turnover', 'profit']
+  Non-null turnover after merge: 905
+
+[STEP 4] Converting to numeric...
+  year: 1000 -> 1000 rows (non-null: 1000)
+  company_regcode: 1000 -> 1000 rows (non-null: 1000)
+  employees: 1000 -> 1000 rows (non-null: 1000)
+  turnover: 1000 -> 1000 rows (non-null: 905)
+  profit: 1000 -> 1000 rows (non-null: 905)
+  cash_balance: 1000 -> 1000 rows (non-null: 0)
+
+[STEP 5] Dropping rows with NaN company_regcode or year...
+  Before dropna: 1000 rows
+  company_regcode non-null: 1000
+  year non-null: 1000
+  After dropna: 1000 rows
+
+  ✓ DataFrame has 1000 rows after dropna
+  Sample data:
+   company_regcode  year  turnover  profit
+0      40103504912  2016     135.0 -3860.0
+1      40103466358  2016       0.0  -224.0
+2      40103476182  2016   37688.0  1520.0
+3      40103863270  2015    9275.0 -1647.0
+4      40008010613  2016       NaN     NaN
+
+================================================================================

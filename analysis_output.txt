@@ -1,0 +1,140 @@
+================================================================================
+FINANCIAL DATA CSV COLUMN ANALYSIS
+================================================================================
+
+================================================================================
+FILE: financial_statements
+================================================================================
+
+✓ Successfully parsed with separator ';'
+  Rows in sample: 3
+  Total columns: 12
+
+  ALL COLUMNS (12):
+      1. id
+      2. file_id
+      3. legal_entity_registration_number
+      4. source_schema
+      5. source_type
+      6. year
+      7. year_started_on
+      8. year_ended_on
+      9. employees
+     10. rounded_to_nearest
+     11. currency
+     12. created_at
+
+  Header file with company info and year
+
+  REQUIRED COLUMNS:
+    ✓ FOUND: id
+    ✓ FOUND: legal_entity_registration_number
+    ✓ FOUND: year
+    ✓ FOUND: employees
+
+  SAMPLE DATA (first 5 columns):
+    id  file_id  legal_entity_registration_number source_schema source_type
+709390 16544390                       40103504912   DokGPUIENv1         UGP
+709391 16544392                       40103466358   DokGPUIENv1         UGP
+709392 16544401                       40103476182   DokGPUIENv1         UGP
+
+================================================================================
+FILE: income_statements
+================================================================================
+
+✓ Successfully parsed with separator ';'
+  Rows in sample: 3
+  Total columns: 28
+
+  ALL COLUMNS (28):
+      1. statement_id
+      2. file_id
+      3. net_turnover
+      4. by_nature_inventory_change
+      5. by_nature_long_term_investment_expenses
+      6. by_nature_other_operating_revenues
+      7. by_nature_material_expenses
+      8. by_nature_labour_expenses
+      9. by_nature_depreciation_expenses
+     10. by_function_cost_of_goods_sold
+     11. by_function_gross_profit
+     12. by_function_selling_expenses
+     13. by_function_administrative_expenses
+     14. by_function_other_operating_revenues
+     15. other_operating_expenses
+     16. equity_investment_earnings
+     17. other_long_term_investment_earnings
+     18. other_interest_revenues
+     19. investment_fair_value_adjustments
+     20. interest_expenses
+     21. extra_revenues
+     22. extra_expenses
+     23. income_before_income_taxes
+     24. provision_for_income_taxes
+     25. income_after_income_taxes
+     26. other_taxes
+     27. extra_dividends
+     28. net_income
+
+  Turnover and profit data (wide format)
+
+  LOOKING FOR (any of these):
+    ✓ FOUND: net_turnover
+    ✓ FOUND: net_income
+
+  SAMPLE DATA (first 5 columns):
+ statement_id  file_id  net_turnover  by_nature_inventory_change  by_nature_long_term_investment_expenses
+       709390 16544390           135                         NaN                                      NaN
+       709391 16544392             0                         NaN                                      NaN
+       709392 16544401         37688                         NaN                                      NaN
+
+================================================================================
+FILE: balance_sheets
+================================================================================
+
+✓ Successfully parsed with separator ';'
+  Rows in sample: 3
+  Total columns: 18
+
+  ALL COLUMNS (18):
+      1. statement_id
+      2. file_id
+      3. cash
+      4. marketable_securities
+      5. accounts_receivable
+      6. inventories
+      7. total_current_assets
+      8. investments
+      9. fixed_assets
+     10. intangible_assets
+     11. total_non_current_assets
+     12. total_assets
+     13. future_housing_repairs_payments
+     14. current_liabilities
+     15. non_current_liabilities
+     16. provisions
+     17. equity
+     18. total_equities
+
+  Cash balance data (wide format)
+
+  LOOKING FOR (any of these):
+    ✓ FOUND: cash
+
+  SAMPLE DATA (first 5 columns):
+ statement_id  file_id  cash  marketable_securities  accounts_receivable
+       709390 16544390     1                      0                  257
+       709391 16544392     0                      0                    0
+       709392 16544401  2455                      0                 4988
+
+================================================================================
+SUMMARY
+================================================================================
+
+The code expects:
+1. financial_statements.csv: Wide format with id, legal_entity_registration_number, year, employees
+2. income_statements.csv: Wide format with columns like net_turnover, net_income
+3. balance_sheets.csv: Wide format with columns like cash, nauda
+
+If the actual columns don't match, we need to update the column mappings in process_finance.py
+
