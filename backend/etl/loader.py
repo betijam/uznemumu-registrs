@@ -26,49 +26,46 @@ def load_to_db(df: pd.DataFrame, table_name: str, unique_columns: list = None, t
         logger.warning(f"DataFrame for {table_name} is empty. Skipping load.")
         return
 
-    conn = None
     try:
-        # Atveram savienojumu manuāli
         with engine.connect() as conn:
-            # Sākam transakciju
-            trans = conn.begin()
+            # TRUNCATE ārpus transakcijas (ātrāk)
+            if truncate:
+                logger.info(f"Truncating table {table_name}...")
+                conn.execute(text(f"TRUNCATE TABLE {table_name} CASCADE;"))
+                conn.commit()
             
-            try:
-                # TRUNCATE tikai ja tas ir pieprasīts
-                if truncate:
-                    logger.info(f"Truncating table {table_name}...")
-                    conn.execute(text(f"TRUNCATE TABLE {table_name} CASCADE;"))
-                else:
-                    logger.info(f"Appending to table {table_name} (no truncate)...")
+            logger.info(f"Loading {len(df)} rows into {table_name}...")
+            
+            # Sadalam mazākos batch (500 rows) ar commit starp katru
+            # Lai izvairītos no Railway timeout (60s)
+            batch_size = 500
+            total_rows = len(df)
+            
+            for i in range(0, total_rows, batch_size):
+                batch_df = df.iloc[i:i+batch_size]
                 
-                logger.info(f"Loading {len(df)} rows into {table_name}...")
-                
-                # Samazinām chunksize uz 2000 (drošāk method='multi' gadījumā)
-                df.to_sql(
-                    table_name, 
-                    conn, 
-                    if_exists='append', 
-                    index=False, 
-                    method='multi', 
-                    chunksize=2000 
-                )
-                
-                # Pārbaude PIRMS commit - vai dati tiešām ir iekšā transakcijā?
-                result = conn.execute(text(f"SELECT count(*) FROM {table_name}"))
-                count = result.scalar()
-                logger.info(f"Pending commit: Table {table_name} has {count} rows inside transaction.")
-
-                # MANUĀLS COMMIT
-                trans.commit()
-                
-                logger.info(f"✅ COMMITTED successfully. {table_name} now holds data permanently.")
-                
-            except Exception as e:
-                # Ja kaut kas noiet greizi iekšpusē, taisām rollback
-                trans.rollback()
-                logger.error(f"Transaction rolled back due to error: {e}")
-                raise e
-
+                # Katram batch - jauna transakcija
+                trans = conn.begin()
+                try:
+                    batch_df.to_sql(
+                        table_name, 
+                        conn, 
+                        if_exists='append', 
+                        index=False, 
+                        method='multi'
+                    )
+                    trans.commit()
+                    
+                    if (i + batch_size) % 5000 == 0 or (i + batch_size) >= total_rows:
+                        logger.info(f"  Loaded {min(i + batch_size, total_rows)}/{total_rows} rows...")
+                        
+                except Exception as e:
+                    trans.rollback()
+                    logger.error(f"Batch {i}-{i+batch_size} failed: {e}")
+                    raise e
+            
+            logger.info(f"✅ {table_name}: All {total_rows} rows loaded successfully.")
+            
     except Exception as e:
-        logger.error(f"Failed to establish connection or load {table_name}: {e}")
+        logger.error(f"Failed to load {table_name}: {e}")
         raise
