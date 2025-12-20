@@ -22,6 +22,34 @@ logger = logging.getLogger(__name__)
 
 PVN_CSV_URL = "https://data.gov.lv/dati/dataset/9a5eae1c-2438-48cf-854b-6a2c170f918f/resource/610910e9-e086-4c5b-a7ea-0a896a697672/download/pdb_pvnmaksataji_odata.csv"
 
+def migrate_pvn_columns():
+    """Auto-create PVN columns and indexes if they don't exist"""
+    logger.info("Checking/creating PVN database columns...")
+    
+    with engine.connect() as conn:
+        try:
+            # Add columns
+            conn.execute(text("""
+                ALTER TABLE companies 
+                ADD COLUMN IF NOT EXISTS pvn_number VARCHAR(20),
+                ADD COLUMN IF NOT EXISTS is_pvn_payer BOOLEAN DEFAULT FALSE
+            """))
+            
+            # Add indexes
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_companies_pvn ON companies(pvn_number)
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_companies_is_pvn_payer ON companies(is_pvn_payer)
+            """))
+            
+            conn.commit()
+            logger.info("✅ PVN columns and indexes ready")
+            
+        except Exception as e:
+            logger.warning(f"Migration warning (may be safe to ignore): {e}")
+
+
 def download_pvn_data():
     """Download latest PVN registry CSV"""
     logger.info(f"Downloading PVN registry from data.gov.lv...")
@@ -44,6 +72,9 @@ def download_pvn_data():
 
 def process_pvn_registry():
     """Process PVN registry and update companies table"""
+    
+    # Auto-migrate database schema
+    migrate_pvn_columns()
     
     # Download data
     csv_path = download_pvn_data()
