@@ -104,7 +104,7 @@ export default function Top100Page() {
                 {/* Companies Table */}
                 {loading ? (
                     <div className="flex justify-center items-center py-20">
-                        <LoadingSpinner size="large" />
+                        <LoadingSpinner size="lg" />
                     </div>
                 ) : data && data.companies.length > 0 ? (
                     <div className="bg-white rounded-xl shadow-card overflow-hidden">
