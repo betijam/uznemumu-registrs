@@ -36,9 +36,9 @@ def load_to_db(df: pd.DataFrame, table_name: str, unique_columns: list = None, t
             
             logger.info(f"Loading {len(df)} rows into {table_name}...")
             
-            # Sadalam mazākos batch (500 rows) ar commit starp katru
-            # Lai izvairītos no Railway timeout (60s)
-            batch_size = 500
+            # Optimized for Railway Hobby (8GB RAM)
+            # Larger batches = fewer transactions = better performance
+            batch_size = 10000
             total_rows = len(df)
             
             for i in range(0, total_rows, batch_size):
