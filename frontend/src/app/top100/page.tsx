@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 import CompanySizeBadge from '@/components/CompanySizeBadge';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface Company {
     rank: number;
@@ -84,8 +84,8 @@ export default function Top100Page() {
                     <button
                         onClick={() => setSortBy('turnover')}
                         className={`px-6 py-2 rounded-lg font-medium transition-all ${sortBy === 'turnover'
-                                ? 'bg-primary text-white shadow-md'
-                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                            ? 'bg-primary text-white shadow-md'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                             }`}
                     >
                         Apgrozījums
@@ -93,8 +93,8 @@ export default function Top100Page() {
                     <button
                         onClick={() => setSortBy('profit')}
                         className={`px-6 py-2 rounded-lg font-medium transition-all ${sortBy === 'profit'
-                                ? 'bg-primary text-white shadow-md'
-                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                            ? 'bg-primary text-white shadow-md'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                             }`}
                     >
                         Peļņa
