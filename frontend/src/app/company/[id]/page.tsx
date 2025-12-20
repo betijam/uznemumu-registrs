@@ -362,15 +362,16 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                     </div>
                 )}
 
-                {/* Company Location Map */}
-                {company.address && (
+                {/* Company Location Map - TEMPORARILY DISABLED */}
+                {/* TODO: Fix client/server component issue */}
+                {/* {company.address && (
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
                         <div className="bg-white rounded-xl shadow-card p-6">
                             <h3 className="text-lg font-bold text-primary mb-4">Atrašanās vieta</h3>
                             <CompanyMap address={company.address} />
                         </div>
                     </div>
-                )}
+                )} */}
 
                 <CompanyTabs company={company} related={graph} />
             </main>
