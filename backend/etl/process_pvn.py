@@ -10,12 +10,16 @@ Downloads and processes official PVN registry to determine:
 Data source: https://data.gov.lv/dati/dataset/9a5eae1c-2438-48cf-854b-6a2c170f918f
 """
 
+import sys
+import os
+# Add parent directory to path to allow imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 import pandas as pd
 import logging
 from sqlalchemy import text
 from etl.loader import engine
 import requests
-import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
