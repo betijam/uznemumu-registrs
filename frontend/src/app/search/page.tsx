@@ -3,10 +3,9 @@ import SearchInput from "@/components/SearchInput";
 import Link from "next/link";
 
 async function getSearchResults(query: string) {
-    // Dual logic: Server (Docker) vs Client (Browser)
-    const API_BASE_URL = typeof window === 'undefined'
-        ? process.env.INTERNAL_API_URL || 'http://ur_backend:8000'
-        : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+    // On Railway, always use the public URL (NEXT_PUBLIC_API_URL)
+    // Internal Docker network (INTERNAL_API_URL) only works locally
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
     try {
         const res = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`, {
@@ -124,10 +123,10 @@ export default async function SearchPage({
                                     {/* Status Badge */}
                                     <div className="flex flex-col items-end gap-2">
                                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${company.status === 'active'
-                                                ? 'bg-success/10 text-success'
-                                                : company.status === 'monitoring'
-                                                    ? 'bg-warning/10 text-warning'
-                                                    : 'bg-danger/10 text-danger'
+                                            ? 'bg-success/10 text-success'
+                                            : company.status === 'monitoring'
+                                                ? 'bg-warning/10 text-warning'
+                                                : 'bg-danger/10 text-danger'
                                             }`}>
                                             {company.status === 'active' ? 'AKTĪVS' : company.status === 'monitoring' ? 'MONITORINGS' : 'LIKVIDĒTS'}
                                         </span>

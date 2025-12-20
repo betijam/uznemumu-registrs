@@ -4,9 +4,9 @@ import Link from "next/link";
 
 // Fetch real statistics from backend
 async function getStats() {
-  const API_BASE_URL = typeof window === 'undefined'
-    ? process.env.INTERNAL_API_URL || 'http://ur_backend:8000'
-    : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+  // On Railway, always use the public URL (NEXT_PUBLIC_API_URL)
+  // Internal Docker network (INTERNAL_API_URL) only works locally
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
   try {
     const res = await fetch(`${API_BASE_URL}/stats`, {

@@ -72,7 +72,7 @@ def process_risks(sanctions_path: str, liquidations_path: str, prohibitions_path
                 'liquidation_type_text': 'liquidation_type',
                 'grounds_for_liquidation': 'liquidation_grounds',
                 'date_from': 'start_date'
-            })
+            }).reset_index(drop=True)  # Fix duplicate index labels
             
             df['description'] = ('Likvidācija: ' + 
                                 df['liquidation_type'].fillna('Nav norādīts') + 
@@ -106,7 +106,7 @@ def process_risks(sanctions_path: str, liquidations_path: str, prohibitions_path
                 'suspension_code_text': 'suspension_code',
                 'ground_for': 'suspension_grounds',
                 'date_from': 'start_date'
-            })
+            }).reset_index(drop=True)  # Fix duplicate index labels
             
             df['description'] = ('Aizliegums: ' + 
                                 df['suspension_code'].fillna('Nav norādīts') + 

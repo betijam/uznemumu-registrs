@@ -4,9 +4,8 @@ import CompanyTabs from "@/components/CompanyTabs";
 
 // Data Fetching
 async function getCompany(id: string) {
-    const API_BASE_URL = typeof window === 'undefined'
-        ? process.env.INTERNAL_API_URL || 'http://ur_backend:8000'
-        : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+    // On Railway, always use the public URL (NEXT_PUBLIC_API_URL)
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
     try {
         const res = await fetch(`${API_BASE_URL}/companies/${id}`, { cache: 'no-store' });
         if (!res.ok) return null;
@@ -17,9 +16,8 @@ async function getCompany(id: string) {
 }
 
 async function getGraph(id: string) {
-    const API_BASE_URL = typeof window === 'undefined'
-        ? process.env.INTERNAL_API_URL || 'http://ur_backend:8000'
-        : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+    // On Railway, always use the public URL (NEXT_PUBLIC_API_URL)
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
     try {
         const res = await fetch(`${API_BASE_URL}/companies/${id}/graph`, { cache: 'no-store' });
         if (!res.ok) return { parents: [], children: [] };
