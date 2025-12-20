@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Update company_size_badge column with EU classification
+Calculate and store company size for EACH YEAR with financial data
 
-Run this to pre-calculate company sizes in database for faster API responses.
-Can be run:
-- Manually via: python update_company_sizes.py
-- As part of ETL process
-- Via cron job (weekly recommended)
+This creates a historical record of company size changes over time.
+Useful for:
+- Tracking growth trajectories
+- Detecting size category changes (e.g., Mazs -> Vidējs)
+- Compliance monitoring (EU funding eligibility changes)
 """
 
 import logging
@@ -34,63 +34,133 @@ def calculate_size(employees: int, turnover: float, assets: float) -> str:
     else:
         return "Liels"
 
-def update_company_sizes():
-    """Update company_size_badge for all companies with financial data"""
-    logger.info("Starting company size calculation...")
+def update_size_history():
+    """Calculate company size for each year and detect changes"""
+    logger.info("Starting historical company size calculation...")
     
     with engine.connect() as conn:
-        # Get all companies with latest financial data
+        # Get all financial reports with year-by-year data
         query = text("""
             SELECT 
-                c.regcode,
-                c.employee_count as vid_employees,
-                f.employees as fin_employees,
+                f.company_regcode,
+                f.year,
+                f.employees,
                 f.turnover,
-                f.total_assets
-            FROM companies c
-            LEFT JOIN LATERAL (
-                SELECT employees, turnover, total_assets
-                FROM financial_reports
-                WHERE company_regcode = c.regcode
-                ORDER BY year DESC
-                LIMIT 1
-            ) f ON true
+                f.total_assets,
+                c.employee_count as vid_employees
+            FROM financial_reports f
+            JOIN companies c ON c.regcode = f.company_regcode
+            WHERE f.year >= 2020  -- Only recent years
+            ORDER BY f.company_regcode, f.year
         """)
         
         rows = conn.execute(query).fetchall()
-        logger.info(f"Processing {len(rows)} companies...")
+        logger.info(f"Processing {len(rows)} financial reports...")
         
-        updates = []
+        # Calculate size for each year
+        history_records = []
         for row in rows:
-            # Prefer VID employee data, fallback to financial reports
-            employees = row.vid_employees or row.fin_employees or 0
+            # Prefer VID employee data for latest year, otherwise use financial report
+            employees = row.employees or 0
+            if row.year == 2024:  # Latest year - prefer VID data
+                employees = row.vid_employees or row.employees or 0
+            
             turnover = float(row.turnover) if row.turnover else 0
             assets = float(row.total_assets) if row.total_assets else 0
             
             size = calculate_size(employees, turnover, assets)
-            updates.append((size, row.regcode))
+            
+            history_records.append({
+                "regcode": row.company_regcode,
+                "year": row.year,
+                "size": size,
+                "employees": employees,
+                "turnover": turnover,
+                "assets": assets
+            })
         
-        # Batch update
-        logger.info(f"Updating {len(updates)} company sizes...")
-        conn.execute(
-            text("UPDATE companies SET company_size_badge = :size WHERE regcode = :regcode"),
-            [{"size": size, "regcode": regcode} for size, regcode in updates]
-        )
+        # Insert/update history (upsert)
+        logger.info(f"Upserting {len(history_records)} size history records...")
+        for record in history_records:
+            conn.execute(text("""
+                INSERT INTO company_size_history 
+                    (company_regcode, year, size_category, employees, turnover, total_assets)
+                VALUES (:regcode, :year, :size, :employees, :turnover, :assets)
+                ON CONFLICT (company_regcode, year) 
+                DO UPDATE SET 
+                    size_category = EXCLUDED.size_category,
+                    employees = EXCLUDED.employees,
+                    turnover = EXCLUDED.turnover,
+                    total_assets = EXCLUDED.total_assets,
+                    calculated_at = NOW()
+            """), record)
+        
+        conn.commit()
+        
+        # Detect size changes in last year
+        logger.info("Detecting recent size changes...")
+        conn.execute(text("""
+            WITH size_changes AS (
+                SELECT 
+                    company_regcode,
+                    size_category,
+                    LAG(size_category) OVER (PARTITION BY company_regcode ORDER BY year) as prev_size,
+                    year
+                FROM company_size_history
+                WHERE year >= (SELECT MAX(year) - 1 FROM company_size_history)
+            )
+            UPDATE companies c
+            SET 
+                company_size_badge = (
+                    SELECT size_category 
+                    FROM company_size_history 
+                    WHERE company_regcode = c.regcode 
+                    ORDER BY year DESC LIMIT 1
+                ),
+                latest_size_year = (
+                    SELECT year 
+                    FROM company_size_history 
+                    WHERE company_regcode = c.regcode 
+                    ORDER BY year DESC LIMIT 1
+                ),
+                size_changed_recently = EXISTS (
+                    SELECT 1 FROM size_changes sc
+                    WHERE sc.company_regcode = c.regcode
+                    AND sc.size_category IS DISTINCT FROM sc.prev_size
+                    AND sc.prev_size IS NOT NULL
+                )
+        """))
         conn.commit()
         
         # Statistics
         stats = conn.execute(text("""
-            SELECT company_size_badge, COUNT(*) as count
-            FROM companies
-            WHERE company_size_badge IS NOT NULL
-            GROUP BY company_size_badge
-            ORDER BY count DESC
+            SELECT 
+                year,
+                size_category,
+                COUNT(*) as count
+            FROM company_size_history
+            WHERE size_category IS NOT NULL
+            GROUP BY year, size_category
+            ORDER BY year DESC, count DESC
         """)).fetchall()
         
-        logger.info("✅ Company size update complete!")
-        logger.info("Distribution:")
+        logger.info("✅ Size history update complete!")
+        logger.info("\nDistribution by year:")
+        current_year = None
         for stat in stats:
-            logger.info(f"  {stat.company_size_badge}: {stat.count}")
+            if stat.year != current_year:
+                current_year = stat.year
+                logger.info(f"\n{stat.year}:")
+            logger.info(f"  {stat.size_category}: {stat.count}")
+        
+        # Companies that changed size
+        changed = conn.execute(text("""
+            SELECT COUNT(*) as count
+            FROM companies
+            WHERE size_changed_recently = TRUE
+        """)).fetchone()
+        
+        logger.info(f"\n🔄 Companies with size changes in last year: {changed.count}")
 
 if __name__ == "__main__":
-    update_company_sizes()
+    update_size_history()

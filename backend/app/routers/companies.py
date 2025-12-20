@@ -55,6 +55,8 @@ def get_company_details(regcode: int, response: Response):
             "status": res.status,
             "sepa_identifier": res.sepa_identifier,
             "company_size_badge": res.company_size_badge,
+            "latest_size_year": res.latest_size_year if hasattr(res, 'latest_size_year') else None,
+            "size_changed_recently": res.size_changed_recently if hasattr(res, 'size_changed_recently') else False,
             # NACE Industry Classification
             "nace_code": res.nace_code,
             "nace_text": res.nace_text,
