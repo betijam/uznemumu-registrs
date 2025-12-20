@@ -259,6 +259,11 @@ def process_finance(statements_path: str, balance_path: str, income_path: str):
                 df_merged = df_merged[final_cols]
                 
                 if len(df_merged) > 0:
+                    # Deduplicate within this chunk - keep most recent entry for each (company_regcode, year)
+                    # This prevents duplicate key errors and is much faster than ON CONFLICT
+                    df_merged = df_merged.drop_duplicates(subset=['company_regcode', 'year'], keep='last')
+                    logger.info(f"  After deduplication: {len(df_merged)} unique records")
+                    
                     # Load to DB (truncate only on first chunk, append for rest)
                     load_to_db(df_merged, 'financial_reports', truncate=is_first_chunk)
                     is_first_chunk = False
