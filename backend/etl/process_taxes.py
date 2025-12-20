@@ -193,11 +193,12 @@ def process_vid_data():
         import os
         from .process_nace import process_nace
         
-        # Find project root (where NACE.csv is located)
+        # Find NACE.csv (now in backend directory or project root)
         # Try multiple paths for different environments (local, Docker, Railway)
         current_dir = os.path.dirname(__file__)
         possible_paths = [
-            os.path.join(current_dir, '..', '..', 'NACE.csv'),  # Local: backend/etl -> root
+            os.path.join(current_dir, '..', 'NACE.csv'),  # backend/etl -> backend/NACE.csv
+            os.path.join(current_dir, '..', '..', 'NACE.csv'),  # Local: backend/etl -> root/NACE.csv
             os.path.join('/app', 'NACE.csv'),  # Railway/Docker: /app/NACE.csv
             'NACE.csv',  # Current directory
         ]
@@ -207,6 +208,7 @@ def process_vid_data():
             abs_path = os.path.abspath(path)
             if os.path.exists(abs_path):
                 nace_path = abs_path
+                logger.info(f"✅ Found NACE.csv at: {abs_path}")
                 break
         
         vid_path = os.path.join('/tmp', 'etl_data', 'vid_tax_data.csv')  # Downloaded by process_tax_payments
@@ -237,7 +239,7 @@ def process_vid_data():
             # Process NACE
             process_nace(vid_path, nace_path)
         else:
-            logger.warning(f"NACE.csv not found. Searched paths: {possible_paths}")
+            logger.warning(f"❌ NACE.csv not found. Searched paths: {possible_paths}")
             logger.warning("Skipping industry classification")
     
     except Exception as e:
