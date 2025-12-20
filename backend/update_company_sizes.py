@@ -207,6 +207,47 @@ def process_company_sizes():
         """))
         conn.commit()
         
+        # Calculate size for each report
+        reports = conn.execute(text("""
+            SELECT 
+                company_regcode as regcode,
+                year,
+                employees,
+                turnover,
+                total_assets as assets
+            FROM financial_reports
+            WHERE employees IS NOT NULL 
+               OR turnover IS NOT NULL 
+               OR total_assets IS NOT NULL
+            ORDER BY company_regcode, year DESC
+        """)).fetchall()
+        
+        logger.info(f"Processing {len(reports)} financial reports...")
+        
+        # Calculate sizes
+        size_data = []
+        for r in reports:
+            size = calculate_size(r.employees or 0, r.turnover or 0, r.assets or 0)
+            # SKIP if size is None (no meaningful data)
+            if size is not None:
+                size_data.append({
+                    'regcode': r.regcode,
+                    'year': r.year,
+                    'size': size,
+                    'employees': r.employees or 0,
+                    'turnover': r.turnover or 0,
+                    'assets': r.assets or 0
+                })
+        
+        logger.info(f"Upserting {len(size_data)} size history records...")
+        
+        # Batch upserthat changed size
+        changed = conn.execute(text("""
+            SELECT COUNT(*) as count
+            FROM companies
+            WHERE size_changed_recently = TRUE
+        """)).fetchone()
+        
         # Statistics
         stats = conn.execute(text("""
             SELECT 
