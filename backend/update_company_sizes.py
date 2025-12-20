@@ -51,6 +51,8 @@ def migrate_company_size_tables():
                     size_category VARCHAR(20) NOT NULL,
                     employees INTEGER,
                     turnover NUMERIC(15,2),
+                    total_assets NUMERIC(15,2),
+                    calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(company_regcode, year)
                 )
