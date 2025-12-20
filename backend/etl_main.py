@@ -73,7 +73,7 @@ def main() -> int:
         logger.info("📊 Calculating company sizes...")
         try:
             # Import and run from update_company_sizes
-            import sys
+            # Note: sys is already imported at module level
             sys.path.insert(0, os.path.dirname(__file__))
             from update_company_sizes import process_company_sizes
             process_company_sizes()
