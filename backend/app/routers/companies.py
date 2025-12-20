@@ -6,6 +6,36 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+def calculate_company_size(employees: int, turnover: float, assets: float) -> str:
+    """
+    Calculate company size according to EU standards (SME definition)
+    
+    Categories:
+    - Mikro: <10 employees AND (≤2M€ turnover OR ≤2M€ balance sheet)
+    - Mazs: <50 employees AND (≤10M€ turnover OR ≤10M€ balance sheet)
+    - Vidējs: <250 employees AND (≤50M€ turnover OR ≤43M€ balance sheet)
+    - Liels: ≥250 employees OR (>50M€ turnover OR >43M€ balance sheet)
+    """
+    # Handle None/missing values
+    employees = employees or 0
+    turnover = turnover or 0
+    assets = assets or 0
+    
+    # Check if we have sufficient data
+    if employees == 0 and turnover == 0 and assets == 0:
+        return None  # No data available
+    
+    # EU SME Classification
+    if employees < 10 and (turnover <= 2_000_000 or assets <= 2_000_000):
+        return "Mikro"
+    elif employees < 50 and (turnover <= 10_000_000 or assets <= 10_000_000):
+        return "Mazs"
+    elif employees < 250 and (turnover <= 50_000_000 or assets <= 43_000_000):
+        return "Vidējs"
+    else:
+        return "Liels"
+
+
 @router.get("/companies/{regcode}")
 def get_company_details(regcode: int, response: Response):
     # Cache for 1 hour
@@ -302,6 +332,10 @@ def get_company_details(regcode: int, response: Response):
             }
             for p in procurements
         ]
+        
+        # 8. Company Size (read from cached DB column for performance)
+        # Note: Updated periodically via update_company_sizes.py script
+        company["company_size"] = res.company_size_badge
         
         return company
 

@@ -2,6 +2,8 @@ import Navbar from "@/components/Navbar";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import CompanyTabs from "@/components/CompanyTabs";
+import CompanySizeBadge from "@/components/CompanySizeBadge";
+import CompanyMap from "@/components/CompanyMap";
 
 // Data Fetching
 async function getCompany(id: string) {
@@ -105,11 +107,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                                         {company.company_type}
                                     </span>
                                 )}
-                                {company.company_size_badge && (
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                                        {company.company_size_badge}
-                                    </span>
-                                )}
+                                <CompanySizeBadge size={company.company_size} />
                                 {company.nace_section_text && (
                                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
                                         🏭 {company.nace_section_text}
@@ -134,6 +132,26 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                                     {company.address}
                                 </span>
                             </div>
+
+                            {/* NACE Industry Classification */}
+                            {company.nace_code && company.nace_code !== '0000' && (
+                                <div className="mt-3 flex items-center gap-2 text-sm">
+                                    <span className="text-gray-500">Nozare:</span>
+                                    <span className="font-semibold text-primary">
+                                        🏭 {company.nace_code} · {company.nace_text}
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* PVN Number */}
+                            {company.sepa_identifier && (
+                                <div className="mt-2 flex items-center gap-2 text-sm">
+                                    <span className="text-gray-500">PVN:</span>
+                                    <span className="font-mono text-sm text-primary">
+                                        {company.sepa_identifier}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                         <div className="mt-4 flex gap-3 md:mt-0 md:ml-4">
                             <button className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm">
