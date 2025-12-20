@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import CompanyTabs from "@/components/CompanyTabs";
 
 // Data Fetching
@@ -24,6 +25,28 @@ async function getGraph(id: string) {
         return res.json();
     } catch (e) {
         return { parents: [], children: [] };
+    }
+}
+
+async function getBenchmark(id: string) {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+    try {
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/benchmark`, { cache: 'no-store' });
+        if (!res.ok) return null;
+        return res.json();
+    } catch (e) {
+        return null;
+    }
+}
+
+async function getCompetitors(id: string) {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+    try {
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/competitors?limit=5`, { cache: 'no-store' });
+        if (!res.ok) return [];
+        return res.json();
+    } catch (e) {
+        return [];
     }
 }
 
@@ -56,6 +79,8 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
     const { id } = await params;
     const company = await getCompany(id);
     const graph = await getGraph(id);
+    const benchmark = await getBenchmark(id);
+    const competitors = await getCompetitors(id);
 
     if (!company) {
         notFound();
@@ -83,6 +108,11 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                                 {company.company_size_badge && (
                                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
                                         {company.company_size_badge}
+                                    </span>
+                                )}
+                                {company.nace_section_text && (
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
+                                        🏭 {company.nace_section_text}
                                     </span>
                                 )}
                             </div>
@@ -222,6 +252,88 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
             </div>
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                {/* Industry Benchmarking & Competitors */}
+                {(benchmark?.has_data || competitors.length > 0) && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        {/* Benchmarking Card */}
+                        {benchmark?.has_data && (
+                            <div className="bg-white rounded-xl shadow-card p-6">
+                                <h3 className="text-lg font-bold text-primary mb-4">Pozīcija Nozarē</h3>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    {benchmark.industry.name} • {benchmark.industry.total_companies} uzņēmumi
+                                </p>
+
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                    {benchmark.percentiles.turnover && (
+                                        <div className="bg-gradient-to-br from-accent/10 to-primary/10 rounded-lg p-4">
+                                            <p className="text-xs text-gray-600 mb-1">Apgrozījums</p>
+                                            <p className="text-3xl font-bold text-primary">Top {benchmark.percentiles.turnover}%</p>
+                                        </div>
+                                    )}
+                                    {benchmark.percentiles.employees && (
+                                        <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-4">
+                                            <p className="text-xs text-gray-600 mb-1">Darbinieki</p>
+                                            <p className="text-3xl font-bold text-primary">Top {benchmark.percentiles.employees}%</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="border-t pt-4">
+                                    <p className="text-xs font-medium text-gray-500 mb-2">Nozares Vidējie Rādītāji</p>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">Apgrozījums:</span>
+                                        <span className="font-semibold">{formatCurrency(benchmark.industry_averages.turnover)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm mt-1">
+                                        <span className="text-gray-600">Darbinieki:</span>
+                                        <span className="font-semibold">{Math.round(benchmark.industry_averages.employees || 0)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Top Competitors */}
+                        {competitors.length > 0 && (
+                            <div className="bg-white rounded-xl shadow-card p-6">
+                                <h3 className="text-lg font-bold text-primary mb-4">Tuvākie Konkurenti</h3>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    {company.nace_section_text} nozarē
+                                </p>
+
+                                <div className="space-y-3">
+                                    {competitors.map((comp: any, idx: number) => (
+                                        <Link
+                                            key={comp.regcode}
+                                            href={`/company/${comp.regcode}`}
+                                            className="block p-3 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100"
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-bold text-gray-400">#{idx + 1}</span>
+                                                        <p className="font-medium text-gray-900">{comp.name}</p>
+                                                    </div>
+                                                    <div className="flex gap-4 mt-1 text-xs text-gray-500">
+                                                        {comp.turnover && (
+                                                            <span>Apgr.: {formatCurrency(comp.turnover)}</span>
+                                                        )}
+                                                        {comp.employee_count > 0 && (
+                                                            <span>Darb.: {comp.employee_count}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <CompanyTabs company={company} related={graph} />
             </main>
         </div>
