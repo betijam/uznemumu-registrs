@@ -31,6 +31,16 @@ def main():
     logger.info("=" * 60)
     
     try:
+        # Step 0: Run migration first
+        logger.info("Step 0: Running database migration...")
+        from migrate_nace import migrate_nace_columns
+        
+        if not migrate_nace_columns():
+            logger.error("❌ Migration failed. Cannot proceed.")
+            sys.exit(1)
+        
+        logger.info("✅ Migration completed\n")
+        
         # Import after adding parent to path
         from etl.process_nace import process_nace
         from etl.config import VID_URLS
