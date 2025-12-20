@@ -9,14 +9,19 @@ logger = logging.getLogger(__name__)
 @router.get("/stats")
 def get_stats():
     """Get statistics for the homepage"""
+    from datetime import datetime
+    
     stats = {
         "daily_stats": {"new_today": 0, "change": 0},
         "top_earner": {"name": "N/A", "detail": ""},
-        "top_revenue": {"amount": "0 €", "detail": ""}
+        "weekly_procurements": {"amount": "0 €", "detail": ""}
     }
     
     try:
         with engine.connect() as conn:
+            # Current year for filtering
+            current_year = datetime.now().year
+            
             # Get count of companies registered today
             today_count = conn.execute(text("""
                 SELECT COUNT(*) as cnt 
@@ -24,34 +29,45 @@ def get_stats():
                 WHERE registration_date >= CURRENT_DATE
             """)).scalar() or 0
             
-            stats["daily_stats"]["new_today"] = today_count
-            stats["daily_stats"]["change"] = max(0, today_count - 10)  # Simple mock change
+            # Get yesterday's count for real trend
+            yesterday_count = conn.execute(text("""
+                SELECT COUNT(*) as cnt 
+                FROM companies 
+                WHERE registration_date = CURRENT_DATE - INTERVAL '1 day'
+            """)).scalar() or 0
             
-            # Get top earner by latest turnover
+            stats["daily_stats"]["new_today"] = today_count
+            stats["daily_stats"]["change"] = today_count - yesterday_count
+            
+            # Get top earner by CURRENT YEAR turnover
             top_earner = conn.execute(text("""
-                SELECT c.name, f.turnover
+                SELECT c.name, f.turnover, f.year
                 FROM financial_reports f
                 JOIN companies c ON c.regcode = f.company_regcode
-                WHERE f.turnover IS NOT NULL
+                WHERE f.turnover IS NOT NULL 
+                  AND f.year = :current_year
                 ORDER BY f.turnover DESC
                 LIMIT 1
-            """)).fetchone()
+            """), {"current_year": current_year}).fetchone()
             
             if top_earner:
                 stats["top_earner"]["name"] = top_earner.name
-                stats["top_earner"]["detail"] = f"Apgrozījums: {top_earner.turnover:,.0f} €"
+                stats["top_earner"]["detail"] = f"Apgrozījums: {top_earner.turnover:,.0f} € ({top_earner.year})"
             
-            # Get top procurement amount
-            top_procurement = conn.execute(text("""
+            # Get weekly procurement total (last 7 days)
+            weekly_procurement = conn.execute(text("""
                 SELECT SUM(amount) as total, COUNT(*) as cnt
                 FROM procurements
                 WHERE contract_date >= CURRENT_DATE - INTERVAL '7 days'
             """)).fetchone()
             
-            if top_procurement and top_procurement.total:
-                total_m = top_procurement.total / 1_000_000
-                stats["top_revenue"]["amount"] = f"{total_m:.1f} M€"
-                stats["top_revenue"]["detail"] = f"{top_procurement.cnt} iepirkumi pēdējā nedēļā"
+            if weekly_procurement and weekly_procurement.total:
+                total_k = weekly_procurement.total / 1_000
+                stats["weekly_procurements"]["amount"] = f"{total_k:,.0f} €"
+                stats["weekly_procurements"]["detail"] = f"{weekly_procurement.cnt} iepirkumi pēdējās 7 dienās"
+            else:
+                stats["weekly_procurements"]["amount"] = "0 €"
+                stats["weekly_procurements"]["detail"] = "Nav datu pēdējās 7 dienās"
                 
     except Exception as e:
         logger.error(f"Error fetching stats: {e}")

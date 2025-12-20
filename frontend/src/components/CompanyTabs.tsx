@@ -931,7 +931,10 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                     <div className="space-y-6">
                         {/* Header */}
                         <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-semibold text-gray-900">Valsts Iepirkumi</h3>
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900">Valsts Iepirkumi</h3>
+                                <p className="text-sm text-gray-500 mt-1">Parāda 10 jaunākos uzvarētos iepirkumus (periods: 2018-2025)</p>
+                            </div>
                         </div>
 
                         {company.procurements && company.procurements.length > 0 ? (

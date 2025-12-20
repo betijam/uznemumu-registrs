@@ -25,18 +25,23 @@ export default async function Home() {
   const stats = await getStats();
 
   // Default values if API fails
-  const dailyStats = stats?.daily_stats || { new_today: 142, change: 12 };
-  const topCompany = stats?.top_earner || { name: "Mikrotikls SIA", detail: "2. Lavenrgo AS / 3. Timbr..." };
-  const topRevenue = stats?.top_revenue || { amount: "24.5 M€", detail: "Lielākais uzvarētājs šonedēļ" };
+  const dailyStats = stats?.daily_stats || { new_today: 0, change: 0 };
+  const topCompany = stats?.top_earner || { name: "N/A", detail: "" };
+  const weeklyProcurements = stats?.weekly_procurements || { amount: "0 €", detail: "Nav datu" };
 
   return (
     <main className="min-h-screen bg-background">
       <Navbar />
 
-      {/* Dark Hero Section */}
-      <div className="relative bg-gradient-to-br from-dark via-primary to-secondary overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 relative z-10">
+      {/* Hero Section */}
+      <div className="relative bg-gradient-to-br from-primary via-primary-dark to-accent overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full filter blur-3xl"></div>
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-accent rounded-full filter blur-3xl"></div>
+        </div>
+
+        <div className="relative z-10 pt-24 pb-32">
           <div className="text-center">
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6">
               Latvijas Uzņēmumu Reģistrs un<br />Analītika
@@ -79,19 +84,13 @@ export default async function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
-            <div className="flex items-baseline gap-2">
-              <p className="text-4xl font-bold text-primary">{dailyStats.new_today}</p>
-              <span className="text-sm text-success flex items-center">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                </svg>
-                +{dailyStats.change} šodien
-              </span>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">Jauni uzņēmumi / 45 Likvidēti</p>
+            <p className="text-4xl font-bold text-primary mb-1">{dailyStats.new_today}</p>
+            <p className="text-xs text-gray-500">
+              Jauni uzņēmumi / {dailyStats.change >= 0 ? '+' : ''}{dailyStats.change} šodien
+            </p>
           </div>
 
-          {/* Top Company Card */}
+          {/* Top Earner Card */}
           <div className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-shadow p-6">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium text-gray-500">TOP Pelnošie</h3>
@@ -103,16 +102,16 @@ export default async function Home() {
             <p className="text-xs text-gray-500">{topCompany.detail}</p>
           </div>
 
-          {/* Top Revenue Card */}
+          {/* Weekly Procurements Card */}
           <div className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-shadow p-6">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-gray-500">TOP Iepirkumi</h3>
+              <h3 className="text-sm font-medium text-gray-500">Nedēļas iepirkumi</h3>
               <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <p className="text-4xl font-bold text-primary mb-1">{topRevenue.amount}</p>
-            <p className="text-xs text-gray-500">{topRevenue.detail}</p>
+            <p className="text-4xl font-bold text-primary mb-1">{weeklyProcurements.amount}</p>
+            <p className="text-xs text-gray-500">{weeklyProcurements.detail}</p>
           </div>
         </div>
 
