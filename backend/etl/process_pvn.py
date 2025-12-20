@@ -134,31 +134,28 @@ def process_pvn_registry():
                 pvn_number VARCHAR(20)
             )
         """))
+        conn.commit()
         logger.info("✅ Temporary table created")
         
-        # Batch insert in chunks of 5000
-        chunk_size = 5000
-        total_inserted = 0
-        logger.info(f"Starting bulk insert in chunks of {chunk_size}...")
+        # SUPER FAST bulk insert using psycopg2 COPY
+        logger.info(f"Starting ULTRA-FAST bulk insert of {len(active_pvn)} records...")
         
-        for i in range(0, len(active_pvn), chunk_size):
-            chunk = active_pvn.iloc[i:i+chunk_size]
-            # Convert to list of dicts FAST (no iterrows!)
-            values = [
-                {"regcode": int(row['regcode']), "pvn": row['Numurs']} 
-                for row in chunk.to_dict('records')
-            ]
-            
-            logger.info(f"  Inserting chunk {i//chunk_size + 1}/{(len(active_pvn)-1)//chunk_size + 1} ({len(values)} records)...")
-            conn.execute(
-                text("INSERT INTO pvn_temp (regcode, pvn_number) VALUES (:regcode, :pvn)"),
-                values
-            )
-            total_inserted += len(values)
-            logger.info(f"  ✅ Inserted {total_inserted}/{len(active_pvn)} records total")
+        # Get raw psycopg2 connection
+        import io
+        raw_conn = conn.connection.driver_connection
         
-        conn.commit()
-        logger.info(f"✅ All {total_inserted} records inserted into temp table")
+        # Prepare CSV data in memory
+        buffer = io.StringIO()
+        for _, row in active_pvn.iterrows():
+            buffer.write(f"{int(row['regcode'])}\t{row['Numurs']}\n")
+        buffer.seek(0)
+        
+        # COPY - instant insert!
+        with raw_conn.cursor() as cursor:
+            cursor.copy_from(buffer, 'pvn_temp', columns=('regcode', 'pvn_number'))
+        raw_conn.commit()
+        
+        logger.info(f"✅ Inserted {len(active_pvn)} records INSTANTLY using COPY")
         
         # Step 4: Single UPDATE query using JOIN (SUPER FAST!)
         result = conn.execute(text("""

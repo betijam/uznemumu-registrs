@@ -1,21 +1,80 @@
 #!/usr/bin/env python3
 """
-Calculate and store company size for EACH YEAR with financial data
+Calculate and cache company sizes (EU SME classification) for all companies.
+Also tracks historical size changes year-by-year in company_size_history table.
 
-This creates a historical record of company size changes over time.
-Useful for:
-- Tracking growth trajectories
-- Detecting size category changes (e.g., Mazs -> Vidējs)
-- Compliance monitoring (EU funding eligibility changes)
+This script:
+1. Auto-creates necessary tables and columns
+2. Calculates size based on latest financial data (employees + turnover)
+3. Stores historical size per year
+4. Detects recent size category changes
+5. Updates companies.company_size_badge for fast API access
 """
 
+import sys
+import os
+from sqlalchemy import create_engine, text
+from decimal import Decimal
 import logging
-from sqlalchemy import text
 from etl.loader import engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Database connection
+DATABASE_URL = os.getenv('DATABASE_URL')
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable not set")
+
+engine = create_engine(DATABASE_URL)
+
+def migrate_company_size_tables():
+    """Auto-create company size tables and columns if they don't exist"""
+    logger.info("Checking/creating company size database schema...")
+    
+    with engine.connect() as conn:
+        try:
+            # Add columns to companies table
+            conn.execute(text("""
+                ALTER TABLE companies 
+                ADD COLUMN IF NOT EXISTS company_size_badge VARCHAR(20),
+                ADD COLUMN IF NOT EXISTS latest_size_year INTEGER,
+                ADD COLUMN IF NOT EXISTS size_changed_recently BOOLEAN DEFAULT FALSE
+            """))
+            
+            # Create company_size_history table
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS company_size_history (
+                    id SERIAL PRIMARY KEY,
+                    company_regcode BIGINT NOT NULL,
+                    year INTEGER NOT NULL,
+                    size_category VARCHAR(20) NOT NULL,
+                    employees INTEGER,
+                    turnover NUMERIC(15,2),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(company_regcode, year)
+                )
+            """))
+            
+            # Add indexes
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_company_size_badge 
+                ON companies(company_size_badge)
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_company_size_history_regcode 
+                ON company_size_history(company_regcode)
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_company_size_history_year 
+                ON company_size_history(year)
+            """))
+            
+            conn.commit()
+            logger.info("✅ Company size schema ready")
+            
+        except Exception as e:
+            logger.warning(f"Migration warning (may be safe to ignore): {e}")
 def calculate_size(employees: int, turnover: float, assets: float) -> str:
     """EU SME Classification"""
     employees = employees or 0
@@ -34,9 +93,13 @@ def calculate_size(employees: int, turnover: float, assets: float) -> str:
     else:
         return "Liels"
 
-def update_size_history():
-    """Calculate company size for each year and detect changes"""
-    logger.info("Starting historical company size calculation...")
+def process_company_sizes():
+    """Main processing function"""
+    
+    # Auto-migrate database schema
+    migrate_company_size_tables()
+    
+    logger.info("Starting company size calculation...")
     
     with engine.connect() as conn:
         # Get all financial reports with year-by-year data
@@ -163,4 +226,4 @@ def update_size_history():
         logger.info(f"\n🔄 Companies with size changes in last year: {changed.count}")
 
 if __name__ == "__main__":
-    update_size_history()
+    process_company_sizes()

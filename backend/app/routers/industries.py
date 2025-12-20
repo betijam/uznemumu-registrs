@@ -37,11 +37,10 @@ def get_industry_companies(
                 "companies": []
             }
         
-        # Build sort column
-        sort_column = "f.turnover" if sort_by == "turnover" else "f.profit"
         
+        # Build sort column - use CASE statement for safety
         # Get companies
-        companies = conn.execute(text(f"""
+        companies = conn.execute(text("""
             SELECT 
                 c.regcode,
                 c.name,
@@ -54,7 +53,8 @@ def get_industry_companies(
                 f.turnover,
                 f.profit,
                 f.employees as fin_employees,
-                f.year
+                f.year,
+                CASE WHEN :sort_by = 'turnover' THEN f.turnover ELSE f.profit END as sort_value
             FROM companies c
             LEFT JOIN LATERAL (
                 SELECT turnover, profit, employees, year
@@ -64,28 +64,28 @@ def get_industry_companies(
                 LIMIT 1
             ) f ON true
             WHERE c.nace_section = :section
-              AND {sort_column} IS NOT NULL
-            ORDER BY {sort_column} DESC
+              AND CASE WHEN :sort_by = 'turnover' THEN f.turnover ELSE f.profit END IS NOT NULL
+            ORDER BY sort_value DESC
             LIMIT :limit
-        """), {"section": nace_section, "limit": limit}).fetchall()
+        """), {"section": nace_section, "limit": limit, "sort_by": sort_by}).fetchall()
         
         return {
             "section": nace_section,
-            "section_name": section_info.nace_section_text,
-            "total_companies": section_info.total,
+            "section_name": section_info[0] if section_info else None,
+            "total_companies": section_info[1] if section_info else 0,
             "sort_by": sort_by,
             "companies": [
                 {
                     "rank": idx + 1,
-                    "regcode": c.regcode,
-                    "name": c.name,
-                    "turnover": float(c.turnover) if c.turnover else None,
-                    "profit": float(c.profit) if c.profit else None,
-                    "employees": c.employee_count or c.fin_employees,
-                    "year": c.year,
-                    "company_size": c.company_size_badge,
-                    "pvn_number": c.pvn_number,
-                    "is_pvn_payer": c.is_pvn_payer or False
+                    "regcode": c[0],
+                    "name": c[1],
+                    "turnover": float(c[8]) if c[8] else None,
+                    "profit": float(c[9]) if c[9] else None,
+                    "employees": c[4] or c[10],
+                    "year": c[11],
+                    "company_size": c[5],
+                    "pvn_number": c[6],
+                    "is_pvn_payer": c[7] or False
                 }
                 for idx, c in enumerate(companies)
             ]
@@ -102,9 +102,7 @@ def get_top_100(
         sort_by: Sort by "turnover" or "profit" (default: turnover)
     """
     with engine.connect() as conn:
-        sort_column = "f.turnover" if sort_by == "turnover" else "f.profit"
-        
-        companies = conn.execute(text(f"""
+        companies = conn.execute(text("""
             SELECT 
                 c.regcode,
                 c.name,
@@ -117,7 +115,8 @@ def get_top_100(
                 f.turnover,
                 f.profit,
                 f.employees as fin_employees,
-                f.year
+                f.year,
+                CASE WHEN :sort_by = 'turnover' THEN f.turnover ELSE f.profit END as sort_value
             FROM companies c
             LEFT JOIN LATERAL (
                 SELECT turnover, profit, employees, year
@@ -126,10 +125,10 @@ def get_top_100(
                 ORDER BY year DESC
                 LIMIT 1
             ) f ON true
-            WHERE {sort_column} IS NOT NULL
-            ORDER BY {sort_column} DESC
+            WHERE CASE WHEN :sort_by = 'turnover' THEN f.turnover ELSE f.profit END IS NOT NULL
+            ORDER BY sort_value DESC
             LIMIT 100
-        """)).fetchall()
+        """), {"sort_by": sort_by}).fetchall()
         
         return {
             "sort_by": sort_by,
@@ -137,16 +136,16 @@ def get_top_100(
             "companies": [
                 {
                     "rank": idx + 1,
-                    "regcode": c.regcode,
-                    "name": c.name,
-                    "industry": c.nace_section_text,
-                    "turnover": float(c.turnover) if c.turnover else None,
-                    "profit": float(c.profit) if c.profit else None,
-                    "employees": c.employee_count or c.fin_employees,
-                    "year": c.year,
-                    "company_size": c.company_size_badge,
-                    "pvn_number": c.pvn_number,
-                    "is_pvn_payer": c.is_pvn_payer or False
+                    "regcode": c[0],
+                    "name": c[1],
+                    "industry": c[3],
+                    "turnover": float(c[10]) if c[10] else None,
+                    "profit": float(c[11]) if c[11] else None,
+                    "employees": c[4] or c[12],
+                    "year": c[13],
+                    "company_size": c[5],
+                    "pvn_number": c[6],
+                    "is_pvn_payer": c[7] or False
                 }
                 for idx, c in enumerate(companies)
             ]
