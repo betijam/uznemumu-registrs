@@ -193,11 +193,26 @@ def process_vid_data():
         import os
         from .process_nace import process_nace
         
-        nace_path = os.path.join(os.path.dirname(__file__), '..', '..', 'NACE.csv')
+        # Find project root (where NACE.csv is located)
+        # Try multiple paths for different environments (local, Docker, Railway)
+        current_dir = os.path.dirname(__file__)
+        possible_paths = [
+            os.path.join(current_dir, '..', '..', 'NACE.csv'),  # Local: backend/etl -> root
+            os.path.join('/app', 'NACE.csv'),  # Railway/Docker: /app/NACE.csv
+            'NACE.csv',  # Current directory
+        ]
+        
+        nace_path = None
+        for path in possible_paths:
+            abs_path = os.path.abspath(path)
+            if os.path.exists(abs_path):
+                nace_path = abs_path
+                break
+        
         vid_path = os.path.join('/tmp', 'etl_data', 'vid_tax_data.csv')  # Downloaded by process_tax_payments
         
-        if os.path.exists(nace_path):
-            logger.info("NACE dictionary found, processing industry classification...")
+        if nace_path:
+            logger.info(f"NACE dictionary found at {nace_path}, processing industry classification...")
             
             # Re-download VID tax data for NACE processing
             # (Alternative: we could cache it, but re-downloading ensures consistency)
@@ -222,7 +237,8 @@ def process_vid_data():
             # Process NACE
             process_nace(vid_path, nace_path)
         else:
-            logger.warning(f"NACE.csv not found at {nace_path}, skipping industry classification")
+            logger.warning(f"NACE.csv not found. Searched paths: {possible_paths}")
+            logger.warning("Skipping industry classification")
     
     except Exception as e:
         logger.error(f"Error processing NACE classification: {e}")
