@@ -53,7 +53,11 @@ def get_company_details(regcode: int, response: Response):
             "address": res.address,
             "registration_date": str(res.registration_date),
             "status": res.status,
-            "sepa_identifier": res.sepa_identifier,
+            "sepa_identifier": res.sepa_identifier,  # Deprecated, use pvn_number
+            # PVN (VAT) Taxpayer Info
+            "pvn_number": res.pvn_number if hasattr(res, 'pvn_number') else None,
+            "is_pvn_payer": res.is_pvn_payer if hasattr(res, 'is_pvn_payer') else False,
+            # Company Size
             "company_size_badge": res.company_size_badge,
             "latest_size_year": res.latest_size_year if hasattr(res, 'latest_size_year') else None,
             "size_changed_recently": res.size_changed_recently if hasattr(res, 'size_changed_recently') else False,

@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""
+Process PVN (VAT) taxpayer registry from data.gov.lv
+
+Downloads and processes official PVN registry to determine:
+- Which companies are active VAT payers
+- PVN registration numbers (LV prefix format)
+- Updates companies table with accurate PVN status
+
+Data source: https://data.gov.lv/dati/dataset/9a5eae1c-2438-48cf-854b-6a2c170f918f
+"""
+
+import pandas as pd
+import logging
+from sqlalchemy import text
+from etl.loader import engine
+import requests
+import os
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+PVN_CSV_URL = "https://data.gov.lv/dati/dataset/9a5eae1c-2438-48cf-854b-6a2c170f918f/resource/610910e9-e086-4c5b-a7ea-0a896a697672/download/pdb_pvnmaksataji_odata.csv"
+
+def download_pvn_data():
+    """Download latest PVN registry CSV"""
+    logger.info(f"Downloading PVN registry from data.gov.lv...")
+    
+    try:
+        response = requests.get(PVN_CSV_URL, timeout=60)
+        response.raise_for_status()
+        
+        # Save to temp file
+        temp_path = "/tmp/pvn_registry.csv"
+        with open(temp_path, 'wb') as f:
+            f.write(response.content)
+        
+        logger.info(f"✅ Downloaded PVN registry to {temp_path}")
+        return temp_path
+    
+    except Exception as e:
+        logger.error(f"Failed to download PVN data: {e}")
+        return None
+
+def process_pvn_registry():
+    """Process PVN registry and update companies table"""
+    
+    # Download data
+    csv_path = download_pvn_data()
+    if not csv_path:
+        logger.error("Cannot proceed without PVN data")
+        return
+    
+    # Load CSV
+    logger.info("Loading PVN registry CSV...")
+    df = pd.read_csv(csv_path, dtype={'Numurs': str})
+    
+    logger.info(f"Loaded {len(df)} PVN records")
+    logger.info(f"Columns: {df.columns.tolist()}")
+    
+    # Extract regcode from PVN number (remove "LV" prefix)
+    df['regcode'] = df['Numurs'].str.replace('LV', '', regex=False)
+    df['regcode'] = pd.to_numeric(df['regcode'], errors='coerce')
+    
+    # Filter valid regcodes
+    df = df[df['regcode'].notna()].copy()
+    df['regcode'] = df['regcode'].astype(int)
+    
+    # Determine active PVN status
+    # "aktivs" column: if "nav" -> not active VAT payer
+    df['is_pvn_active'] = df['aktivs'].str.lower() != 'nav'
+    
+    logger.info(f"Processed {len(df)} valid PVN records")
+    logger.info(f"Active PVN payers: {df['is_pvn_active'].sum()}")
+    logger.info(f"Inactive: {(~df['is_pvn_active']).sum()}")
+    
+    # Update database
+    with engine.connect() as conn:
+        logger.info("Updating companies table with PVN data...")
+        
+        # First, reset all PVN fields
+        conn.execute(text("""
+            UPDATE companies 
+            SET pvn_number = NULL, 
+                is_pvn_payer = FALSE
+        """))
+        
+        # Update companies with PVN registration
+        updated = 0
+        for _, row in df.iterrows():
+            if row['is_pvn_active']:
+                conn.execute(text("""
+                    UPDATE companies 
+                    SET pvn_number = :pvn,
+                        is_pvn_payer = TRUE
+                    WHERE regcode = :regcode
+                """), {
+                    "pvn": row['Numurs'],  # Full "LV..." format
+                    "regcode": row['regcode']
+                })
+                updated += 1
+        
+        conn.commit()
+        logger.info(f"✅ Updated {updated} companies with active PVN status")
+        
+        # Statistics
+        stats = conn.execute(text("""
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN is_pvn_payer THEN 1 ELSE 0 END) as pvn_payers,
+                SUM(CASE WHEN NOT is_pvn_payer THEN 1 ELSE 0 END) as non_payers
+            FROM companies
+        """)).fetchone()
+        
+        logger.info(f"\n📊 PVN Statistics:")
+        logger.info(f"  Total companies: {stats.total}")
+        logger.info(f"  PVN payers: {stats.pvn_payers} ({stats.pvn_payers/stats.total*100:.1f}%)")
+        logger.info(f"  Non-PVN: {stats.non_payers} ({stats.non_payers/stats.total*100:.1f}%)")
+    
+    # Cleanup
+    if os.path.exists(csv_path):
+        os.remove(csv_path)
+        logger.info("Cleaned up temporary files")
+
+if __name__ == "__main__":
+    process_pvn_registry()

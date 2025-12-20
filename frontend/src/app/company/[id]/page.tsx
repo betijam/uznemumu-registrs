@@ -108,6 +108,16 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                                     </span>
                                 )}
                                 <CompanySizeBadge size={company.company_size} />
+                                {/* PVN Taxpayer Badge */}
+                                {company.is_pvn_payer ? (
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-300">
+                                        ✓ PVN MAKSĀTĀJS
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                                        NAV PVN
+                                    </span>
+                                )}
                                 {company.nace_section_text && (
                                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
                                         🏭 {company.nace_section_text}
