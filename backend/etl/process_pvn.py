@@ -102,8 +102,8 @@ def process_pvn_registry():
     df['regcode'] = df['regcode'].astype(int)
     
     # Determine active PVN status
-    # "aktivs" column: if "nav" -> not active VAT payer
-    df['is_pvn_active'] = df['aktivs'].str.lower() != 'nav'
+    # "Aktivs" column: if "nav" -> not active VAT payer
+    df['is_pvn_active'] = df['Aktivs'].str.lower() != 'nav'
     
     logger.info(f"Processed {len(df)} valid PVN records")
     logger.info(f"Active PVN payers: {df['is_pvn_active'].sum()}")
