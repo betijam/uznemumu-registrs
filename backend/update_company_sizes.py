@@ -58,6 +58,16 @@ def migrate_company_size_tables():
                 )
             """))
             
+            # Add missing columns to existing table (if table was created before)
+            conn.execute(text("""
+                ALTER TABLE company_size_history 
+                ADD COLUMN IF NOT EXISTS total_assets NUMERIC(15,2)
+            """))
+            conn.execute(text("""
+                ALTER TABLE company_size_history 
+                ADD COLUMN IF NOT EXISTS calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            """))
+            
             # Add indexes
             conn.execute(text("""
                 CREATE INDEX IF NOT EXISTS idx_company_size_badge 
