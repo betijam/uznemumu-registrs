@@ -18,9 +18,9 @@ def load_to_db(df: pd.DataFrame, table_name: str, unique_columns: list = None, t
     Args:
         df: Dati ko ielādēt
         table_name: Tabulas nosaukums
-        unique_columns: (Netiek izmantots šobrīd)
+        unique_columns: Kolonas kas veido unique constraint (izmanto ON CONFLICT)
         truncate: Ja True - izdzēš esošos datus pirms ielādes. 
-                  Ja False - tikai pievieno datus (APPEND režīms).
+                  Ja False - tikai pie vieno datus (APPEND režīms).
     """
     if df.empty:
         logger.warning(f"DataFrame for {table_name} is empty. Skipping load.")
@@ -41,19 +41,43 @@ def load_to_db(df: pd.DataFrame, table_name: str, unique_columns: list = None, t
             batch_size = 500
             total_rows = len(df)
             
+            # Determine if we should use ON CONFLICT for this table
+            use_upsert = table_name == 'financial_reports' and not truncate
+            
             for i in range(0, total_rows, batch_size):
                 batch_df = df.iloc[i:i+batch_size]
                 
                 # Katram batch - jauna transakcija
                 trans = conn.begin()
                 try:
-                    batch_df.to_sql(
-                        table_name, 
-                        conn, 
-                        if_exists='append', 
-                        index=False, 
-                        method='multi'
-                    )
+                    if use_upsert:
+                        # Use raw SQL with ON CONFLICT for financial_reports
+                        # This handles duplicates across chunks
+                        cols = list(batch_df.columns)
+                        col_str = ', '.join(cols)
+                        placeholders = ', '.join([f':{col}' for col in cols])
+                        
+                        update_set = ','.join([f"{col} = EXCLUDED.{col}" for col in cols if col not in ['company_regcode', 'year']])
+                        
+                        sql = text(f"""
+                            INSERT INTO {table_name} ({col_str})
+                            VALUES ({placeholders})
+                            ON CONFLICT (company_regcode, year)
+                            DO UPDATE SET {update_set}
+                        """)
+                        
+                        # Execute for each row in batch
+                        for _, row in batch_df.iterrows():
+                            conn.execute(sql, row.to_dict())
+                    else:
+                        # Standard pandas to_sql for other tables
+                        batch_df.to_sql(
+                            table_name, 
+                            conn, 
+                            if_exists='append', 
+                            index=False, 
+                            method='multi'
+                        )
                     trans.commit()
                     
                     if (i + batch_size) % 5000 == 0 or (i + batch_size) >= total_rows:
