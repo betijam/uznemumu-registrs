@@ -58,15 +58,36 @@ export default async function Home() {
             {/* Popular Tags */}
             <div className="flex flex-wrap justify-center gap-2 mb-4">
               <span className="text-sm text-gray-400">Populāri:</span>
-              {["Būvniecība", "IT pakalpojumi", "TOP 100", "Lauksaimniecība", "Mazumtirdzniecība"].map((tag) => (
-                <Link
-                  key={tag}
-                  href={`/search?q=${encodeURIComponent(tag)}`}
-                  className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-sm rounded-full transition-colors backdrop-blur-sm"
-                >
-                  {tag}
-                </Link>
-              ))}
+              <Link
+                href="/industry/41"
+                className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-sm rounded-full transition-colors backdrop-blur-sm"
+              >
+                Būvniecība
+              </Link>
+              <Link
+                href="/industry/62"
+                className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-sm rounded-full transition-colors backdrop-blur-sm"
+              >
+                IT pakalpojumi
+              </Link>
+              <Link
+                href="/top100"
+                className="px-3 py-1 bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white text-sm rounded-full transition-colors font-semibold shadow-lg"
+              >
+                🏆 TOP 100
+              </Link>
+              <Link
+                href="/industry/01"
+                className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-sm rounded-full transition-colors backdrop-blur-sm"
+              >
+                Lauksaimniecība
+              </Link>
+              <Link
+                href="/industry/47"
+                className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-sm rounded-full transition-colors backdrop-blur-sm"
+              >
+                Mazumtirdzniecība
+              </Link>
             </div>
           </div>
         </div>
