@@ -85,9 +85,7 @@ export default async function Home() {
               </svg>
             </div>
             <p className="text-4xl font-bold text-primary mb-1">{dailyStats.new_today}</p>
-            <p className="text-xs text-gray-500">
-              Jauni uzņēmumi / {dailyStats.change >= 0 ? '+' : ''}{dailyStats.change} šodien
-            </p>
+            <p className="text-xs text-gray-500">Jauni uzņēmumi šodien</p>
           </div>
 
           {/* Top Earner Card */}
