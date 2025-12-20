@@ -145,6 +145,10 @@ def process_company_sizes():
             
             size = calculate_size(employees, turnover, assets)
             
+            # SKIP records where size is None (no meaningful data for classification)
+            if size is None:
+                continue
+            
             history_records.append({
                 "regcode": row.company_regcode,
                 "year": row.year,
