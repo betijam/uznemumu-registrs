@@ -59,42 +59,70 @@ def get_stats():
     return stats
 
 @router.get("/search")
-def search_companies(q: str):
-    if not q or len(q) < 2:
+def search_companies(q: str = "", nace: str = None):
+    """
+    Search companies by name/regcode with optional industry filter.
+    
+    Args:
+        q: Search query (name or registration code)
+        nace: NACE section code filter (e.g., "C", "62", "J")
+    """
+    if (not q or len(q) < 2) and not nace:
         return []
     
-    # Hybrid Search:
-    # 1. Trigram similarity (fuzzy) -> name % q
-    # 2. Full Text Search -> to_tsvector
+    # Build WHERE clause
+    where_conditions = []
+    params = {}
     
-    # We prioritize starts_with or simple ILIKE for speed on prefix, then trigram.
-    # Using `SIMILARITY` function from pg_trgm
+    # Text search
+    if q and len(q) >= 2:
+        where_conditions.append("""
+            (name ILIKE :q_pattern OR
+             CAST(regcode AS TEXT) LIKE :q_pattern OR
+             name ILIKE :q_contains)
+        """)
+        params["q_pattern"] = f"{q}%"
+        params["q_contains"] = f"%{q}%"
     
-    sql = """
-    SELECT regcode, name, address, status, registration_date
+    # Industry filter
+    if nace:
+        where_conditions.append("nace_section = :nace")
+        params["nace"] = nace
+    
+    where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+    
+    # Build ORDER BY
+    if q:
+        order_by = """
+            (CASE WHEN name ILIKE :q_pattern THEN 2 
+                  WHEN CAST(regcode AS TEXT) LIKE :q_pattern THEN 1 
+                  ELSE 0 END) DESC,
+            name ASC
+        """
+    else:
+        order_by = "name ASC"
+    
+    sql = f"""
+    SELECT regcode, name, address, status, registration_date, 
+           nace_section, nace_section_text
     FROM companies
-    WHERE 
-        name ILIKE :q_pattern OR
-        CAST(regcode AS TEXT) LIKE :q_pattern OR
-        name ILIKE :q_contains
-    ORDER BY 
-        (CASE WHEN name ILIKE :q_pattern THEN 2 
-              WHEN CAST(regcode AS TEXT) LIKE :q_pattern THEN 1 
-              ELSE 0 END) DESC,
-        name ASC
-    LIMIT 20;
+    WHERE {where_clause}
+    ORDER BY {order_by}
+    LIMIT 50;
     """
     
     result_data = []
     with engine.connect() as conn:
-        rows = conn.execute(text(sql), {"q_pattern": f"{q}%", "q_contains": f"%{q}%"})
+        rows = conn.execute(text(sql), params)
         for row in rows:
             result_data.append({
                 "regcode": row.regcode,
                 "name": row.name,
                 "address": row.address,
                 "status": row.status,
-                "registration_date": str(row.registration_date) if row.registration_date else None
+                "registration_date": str(row.registration_date) if row.registration_date else None,
+                "nace_section": row.nace_section,
+                "nace_section_text": row.nace_section_text
             })
             
     return result_data

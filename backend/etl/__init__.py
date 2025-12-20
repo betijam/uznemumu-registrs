@@ -6,6 +6,7 @@ from .process_risks import process_risks
 from .process_finance import process_finance
 from .process_procurements import process_procurements_etl
 from .process_taxes import process_vid_data
+from .process_nace import process_nace
 from .loader import engine
 from sqlalchemy import text
 import logging
@@ -68,23 +69,32 @@ def run_all_etl():
     # 2. Process Companies
     if 'register' in files:
          process_companies(files['register'], files.get('equity'))
+    
+    # 3. Process NACE Classification (must run after companies are loaded)
+    nace_path = os.path.join(os.path.dirname(__file__), '..', '..', 'NACE.csv')
+    if os.path.exists(nace_path):
+        # VID tax data is downloaded by process_vid_data, but we can also use it here
+        # For now, we'll integrate NACE with VID processing
+        logger.info("NACE dictionary found, will process with VID data")
+    else:
+        logger.warning("NACE.csv not found in project root")
          
-    # 3. Process Persons
+    # 4. Process Persons
     if 'officers' in files:
          process_persons(files['officers'], files.get('members'), files.get('ubo'))
          
-    # 4. Process Risks
+    # 5. Process Risks
     if 'sanctions' in files:
          process_risks(files['sanctions'], files.get('liquidations'), files.get('prohibitions'), files.get('securing_measures'))
          
-    # 5. Process Finance
+    # 6. Process Finance
     if 'financial_statements' in files:
          process_finance(files['financial_statements'], files.get('balance_sheets'), files.get('income_statements'))
          
-    # 6. Process Procurements (Multi-year - downloads data internally)
+    # 7. Process Procurements (Multi-year - downloads data internally)
     process_procurements_etl()
     
-    # 7. Process VID Tax Data (downloads data internally)
+    # 8. Process VID Tax Data + NACE (downloads data internally)
     process_vid_data()
          
     logger.info("ETL Job Completed.")

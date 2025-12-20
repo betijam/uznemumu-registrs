@@ -183,8 +183,50 @@ def process_company_ratings():
 
 
 def process_vid_data():
-    """Galvenā funkcija, kas apstrādā visus VID datus."""
+    """Galvenā funkcija, kas apstrādā visus VID datus + NACE klasifikāciju."""
     logger.info("=== Starting VID Data Processing ===")
     process_tax_payments()
     process_company_ratings()
+    
+    # Process NACE Classification using VID tax data
+    try:
+        import os
+        from .process_nace import process_nace
+        
+        nace_path = os.path.join(os.path.dirname(__file__), '..', '..', 'NACE.csv')
+        vid_path = os.path.join('/tmp', 'etl_data', 'vid_tax_data.csv')  # Downloaded by process_tax_payments
+        
+        if os.path.exists(nace_path):
+            logger.info("NACE dictionary found, processing industry classification...")
+            
+            # Re-download VID tax data for NACE processing
+            # (Alternative: we could cache it, but re-downloading ensures consistency)
+            from .config import VID_URLS
+            import pandas as pd
+            
+            logger.info("Re-downloading VID tax data for NACE processing...")
+            url = VID_URLS["tax_payments"]
+            
+            # Download to temp location
+            try:
+                df_temp = pd.read_csv(url, sep=',', dtype=str, on_bad_lines='skip')
+                if df_temp.shape[1] < 5:
+                    df_temp = pd.read_csv(url, sep=';', dtype=str, on_bad_lines='skip')
+            except:
+                df_temp = pd.read_csv(url, sep=';', dtype=str, on_bad_lines='skip')
+            
+            # Save to temp file
+            os.makedirs('/tmp/etl_data', exist_ok=True)
+            df_temp.to_csv(vid_path, index=False, sep=';')
+            
+            # Process NACE
+            process_nace(vid_path, nace_path)
+        else:
+            logger.warning(f"NACE.csv not found at {nace_path}, skipping industry classification")
+    
+    except Exception as e:
+        logger.error(f"Error processing NACE classification: {e}")
+        # Don't raise - NACE is optional enhancement
+    
     logger.info("=== VID Data Processing Complete ===")
+

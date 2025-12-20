@@ -6,11 +6,24 @@ CREATE TABLE companies (
     registration_date DATE,
     status TEXT, 
     sepa_identifier TEXT,
-    company_size_badge TEXT, 
+    company_size_badge TEXT,
+    
+    -- NACE Industry Classification (from VID tax data)
+    nace_code VARCHAR(10),              -- Primary NACE code (e.g., "6201", "A", "4791")
+    nace_text VARCHAR(500),             -- NACE description (e.g., "Datorprogrammēšana")
+    nace_section VARCHAR(5),            -- Section code (e.g., "62", "A", "47") for grouping
+    nace_section_text VARCHAR(200),     -- Section description (e.g., "IT pakalpojumi")
+    employee_count INTEGER DEFAULT 0,   -- From VID tax data
+    tax_data_year INTEGER,              -- Year of latest tax data
+    
     last_updated TIMESTAMP DEFAULT NOW()
 );
 -- Indekss ātrai teksta meklēšanai
 CREATE INDEX idx_company_name ON companies USING GIN (to_tsvector('simple', name));
+-- NACE industry indexes for filtering
+CREATE INDEX idx_companies_nace_code ON companies(nace_code);
+CREATE INDEX idx_companies_nace_section ON companies(nace_section);
+CREATE INDEX idx_companies_employee_count ON companies(employee_count);
 
 
 -- 2. PERSONAS (Paplašināta ar visiem laukiem no CSV)

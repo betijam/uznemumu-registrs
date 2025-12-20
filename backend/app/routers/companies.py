@@ -24,7 +24,14 @@ def get_company_details(regcode: int, response: Response):
             "registration_date": str(res.registration_date),
             "status": res.status,
             "sepa_identifier": res.sepa_identifier,
-            "company_size_badge": res.company_size_badge 
+            "company_size_badge": res.company_size_badge,
+            # NACE Industry Classification
+            "nace_code": res.nace_code,
+            "nace_text": res.nace_text,
+            "nace_section": res.nace_section,
+            "nace_section_text": res.nace_section_text,
+            "employee_count": res.employee_count,
+            "tax_data_year": res.tax_data_year
         }
         
         # 2. Financial History (All years with growth calculation + ratios)
