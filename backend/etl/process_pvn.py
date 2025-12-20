@@ -139,8 +139,11 @@ def process_pvn_registry():
         total_inserted = 0
         for i in range(0, len(active_pvn), chunk_size):
             chunk = active_pvn.iloc[i:i+chunk_size]
-            values = [{"regcode": int(row['regcode']), "pvn": row['Numurs']} 
-                     for _, row in chunk.iterrows()]
+            # Convert to list of dicts FAST (no iterrows!)
+            values = [
+                {"regcode": int(row['regcode']), "pvn": row['Numurs']} 
+                for row in chunk.to_dict('records')
+            ]
             
             conn.execute(
                 text("INSERT INTO pvn_temp (regcode, pvn_number) VALUES (:regcode, :pvn)"),
