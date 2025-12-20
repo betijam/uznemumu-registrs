@@ -52,10 +52,38 @@ def main() -> int:
     logger.info("=" * 60)
     
     try:
+        # Step 1: Run main ETL (companies, financial reports, etc.)
         run_all_etl()
         logger.info("")
         logger.info("=" * 60)
-        logger.info("✅ ETL finished successfully")
+        logger.info("✅ Main ETL finished successfully")
+        
+        # Step 2: Process PVN data (VAT taxpayer registry)
+        logger.info("")
+        logger.info("📌 Processing PVN (VAT) data...")
+        try:
+            from etl.process_pvn import process_pvn_registry
+            process_pvn_registry()
+            logger.info("✅ PVN processing complete")
+        except Exception as e:
+            logger.warning(f"⚠️ PVN processing failed (non-critical): {e}")
+        
+        # Step 3: Calculate company sizes
+        logger.info("")
+        logger.info("📊 Calculating company sizes...")
+        try:
+            # Import and run from update_company_sizes
+            import sys
+            sys.path.insert(0, os.path.dirname(__file__))
+            from update_company_sizes import process_company_sizes
+            process_company_sizes()
+            logger.info("✅ Company size calculation complete")
+        except Exception as e:
+            logger.warning(f"⚠️ Company size calculation failed (non-critical): {e}")
+        
+        logger.info("")
+        logger.info("=" * 60)
+        logger.info("✅ All ETL processes finished successfully")
         logger.info("=" * 60)
         return 0
     except Exception:

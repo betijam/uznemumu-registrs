@@ -158,21 +158,30 @@ def process_company_sizes():
                 "assets": assets
             })
         
-        # Insert/update history (upsert)
-        logger.info(f"Upserting {len(history_records)} size history records...")
-        for record in history_records:
-            conn.execute(text("""
-                INSERT INTO company_size_history 
-                    (company_regcode, year, size_category, employees, turnover, total_assets)
-                VALUES (:regcode, :year, :size, :employees, :turnover, :assets)
-                ON CONFLICT (company_regcode, year) 
-                DO UPDATE SET 
-                    size_category = EXCLUDED.size_category,
-                    employees = EXCLUDED.employees,
-                    turnover = EXCLUDED.turnover,
-                    total_assets = EXCLUDED.total_assets,
-                    calculated_at = NOW()
-            """), record)
+        # Insert/update history (BATCH upsert for speed!)
+        logger.info(f"Upserting {len(history_records)} size history records (batch mode)...")
+        
+        # Process in chunks of 5000 for better performance
+        chunk_size = 5000
+        for i in range(0, len(history_records), chunk_size):
+            chunk = history_records[i:i+chunk_size]
+            conn.execute(
+                text("""
+                    INSERT INTO company_size_history 
+                        (company_regcode, year, size_category, employees, turnover, total_assets)
+                    VALUES (:regcode, :year, :size, :employees, :turnover, :assets)
+                    ON CONFLICT (company_regcode, year) 
+                    DO UPDATE SET 
+                        size_category = EXCLUDED.size_category,
+                        employees = EXCLUDED.employees,
+                        turnover = EXCLUDED.turnover,
+                        total_assets = EXCLUDED.total_assets,
+                        calculated_at = NOW()
+                """),
+                chunk
+            )
+            if (i + chunk_size) % 50000 == 0:
+                logger.info(f"  Inserted {min(i + chunk_size, len(history_records))}/{len(history_records)} records...")
         
         conn.commit()
         
