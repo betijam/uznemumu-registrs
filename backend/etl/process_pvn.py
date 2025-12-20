@@ -127,16 +127,20 @@ def process_pvn_registry():
         logger.info(f"Preparing {len(active_pvn)} active PVN records for batch update...")
         
         # Step 3: Create temporary table and bulk insert
+        logger.info("Creating temporary table...")
         conn.execute(text("""
             CREATE TEMP TABLE pvn_temp (
                 regcode BIGINT,
                 pvn_number VARCHAR(20)
             )
         """))
+        logger.info("✅ Temporary table created")
         
         # Batch insert in chunks of 5000
         chunk_size = 5000
         total_inserted = 0
+        logger.info(f"Starting bulk insert in chunks of {chunk_size}...")
+        
         for i in range(0, len(active_pvn), chunk_size):
             chunk = active_pvn.iloc[i:i+chunk_size]
             # Convert to list of dicts FAST (no iterrows!)
@@ -145,16 +149,16 @@ def process_pvn_registry():
                 for row in chunk.to_dict('records')
             ]
             
+            logger.info(f"  Inserting chunk {i//chunk_size + 1}/{(len(active_pvn)-1)//chunk_size + 1} ({len(values)} records)...")
             conn.execute(
                 text("INSERT INTO pvn_temp (regcode, pvn_number) VALUES (:regcode, :pvn)"),
                 values
             )
             total_inserted += len(values)
-            if (i // chunk_size + 1) % 5 == 0:
-                logger.info(f"  Inserted {total_inserted}/{len(active_pvn)} records...")
+            logger.info(f"  ✅ Inserted {total_inserted}/{len(active_pvn)} records total")
         
         conn.commit()
-        logger.info(f"✅ Inserted {total_inserted} records into temp table")
+        logger.info(f"✅ All {total_inserted} records inserted into temp table")
         
         # Step 4: Single UPDATE query using JOIN (SUPER FAST!)
         result = conn.execute(text("""
