@@ -76,12 +76,12 @@ def load_nace_dictionary(nace_csv_path: str) -> dict:
         # Create code-to-description lookup
         code_lookup = dict(zip(nace_df['Kods_normalized'], nace_df['Nosaukums']))
         
-        # Create section lookup (Limenis = 1 are sections like "A", "C", etc.)
-        section_df = nace_df[nace_df['Limenis'] == 1].copy()
+        # Create section lookup (Līmenis = 1 are sections like "A", "C", etc.)
+        section_df = nace_df[nace_df['Līmenis'] == 1].copy()
         section_lookup = dict(zip(section_df['Kods_normalized'], section_df['Nosaukums']))
         
         # Also add 2-digit divisions as sections
-        division_df = nace_df[nace_df['Limenis'] == 2].copy()
+        division_df = nace_df[nace_df['Līmenis'] == 2].copy()
         for _, row in division_df.iterrows():
             section_code = extract_section_code(row['Kods_normalized'])
             if section_code not in section_lookup and section_code != '00':
