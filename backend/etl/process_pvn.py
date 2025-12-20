@@ -109,34 +109,67 @@ def process_pvn_registry():
     logger.info(f"Active PVN payers: {df['is_pvn_active'].sum()}")
     logger.info(f"Inactive: {(~df['is_pvn_active']).sum()}")
     
-    # Update database
+    # Update database using FAST batch method
     with engine.connect() as conn:
-        logger.info("Updating companies table with PVN data...")
+        logger.info("Updating companies table with PVN data (batch mode)...")
         
-        # First, reset all PVN fields
+        # Step 1: Reset all PVN fields (fast single query)
         conn.execute(text("""
             UPDATE companies 
             SET pvn_number = NULL, 
                 is_pvn_payer = FALSE
         """))
+        conn.commit()
+        logger.info("✅ Reset PVN fields")
         
-        # Update companies with PVN registration
-        updated = 0
-        for _, row in df.iterrows():
-            if row['is_pvn_active']:
-                conn.execute(text("""
-                    UPDATE companies 
-                    SET pvn_number = :pvn,
-                        is_pvn_payer = TRUE
-                    WHERE regcode = :regcode
-                """), {
-                    "pvn": row['Numurs'],  # Full "LV..." format
-                    "regcode": row['regcode']
-                })
-                updated += 1
+        # Step 2: Prepare active PVN payers data
+        active_pvn = df[df['is_pvn_active']][['regcode', 'Numurs']].copy()
+        logger.info(f"Preparing {len(active_pvn)} active PVN records for batch update...")
+        
+        # Step 3: Create temporary table and bulk insert
+        conn.execute(text("""
+            CREATE TEMP TABLE pvn_temp (
+                regcode BIGINT,
+                pvn_number VARCHAR(20)
+            )
+        """))
+        
+        # Batch insert in chunks of 5000
+        chunk_size = 5000
+        total_inserted = 0
+        for i in range(0, len(active_pvn), chunk_size):
+            chunk = active_pvn.iloc[i:i+chunk_size]
+            values = [{"regcode": int(row['regcode']), "pvn": row['Numurs']} 
+                     for _, row in chunk.iterrows()]
+            
+            conn.execute(
+                text("INSERT INTO pvn_temp (regcode, pvn_number) VALUES (:regcode, :pvn)"),
+                values
+            )
+            total_inserted += len(values)
+            if (i // chunk_size + 1) % 5 == 0:
+                logger.info(f"  Inserted {total_inserted}/{len(active_pvn)} records...")
         
         conn.commit()
-        logger.info(f"✅ Updated {updated} companies with active PVN status")
+        logger.info(f"✅ Inserted {total_inserted} records into temp table")
+        
+        # Step 4: Single UPDATE query using JOIN (SUPER FAST!)
+        result = conn.execute(text("""
+            UPDATE companies c
+            SET 
+                pvn_number = t.pvn_number,
+                is_pvn_payer = TRUE
+            FROM pvn_temp t
+            WHERE c.regcode = t.regcode
+        """))
+        conn.commit()
+        
+        updated_count = result.rowcount
+        logger.info(f"✅ Updated {updated_count} companies with active PVN status")
+        
+        # Cleanup
+        conn.execute(text("DROP TABLE pvn_temp"))
+        conn.commit()
         
         # Statistics
         stats = conn.execute(text("""
@@ -148,9 +181,9 @@ def process_pvn_registry():
         """)).fetchone()
         
         logger.info(f"\n📊 PVN Statistics:")
-        logger.info(f"  Total companies: {stats.total}")
-        logger.info(f"  PVN payers: {stats.pvn_payers} ({stats.pvn_payers/stats.total*100:.1f}%)")
-        logger.info(f"  Non-PVN: {stats.non_payers} ({stats.non_payers/stats.total*100:.1f}%)")
+        logger.info(f"  Total companies: {stats.total:,}")
+        logger.info(f"  PVN payers: {stats.pvn_payers:,} ({stats.pvn_payers/stats.total*100:.1f}%)")
+        logger.info(f"  Non-PVN: {stats.non_payers:,} ({stats.non_payers/stats.total*100:.1f}%)")
     
     # Cleanup
     if os.path.exists(csv_path):
