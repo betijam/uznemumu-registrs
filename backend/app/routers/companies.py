@@ -503,8 +503,8 @@ def find_significant_physical_persons(conn, regcode: int) -> list:
     """
     Find ALL physical persons with ≥25% ownership in this company.
     
-    We want to find everyone who might link this company to others,
-    not just those with >50% control.
+    Returns person_name + person_code for identification since
+    person_code is partially masked (format: 140777-*****).
     """
     result = conn.execute(text("""
         WITH company_capital AS (
@@ -524,56 +524,107 @@ def find_significant_physical_persons(conn, regcode: int) -> list:
         WHERE p.company_regcode = :r 
           AND p.role = 'member'
           AND p.legal_entity_regcode IS NULL
-          AND p.person_code IS NOT NULL
-          AND p.person_code != ''
+          AND p.person_name IS NOT NULL
+          AND TRIM(p.person_name) != ''
         GROUP BY p.person_code, p.person_name, cc.total
         HAVING (SUM(p.number_of_shares * p.share_nominal_value) / NULLIF(cc.total, 0)) >= 0.25
     """), {"r": regcode}).fetchall()
     
-    return [{"person_code": r.person_code, "name": r.person_name, "percent": float(r.ownership_percent) if r.ownership_percent else 0} for r in result]
+    return [{
+        "person_code": r.person_code,
+        "name": r.person_name,
+        "percent": float(r.ownership_percent) if r.ownership_percent else 0
+    } for r in result]
 
 
-def find_companies_controlled_by_person(conn, person_code: str, exclude_regcode: int) -> list:
+def find_companies_controlled_by_person(conn, person_name: str, person_code: str, exclude_regcode: int) -> list:
     """
     F1 kritērijs: Atrast VISUS citus uzņēmumus, kuros šī persona ir dalībnieks.
+    
+    Identifikācija notiek pēc:
+    - person_name (vārds uzvārds) - OBLIGĀTI jāsakrīt
+    - person_code (ja ir) - jāsakrīt, bet ņem vērā, ka otrā daļa ir maskēta
     
     Atgriež uzņēmumus ar klasifikāciju:
     - >50% = LINKED (saistīts)
     - 25-50% = PARTNER (partneris)
-    - <25% = NAV
     """
-    if not person_code or person_code.strip() == '':
+    if not person_name or person_name.strip() == '':
         return []
     
-    query = """
-        WITH person_companies AS (
-            SELECT 
-                c.regcode,
-                c.name,
-                c.nace_code,
-                c.nace_section,
-                SUM(p.number_of_shares * p.share_nominal_value) as person_value,
-                (SELECT SUM(number_of_shares * share_nominal_value) 
-                 FROM persons WHERE company_regcode = c.regcode AND role = 'member') as total_capital
-            FROM persons p
-            JOIN companies c ON c.regcode = p.company_regcode
-            WHERE p.person_code = :person_code
-              AND p.role = 'member'
-              AND c.regcode != :exclude
-            GROUP BY c.regcode, c.name, c.nace_code, c.nace_section
-        )
-        SELECT regcode, name, nace_code, nace_section,
-               COALESCE((person_value / NULLIF(total_capital, 0)) * 100, 0) as ownership_percent,
-               CASE 
-                   WHEN (person_value / NULLIF(total_capital, 0)) > 0.5 THEN 'linked'
-                   WHEN (person_value / NULLIF(total_capital, 0)) >= 0.25 THEN 'partner'
-                   ELSE 'minor'
-               END as classification
-        FROM person_companies
-        WHERE (person_value / NULLIF(total_capital, 0)) >= 0.25
-    """
-    
-    result = conn.execute(text(query), {"person_code": person_code, "exclude": exclude_regcode}).fetchall()
+    # Match by person_name, and additionally by person_code if available
+    # Since person_code is masked (140777-*****), we match the visible prefix
+    if person_code and len(person_code) > 6:
+        # Extract visible prefix (first 6 digits before dash)
+        code_prefix = person_code.split('-')[0] if '-' in person_code else person_code[:6]
+        query = """
+            WITH person_companies AS (
+                SELECT 
+                    c.regcode,
+                    c.name,
+                    c.nace_code,
+                    c.nace_section,
+                    SUM(p.number_of_shares * p.share_nominal_value) as person_value,
+                    (SELECT SUM(number_of_shares * share_nominal_value) 
+                     FROM persons WHERE company_regcode = c.regcode AND role = 'member') as total_capital
+                FROM persons p
+                JOIN companies c ON c.regcode = p.company_regcode
+                WHERE LOWER(TRIM(p.person_name)) = LOWER(TRIM(:person_name))
+                  AND p.person_code LIKE :code_prefix || '%'
+                  AND p.role = 'member'
+                  AND p.legal_entity_regcode IS NULL
+                  AND c.regcode != :exclude
+                GROUP BY c.regcode, c.name, c.nace_code, c.nace_section
+            )
+            SELECT regcode, name, nace_code, nace_section,
+                   COALESCE((person_value / NULLIF(total_capital, 0)) * 100, 0) as ownership_percent,
+                   CASE 
+                       WHEN (person_value / NULLIF(total_capital, 0)) > 0.5 THEN 'linked'
+                       WHEN (person_value / NULLIF(total_capital, 0)) >= 0.25 THEN 'partner'
+                       ELSE 'minor'
+                   END as classification
+            FROM person_companies
+            WHERE (person_value / NULLIF(total_capital, 0)) >= 0.25
+        """
+        result = conn.execute(text(query), {
+            "person_name": person_name,
+            "code_prefix": code_prefix,
+            "exclude": exclude_regcode
+        }).fetchall()
+    else:
+        # Fallback: match by name only (less precise)
+        query = """
+            WITH person_companies AS (
+                SELECT 
+                    c.regcode,
+                    c.name,
+                    c.nace_code,
+                    c.nace_section,
+                    SUM(p.number_of_shares * p.share_nominal_value) as person_value,
+                    (SELECT SUM(number_of_shares * share_nominal_value) 
+                     FROM persons WHERE company_regcode = c.regcode AND role = 'member') as total_capital
+                FROM persons p
+                JOIN companies c ON c.regcode = p.company_regcode
+                WHERE LOWER(TRIM(p.person_name)) = LOWER(TRIM(:person_name))
+                  AND p.role = 'member'
+                  AND p.legal_entity_regcode IS NULL
+                  AND c.regcode != :exclude
+                GROUP BY c.regcode, c.name, c.nace_code, c.nace_section
+            )
+            SELECT regcode, name, nace_code, nace_section,
+                   COALESCE((person_value / NULLIF(total_capital, 0)) * 100, 0) as ownership_percent,
+                   CASE 
+                       WHEN (person_value / NULLIF(total_capital, 0)) > 0.5 THEN 'linked'
+                       WHEN (person_value / NULLIF(total_capital, 0)) >= 0.25 THEN 'partner'
+                       ELSE 'minor'
+                   END as classification
+            FROM person_companies
+            WHERE (person_value / NULLIF(total_capital, 0)) >= 0.25
+        """
+        result = conn.execute(text(query), {
+            "person_name": person_name,
+            "exclude": exclude_regcode
+        }).fetchall()
     
     companies = []
     for r in result:
@@ -585,7 +636,7 @@ def find_companies_controlled_by_person(conn, person_code: str, exclude_regcode:
             "classification": r.classification
         })
     
-    logger.info(f"[PERSON] Found {len(companies)} companies for person_code {person_code[:6]}...")
+    logger.info(f"[PERSON] Found {len(companies)} companies for '{person_name}'")
     return companies
 
 
@@ -633,12 +684,13 @@ def find_all_linked_entities(conn, regcode: int, year: int = 2024) -> dict:
     logger.info(f"[LINKED] Found {len(significant_persons)} significant persons")
     
     for person in significant_persons:
-        if not person["person_code"]:
+        if not person["name"]:
             continue
             
         # Find ALL other companies where this person has ≥25% ownership
+        # Uses person_name + person_code prefix for matching
         other_companies = find_companies_controlled_by_person(
-            conn, person["person_code"], regcode
+            conn, person["name"], person.get("person_code"), regcode
         )
         
         for other in other_companies:
