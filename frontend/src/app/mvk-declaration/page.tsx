@@ -49,8 +49,6 @@ interface MVKData {
     year: number;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
-
 // Format currency helper
 function formatCurrency(value: number | null | undefined): string {
     if (value === null || value === undefined) return "—";
@@ -80,7 +78,7 @@ export default function MVKDeclarationPage() {
                 return;
             }
             try {
-                const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}`);
+                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
                 const data = await res.json();
                 setSuggestions(data.slice(0, 8));
                 setShowDropdown(true);
@@ -99,7 +97,7 @@ export default function MVKDeclarationPage() {
     const loadMVKData = async (regcode: number) => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/companies/${regcode}/mvk-declaration`);
+            const res = await fetch(`/api/mvk-declaration/${regcode}`);
             if (!res.ok) throw new Error("Failed to load MVK data");
             const data = await res.json();
             setMvkData(data);
@@ -259,8 +257,8 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                 <button
                                     onClick={() => copyToClipboard(getIdentificationText(), "identification")}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copySuccess === "identification"
-                                            ? "bg-green-100 text-green-800"
-                                            : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                                        ? "bg-green-100 text-green-800"
+                                        : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                                         }`}
                                 >
                                     {copySuccess === "identification" ? "✓ Nokopēts!" : "📋 Kopēt"}
@@ -308,8 +306,8 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                             copyToClipboard(text, "section_a");
                                         }}
                                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copySuccess === "section_a"
-                                                ? "bg-green-100 text-green-800"
-                                                : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                                            ? "bg-green-100 text-green-800"
+                                            : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                                             }`}
                                     >
                                         {copySuccess === "section_a" ? "✓ Nokopēts!" : "📋 Kopēt A tabulu"}
@@ -379,8 +377,8 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                             copyToClipboard(text, "section_b");
                                         }}
                                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copySuccess === "section_b"
-                                                ? "bg-green-100 text-green-800"
-                                                : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                                            ? "bg-green-100 text-green-800"
+                                            : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                                             }`}
                                     >
                                         {copySuccess === "section_b" ? "✓ Nokopēts!" : "📋 Kopēt B tabulu"}
@@ -439,8 +437,8 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                 <button
                                     onClick={() => copyToClipboard(getSummaryTableText(), "summary")}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copySuccess === "summary"
-                                            ? "bg-green-100 text-green-800"
-                                            : "bg-primary text-white hover:bg-primary-dark"
+                                        ? "bg-green-100 text-green-800"
+                                        : "bg-primary text-white hover:bg-primary-dark"
                                         }`}
                                 >
                                     {copySuccess === "summary" ? "✓ Nokopēts!" : "📋 Kopēt deklarācijas 3. sadaļai"}
