@@ -47,6 +47,7 @@ interface MVKData {
         total: { employees: number; turnover: number; balance: number };
     };
     year: number;
+    company_size?: string | null;
 }
 
 // Format currency helper
@@ -162,6 +163,110 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
         );
     };
 
+    // Company size badge
+    const SizeBadge = ({ size }: { size: string | null | undefined }) => {
+        const config: Record<string, { color: string; icon: string }> = {
+            "Mikro": { color: "bg-blue-500", icon: "🔹" },
+            "Mazs": { color: "bg-green-500", icon: "🟢" },
+            "Vidējs": { color: "bg-yellow-500", icon: "🟡" },
+            "Liels": { color: "bg-red-500", icon: "🔴" },
+        };
+        const c = config[size || ""] || { color: "bg-gray-500", icon: "⚪" };
+        return (
+            <span className={`${c.color} text-white px-4 py-2 rounded-lg text-lg font-bold shadow-lg`}>
+                {c.icon} {size || "Nav datu"} uzņēmums
+            </span>
+        );
+    };
+
+    // Generate HTML table for clipboard (works in Word/Excel)
+    const copyTableAsHtml = async (tableId: string, label: string) => {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+
+        try {
+            // Create a blob with HTML content
+            const html = table.outerHTML;
+            const blob = new Blob([html], { type: 'text/html' });
+
+            await navigator.clipboard.write([
+                new ClipboardItem({
+                    'text/html': blob,
+                    'text/plain': new Blob([table.innerText], { type: 'text/plain' })
+                })
+            ]);
+            setCopySuccess(label);
+            setTimeout(() => setCopySuccess(null), 2000);
+        } catch (e) {
+            // Fallback to text
+            await navigator.clipboard.writeText(table.innerText);
+            setCopySuccess(label);
+            setTimeout(() => setCopySuccess(null), 2000);
+        }
+    };
+
+    // Download as Word document
+    const downloadAsWord = (content: string, filename: string) => {
+        const html = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+                  xmlns:w="urn:schemas-microsoft-com:office:word" 
+                  xmlns="http://www.w3.org/TR/REC-html40">
+            <head><meta charset="utf-8"><title>${filename}</title></head>
+            <body>${content}</body>
+            </html>
+        `;
+        const blob = new Blob([html], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.doc`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    // Generate full Word content
+    const downloadFullDeclaration = () => {
+        if (!mvkData) return;
+        const { identification, summary_table, section_a, section_b } = mvkData;
+
+        let html = `
+            <h1>MVK Deklarācijas Pielikumi</h1>
+            <h2>Uzņēmuma informācija</h2>
+            <p><strong>Nosaukums:</strong> ${identification.name}</p>
+            <p><strong>Reģ. nr.:</strong> ${identification.regcode}</p>
+            <p><strong>Adrese:</strong> ${identification.address}</p>
+            <p><strong>Paraksttiesīgā persona:</strong> ${identification.authorized_person || "—"}</p>
+            <p><strong>MVK statuss:</strong> ${mvkData.company_size || "Nav noteikts"}</p>
+            <hr/>
+            <h2>Kopsavilkuma tabula (2.1-2.3)</h2>
+            <table border="1" cellpadding="5" style="border-collapse:collapse;">
+                <tr style="background:#eee;"><th>Rinda</th><th>Apraksts</th><th>Darbinieki</th><th>Apgrozījums</th><th>Bilance</th></tr>
+                <tr><td>2.1</td><td>Pašas komercsabiedrības dati</td><td>${summary_table.row_2_1.employees || 0}</td><td>${formatCurrency(summary_table.row_2_1.turnover)}</td><td>${formatCurrency(summary_table.row_2_1.balance)}</td></tr>
+                <tr style="background:#fffde7;"><td>2.2</td><td>Partneruzņēmumu dati</td><td>${summary_table.row_2_2.employees}</td><td>${formatCurrency(summary_table.row_2_2.turnover)}</td><td>${formatCurrency(summary_table.row_2_2.balance)}</td></tr>
+                <tr style="background:#ffebee;"><td>2.3</td><td>Saistīto uzņēmumu dati</td><td>${summary_table.row_2_3.employees}</td><td>${formatCurrency(summary_table.row_2_3.turnover)}</td><td>${formatCurrency(summary_table.row_2_3.balance)}</td></tr>
+                <tr style="background:#1a365d;color:white;font-weight:bold;"><td colspan="2">KOPĀ</td><td>${summary_table.total.employees}</td><td>${formatCurrency(summary_table.total.turnover)}</td><td>${formatCurrency(summary_table.total.balance)}</td></tr>
+            </table>
+        `;
+
+        if (section_a.partners.length > 0) {
+            html += `<h2>A Sadaļa - Partneruzņēmumi</h2><table border="1" cellpadding="5" style="border-collapse:collapse;"><tr style="background:#eee;"><th>Nr.</th><th>Nosaukums</th><th>Darbinieki</th><th>Apgrozījums</th><th>Bilance</th><th>%</th></tr>`;
+            section_a.partners.forEach((p, i) => {
+                html += `<tr><td>${i + 1}</td><td>${p.name}</td><td>${p.employees || 0}</td><td>${formatCurrency(p.turnover)}</td><td>${formatCurrency(p.balance)}</td><td>${p.ownership_percent}%</td></tr>`;
+            });
+            html += `</table>`;
+        }
+
+        if (section_b.entities.length > 0) {
+            html += `<h2>B Sadaļa - Saistītie uzņēmumi</h2><table border="1" cellpadding="5" style="border-collapse:collapse;"><tr style="background:#eee;"><th>Nr.</th><th>Nosaukums</th><th>Darbinieki</th><th>Apgrozījums</th><th>Bilance</th><th>%</th></tr>`;
+            section_b.entities.forEach((e, i) => {
+                html += `<tr><td>${i + 1}</td><td>${e.name}</td><td>${e.employees || 0}</td><td>${formatCurrency(e.turnover)}</td><td>${formatCurrency(e.balance)}</td><td>${e.ownership_percent}%</td></tr>`;
+            });
+            html += `</table>`;
+        }
+
+        downloadAsWord(html, `MVK_${identification.regcode}_${mvkData.year}`);
+    };
+
     return (
         <main className="min-h-screen bg-gray-50">
             <Navbar />
@@ -224,6 +329,39 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
 
                 {mvkData && !loading && (
                     <div className="space-y-6">
+                        {/* Company Size Hero */}
+                        <div className="bg-gradient-to-r from-primary to-primary-dark rounded-xl shadow-lg p-6 text-white">
+                            <div className="flex items-center justify-between flex-wrap gap-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold mb-2">{mvkData.identification.name}</h2>
+                                    <p className="opacity-80">Reģ. nr. {mvkData.identification.regcode}</p>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <SizeBadge size={mvkData.company_size} />
+                                    <button
+                                        onClick={downloadFullDeclaration}
+                                        className="bg-white text-primary px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors flex items-center gap-2"
+                                    >
+                                        📄 Lejupielādēt Word
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+                                <div className="bg-white/10 rounded-lg p-3">
+                                    <p className="text-2xl font-bold">{formatNumber(mvkData.summary_table.total.employees)}</p>
+                                    <p className="text-sm opacity-80">Darbinieki (kopā)</p>
+                                </div>
+                                <div className="bg-white/10 rounded-lg p-3">
+                                    <p className="text-2xl font-bold">{formatCurrency(mvkData.summary_table.total.turnover)}</p>
+                                    <p className="text-sm opacity-80">Apgrozījums (kopā)</p>
+                                </div>
+                                <div className="bg-white/10 rounded-lg p-3">
+                                    <p className="text-2xl font-bold">{formatCurrency(mvkData.summary_table.total.balance)}</p>
+                                    <p className="text-sm opacity-80">Bilance (kopā)</p>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Scenario Summary */}
                         <div className="bg-white rounded-xl shadow-lg p-6">
                             <div className="flex items-center justify-between mb-4">
@@ -299,12 +437,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-xl font-bold text-gray-900">📊 A Sadaļa – Partneruzņēmumi (25-50%)</h2>
                                     <button
-                                        onClick={() => {
-                                            const text = mvkData.section_a.partners
-                                                .map((p, i) => `${i + 1}. ${p.name}\t${formatNumber(p.employees)}\t${formatCurrency(p.turnover)}\t${formatCurrency(p.balance)}\t${p.ownership_percent}%`)
-                                                .join("\n");
-                                            copyToClipboard(text, "section_a");
-                                        }}
+                                        onClick={() => copyTableAsHtml("table-section-a", "section_a")}
                                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copySuccess === "section_a"
                                             ? "bg-green-100 text-green-800"
                                             : "bg-gray-100 hover:bg-gray-200 text-gray-700"
@@ -314,7 +447,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                     </button>
                                 </div>
 
-                                <table className="w-full text-sm">
+                                <table id="table-section-a" className="w-full text-sm">
                                     <thead className="bg-gray-100">
                                         <tr>
                                             <th className="px-4 py-3 text-left">Nr.</th>
@@ -370,22 +503,17 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                         </span>
                                     </h2>
                                     <button
-                                        onClick={() => {
-                                            const text = mvkData.section_b.entities
-                                                .map((e, i) => `${i + 1}. ${e.name}\t${formatNumber(e.employees)}\t${formatCurrency(e.turnover)}\t${formatCurrency(e.balance)}\t${e.ownership_percent}%`)
-                                                .join("\n");
-                                            copyToClipboard(text, "section_b");
-                                        }}
+                                        onClick={() => copyTableAsHtml("table-section-b", "section_b")}
                                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copySuccess === "section_b"
                                             ? "bg-green-100 text-green-800"
                                             : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                                             }`}
                                     >
-                                        {copySuccess === "section_b" ? "✓ Nokopēts!" : "📋 Kopēt B tabulu"}
+                                        {copySuccess === "section_b" ? "✓ Nokōpēts!" : "📋 Kopēt B tabulu"}
                                     </button>
                                 </div>
 
-                                <table className="w-full text-sm">
+                                <table id="table-section-b" className="w-full text-sm">
                                     <thead className="bg-gray-100">
                                         <tr>
                                             <th className="px-4 py-3 text-left">Nr.</th>
@@ -435,7 +563,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-xl font-bold text-gray-900">📈 Gala Kopsavilkums (2.1–2.3)</h2>
                                 <button
-                                    onClick={() => copyToClipboard(getSummaryTableText(), "summary")}
+                                    onClick={() => copyTableAsHtml("table-summary", "summary")}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copySuccess === "summary"
                                         ? "bg-green-100 text-green-800"
                                         : "bg-primary text-white hover:bg-primary-dark"
@@ -445,7 +573,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                 </button>
                             </div>
 
-                            <table className="w-full text-sm">
+                            <table id="table-summary" className="w-full text-sm">
                                 <thead className="bg-gray-100">
                                     <tr>
                                         <th className="px-4 py-3 text-left">Rinda</th>

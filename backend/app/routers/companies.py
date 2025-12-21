@@ -803,6 +803,12 @@ def get_mvk_declaration(regcode: int, year: int = 2024):
                 "total": total_row
             },
             "year": year,
-            "total_capital": total_capital
+            "total_capital": total_capital,
+            # Calculate company size based on total (combined) data
+            "company_size": calculate_company_size(
+                total_row["employees"],
+                total_row["turnover"],
+                total_row["balance"]
+            )
         }
 
