@@ -22,6 +22,12 @@ export default function Navbar() {
                         >
                             Sākums
                         </Link>
+                        <Link
+                            href="/mvk-declaration"
+                            className="text-gray-600 hover:text-primary transition-colors text-sm font-medium"
+                        >
+                            MVK Deklarācija
+                        </Link>
                         <button className="inline-flex items-center gap-2 px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-primary hover:bg-secondary transition-colors shadow-sm">
                             Pieslēgties
                         </button>

@@ -568,3 +568,239 @@ def get_related_companies(regcode: int, year: int = 2024):
         "linked": linked
     }
 
+@router.get("/companies/{regcode}/mvk-declaration")
+def get_mvk_declaration(regcode: int, year: int = 2024):
+    """
+    MVK (MVU) Deklarācijas Pielikumu Datu Struktūra
+    
+    Atgriež pilnu datu kopu priekš:
+    - Scenārija noteikšanas (Autonoms / Partner / Saistīts)
+    - A sadaļas (Partneruzņēmumi 25-50%)
+    - B sadaļas (Saistītie >50%, ar/bez konsolidācijas)
+    - Kopsavilkuma tabulas 2.1-2.3 aprēķiniem
+    """
+    
+    def classify_ownership(percent: float) -> str:
+        if percent is None:
+            return "unknown"
+        if percent > 50:
+            return "linked"
+        elif percent >= 25:
+            return "partner"
+        else:
+            return "minor"
+    
+    def get_financial_data(conn, related_regcode: int, year: int):
+        """Get financial data for a related company"""
+        if not related_regcode:
+            return {"employees": None, "turnover": None, "balance": None}
+        
+        fin = conn.execute(text("""
+            SELECT turnover, profit, employees, total_assets
+            FROM financial_reports
+            WHERE company_regcode = :r AND year = :y
+            ORDER BY year DESC LIMIT 1
+        """), {"r": related_regcode, "y": year}).fetchone()
+        
+        if fin:
+            return {
+                "employees": fin.employees,
+                "turnover": float(fin.turnover) if fin.turnover else None,
+                "balance": float(fin.total_assets) if fin.total_assets else None
+            }
+        return {"employees": None, "turnover": None, "balance": None}
+    
+    with engine.connect() as conn:
+        # 1. Get Company Info
+        company_row = conn.execute(text("""
+            SELECT name, regcode, address
+            FROM companies WHERE regcode = :r
+        """), {"r": regcode}).fetchone()
+        
+        if not company_row:
+            raise HTTPException(status_code=404, detail="Company not found")
+        
+        # 2. Get Authorized Person (first officer with representation rights)
+        auth_person = conn.execute(text("""
+            SELECT person_name, position
+            FROM persons
+            WHERE company_regcode = :r AND role = 'officer'
+            ORDER BY date_from DESC
+            LIMIT 1
+        """), {"r": regcode}).fetchone()
+        
+        # 3. Get Own Financial Data
+        own_fin = conn.execute(text("""
+            SELECT turnover, employees, total_assets
+            FROM financial_reports
+            WHERE company_regcode = :r AND year = :y
+        """), {"r": regcode, "y": year}).fetchone()
+        
+        own_financials = {
+            "employees": own_fin.employees if own_fin else None,
+            "turnover": float(own_fin.turnover) if own_fin and own_fin.turnover else None,
+            "balance": float(own_fin.total_assets) if own_fin and own_fin.total_assets else None
+        }
+        
+        # 4. Calculate Capital and Get Owners
+        owners = conn.execute(text("""
+            SELECT 
+                p.person_name, p.number_of_shares, p.share_nominal_value,
+                p.legal_entity_regcode, c.name as legal_entity_name
+            FROM persons p
+            LEFT JOIN companies c ON c.regcode = p.legal_entity_regcode
+            WHERE p.company_regcode = :r AND p.role = 'member'
+        """), {"r": regcode}).fetchall()
+        
+        total_capital = sum(
+            float(o.number_of_shares or 0) * float(o.share_nominal_value or 0)
+            for o in owners
+        )
+        
+        partners = []  # 25-50%
+        linked = []    # >50%
+        
+        # Classify Owners (upstream)
+        for owner in owners:
+            shares = float(owner.number_of_shares or 0)
+            nominal = float(owner.share_nominal_value or 0)
+            owner_value = shares * nominal
+            percent = (owner_value / total_capital * 100) if total_capital > 0 else None
+            classification = classify_ownership(percent)
+            
+            if classification in ["partner", "linked"]:
+                is_legal_entity = owner.legal_entity_regcode is not None
+                financials = get_financial_data(conn, owner.legal_entity_regcode, year) if is_legal_entity else {"employees": None, "turnover": None, "balance": None}
+                
+                entry = {
+                    "name": owner.person_name,
+                    "regcode": owner.legal_entity_regcode,
+                    "relation": "owner",
+                    "entity_type": "legal_entity" if is_legal_entity else "physical_person",
+                    "ownership_percent": round(percent, 2) if percent else None,
+                    "share_value": owner_value,
+                    **financials
+                }
+                
+                if classification == "partner":
+                    partners.append(entry)
+                else:
+                    linked.append(entry)
+        
+        # Get Subsidiaries (downstream)
+        subsidiaries = conn.execute(text("""
+            SELECT c.regcode, c.name, p.number_of_shares, p.share_nominal_value
+            FROM persons p
+            JOIN companies c ON c.regcode = p.company_regcode
+            WHERE p.legal_entity_regcode = :r AND p.role = 'member'
+        """), {"r": regcode}).fetchall()
+        
+        for sub in subsidiaries:
+            if sub.regcode == regcode:
+                continue
+            
+            sub_capital = conn.execute(text("""
+                SELECT SUM(COALESCE(number_of_shares, 0) * COALESCE(share_nominal_value, 0)) as total
+                FROM persons WHERE company_regcode = :r AND role = 'member'
+            """), {"r": sub.regcode}).scalar() or 0
+            
+            our_value = float(sub.number_of_shares or 0) * float(sub.share_nominal_value or 0)
+            percent = (our_value / float(sub_capital) * 100) if sub_capital > 0 else None
+            classification = classify_ownership(percent)
+            
+            if classification in ["partner", "linked"]:
+                financials = get_financial_data(conn, sub.regcode, year)
+                entry = {
+                    "name": sub.name,
+                    "regcode": sub.regcode,
+                    "relation": "subsidiary",
+                    "entity_type": "legal_entity",
+                    "ownership_percent": round(percent, 2) if percent else None,
+                    "share_value": our_value,
+                    **financials
+                }
+                if classification == "partner":
+                    partners.append(entry)
+                else:
+                    linked.append(entry)
+        
+        # 5. Determine Scenario
+        has_partners = len(partners) > 0
+        has_linked = len(linked) > 0
+        
+        # Consolidation: assumed if any linked entity has >50% ownership
+        has_consolidation = any(e.get("ownership_percent", 0) > 50 for e in linked)
+        
+        if has_linked:
+            company_type = "LINKED"
+            required_sections = ["B1"] if has_consolidation else ["B2"]
+            if has_partners:
+                required_sections.insert(0, "A")
+        elif has_partners:
+            company_type = "PARTNER"
+            required_sections = ["A"]
+        else:
+            company_type = "AUTONOMOUS"
+            required_sections = []
+        
+        # 6. Calculate A Section Totals (proportional)
+        section_a_totals = {"employees": 0, "turnover": 0, "balance": 0}
+        for p in partners:
+            pct = (p.get("ownership_percent") or 0) / 100
+            section_a_totals["employees"] += int((p.get("employees") or 0) * pct)
+            section_a_totals["turnover"] += (p.get("turnover") or 0) * pct
+            section_a_totals["balance"] += (p.get("balance") or 0) * pct
+        
+        # 7. Calculate B Section Totals (100% for linked)
+        section_b_totals = {"employees": 0, "turnover": 0, "balance": 0}
+        for l in linked:
+            section_b_totals["employees"] += l.get("employees") or 0
+            section_b_totals["turnover"] += l.get("turnover") or 0
+            section_b_totals["balance"] += l.get("balance") or 0
+        
+        # 8. Summary Table 2.1-2.3
+        row_2_1 = own_financials.copy()
+        row_2_2 = section_a_totals.copy()
+        row_2_3 = section_b_totals.copy()
+        
+        total_row = {
+            "employees": (row_2_1.get("employees") or 0) + row_2_2["employees"] + row_2_3["employees"],
+            "turnover": (row_2_1.get("turnover") or 0) + row_2_2["turnover"] + row_2_3["turnover"],
+            "balance": (row_2_1.get("balance") or 0) + row_2_2["balance"] + row_2_3["balance"]
+        }
+        
+        return {
+            "scenario": {
+                "company_type": company_type,
+                "has_partners": has_partners,
+                "has_linked": has_linked,
+                "has_consolidation": has_consolidation,
+                "required_sections": required_sections
+            },
+            "identification": {
+                "name": company_row.name,
+                "address": company_row.address,
+                "regcode": str(company_row.regcode),
+                "authorized_person": auth_person.person_name if auth_person else None,
+                "authorized_position": auth_person.position if auth_person else None
+            },
+            "own_financials": own_financials,
+            "section_a": {
+                "partners": partners,
+                "totals": section_a_totals
+            },
+            "section_b": {
+                "type": "B1" if has_consolidation else "B2",
+                "consolidated": section_b_totals if has_consolidation else None,
+                "entities": linked
+            },
+            "summary_table": {
+                "row_2_1": row_2_1,
+                "row_2_2": row_2_2,
+                "row_2_3": row_2_3,
+                "total": total_row
+            },
+            "year": year,
+            "total_capital": total_capital
+        }
+

@@ -77,6 +77,12 @@ export default async function Home() {
                 🏆 TOP 100
               </Link>
               <Link
+                href="/mvk-declaration"
+                className="px-3 py-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white text-sm rounded-full transition-colors font-semibold shadow-lg"
+              >
+                📋 MVK Deklarācija
+              </Link>
+              <Link
                 href="/industry/01"
                 className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-sm rounded-full transition-colors backdrop-blur-sm"
               >
