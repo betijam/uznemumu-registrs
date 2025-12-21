@@ -32,9 +32,9 @@ export default function Top100Page() {
 
     const fetchData = async (sort: 'turnover' | 'profit') => {
         setLoading(true);
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
         try {
-            const res = await fetch(`${API_URL}/top100?sort_by=${sort}`);
+            // Use /api prefix - proxied through Next.js server
+            const res = await fetch(`/api/top100?sort_by=${sort}`);
             const json = await res.json();
             setData(json);
         } catch (error) {
