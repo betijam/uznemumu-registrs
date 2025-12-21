@@ -50,6 +50,18 @@ interface MVKData {
     company_size?: string | null;
 }
 
+// User confirmation for control criteria
+type ConfirmationValue = 'yes' | 'no' | 'unknown';
+
+interface ControlCriteria {
+    companyRegcode: number;
+    companyName: string;
+    boardControl: ConfirmationValue;       // Tiesības iecelt/atlaist vadības vairākumu
+    contractControl: ConfirmationValue;    // Noteicoša ietekme ar līgumu vai statūtiem
+    agreementControl: ConfirmationValue;   // Kontrole ar vienošanos ar citiem dalībniekiem
+    explanation: string;
+}
+
 // Format currency helper
 function formatCurrency(value: number | null | undefined): string {
     if (value === null || value === undefined) return "—";
@@ -70,6 +82,10 @@ export default function MVKDeclarationPage() {
     const [loading, setLoading] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
     const [copySuccess, setCopySuccess] = useState<string | null>(null);
+
+    // User control criteria confirmations
+    const [userConfirmations, setUserConfirmations] = useState<ControlCriteria[]>([]);
+    const [showConfirmationWarning, setShowConfirmationWarning] = useState(false);
 
     // Debounced search
     const searchCompanies = useCallback(
@@ -94,6 +110,42 @@ export default function MVKDeclarationPage() {
         searchCompanies(searchQuery);
     }, [searchQuery, searchCompanies]);
 
+    // Initialize user confirmations when MVK data loads
+    const initializeConfirmations = (data: MVKData) => {
+        const allEntities: ControlCriteria[] = [];
+
+        // Add partners (25-50%)
+        data.section_a.partners.forEach((p: any) => {
+            if (p.regcode) {
+                allEntities.push({
+                    companyRegcode: p.regcode,
+                    companyName: p.name || 'Unknown',
+                    boardControl: 'unknown',
+                    contractControl: 'unknown',
+                    agreementControl: 'unknown',
+                    explanation: ''
+                });
+            }
+        });
+
+        // Add linked entities
+        data.section_b.entities.forEach((e: any) => {
+            if (e.regcode && !allEntities.find(x => x.companyRegcode === e.regcode)) {
+                allEntities.push({
+                    companyRegcode: e.regcode,
+                    companyName: e.name || 'Unknown',
+                    boardControl: 'unknown',
+                    contractControl: 'unknown',
+                    agreementControl: 'unknown',
+                    explanation: ''
+                });
+            }
+        });
+
+        setUserConfirmations(allEntities);
+        setShowConfirmationWarning(allEntities.length > 0);
+    };
+
     // Load MVK data when company selected
     const loadMVKData = async (regcode: number) => {
         setLoading(true);
@@ -102,12 +154,54 @@ export default function MVKDeclarationPage() {
             if (!res.ok) throw new Error("Failed to load MVK data");
             const data = await res.json();
             setMvkData(data);
+            initializeConfirmations(data);
         } catch (e) {
             console.error("MVK load failed:", e);
             setMvkData(null);
+            setUserConfirmations([]);
         } finally {
             setLoading(false);
         }
+    };
+
+    // Update user confirmation
+    const updateConfirmation = (
+        regcode: number,
+        field: 'boardControl' | 'contractControl' | 'agreementControl' | 'explanation',
+        value: ConfirmationValue | string
+    ) => {
+        setUserConfirmations(prev => prev.map(c =>
+            c.companyRegcode === regcode
+                ? { ...c, [field]: value }
+                : c
+        ));
+    };
+
+    // Check if any confirmation is "yes" (elevates to LINKED)
+    const hasAnyYesConfirmation = (regcode: number): boolean => {
+        const conf = userConfirmations.find(c => c.companyRegcode === regcode);
+        if (!conf) return false;
+        return conf.boardControl === 'yes' || conf.contractControl === 'yes' || conf.agreementControl === 'yes';
+    };
+
+    // Check if any confirmation is "unknown" (show warning)
+    const hasUnknownConfirmations = (): boolean => {
+        return userConfirmations.some(c =>
+            c.boardControl === 'unknown' || c.contractControl === 'unknown' || c.agreementControl === 'unknown'
+        );
+    };
+
+    // Get effective company type (considering user confirmations)
+    const getEffectiveCompanyType = (): string => {
+        if (!mvkData) return 'AUTONOMOUS';
+
+        // If user confirmed any control criteria, it's LINKED
+        const anyYes = userConfirmations.some(c =>
+            c.boardControl === 'yes' || c.contractControl === 'yes' || c.agreementControl === 'yes'
+        );
+        if (anyYes) return 'LINKED';
+
+        return mvkData.scenario.company_type;
     };
 
     const handleSelectCompany = (company: Company) => {
@@ -388,6 +482,64 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                             </div>
                         </div>
 
+                        {/* 0️⃣ Status Detection Summary */}
+                        <div className="bg-white rounded-xl shadow-lg p-6">
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">📊 Kā sistēma noteica jūsu MVK statusu</h2>
+
+                            <table className="w-full text-sm mb-4">
+                                <thead className="bg-gray-100">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left font-semibold">Kritērijs</th>
+                                        <th className="px-4 py-3 text-left font-semibold">Statuss</th>
+                                        <th className="px-4 py-3 text-left font-semibold">Avots</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr className="border-b">
+                                        <td className="px-4 py-3">Kapitāldaļu attiecības</td>
+                                        <td className="px-4 py-3">
+                                            <span className="text-green-600 font-medium">✅ Noteikts automātiski</span>
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-500">Uzņēmumu reģistra dati</td>
+                                    </tr>
+                                    <tr className="border-b">
+                                        <td className="px-4 py-3">Saistītie uzņēmumi (&gt;50%)</td>
+                                        <td className="px-4 py-3">
+                                            {mvkData.scenario.has_linked ? (
+                                                <span className="text-red-600 font-medium">🔴 {mvkData.section_b.entities.length} atrasti</span>
+                                            ) : (
+                                                <span className="text-gray-500">⚪ Nav atrasti</span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-500">UR API</td>
+                                    </tr>
+                                    <tr className="border-b">
+                                        <td className="px-4 py-3">Partneruzņēmumi (25–50%)</td>
+                                        <td className="px-4 py-3">
+                                            {mvkData.scenario.has_partners ? (
+                                                <span className="text-yellow-600 font-medium">🟡 {mvkData.section_a.partners.length} atrasti</span>
+                                            ) : (
+                                                <span className="text-gray-500">⚪ Nav atrasti</span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-500">UR API</td>
+                                    </tr>
+                                    <tr className="border-b bg-yellow-50">
+                                        <td className="px-4 py-3">Vadības / līgumu kontrole</td>
+                                        <td className="px-4 py-3">
+                                            <span className="text-orange-600 font-medium">⚠️ Nav iespējams noteikt automātiski</span>
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-500">Lietotāja apliecinājums</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+                                <p className="font-medium mb-1">⚠️ Svarīgi</p>
+                                <p>Uzņēmumu reģistra publiskie dati nesatur informāciju par noteicošu ietekmi ar līgumiem, statūtiem vai dalībnieku vienošanos. Šie kritēriji jāapstiprina uzņēmumam pašam.</p>
+                            </div>
+                        </div>
+
                         {/* Section 0: Identification */}
                         <div className="bg-white rounded-xl shadow-lg p-6">
                             <div className="flex items-center justify-between mb-4">
@@ -406,6 +558,155 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                 {getIdentificationText()}
                             </div>
                         </div>
+
+                        {/* 2️⃣ User Confirmation Section */}
+                        {userConfirmations.length > 0 && (
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-orange-200">
+                                <h2 className="text-xl font-bold text-gray-900 mb-2">
+                                    ⚠️ Papildu kontroles kritēriji
+                                </h2>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Pamatojoties uz uzņēmuma statūtiem, līgumiem vai dalībnieku vienošanos.
+                                    Šī informācija nav pieejama publiskajos reģistros.
+                                    Atzīmējiet tikai tos gadījumus, kas faktiski pastāv.
+                                </p>
+
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-gray-100">
+                                            <tr>
+                                                <th className="px-3 py-2 text-left font-semibold">Uzņēmums</th>
+                                                <th className="px-3 py-2 text-left font-semibold">Kritērijs</th>
+                                                <th className="px-3 py-2 text-center font-semibold">Jā</th>
+                                                <th className="px-3 py-2 text-center font-semibold">Nē</th>
+                                                <th className="px-3 py-2 text-center font-semibold">Nezinu</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {userConfirmations.map((conf) => (
+                                                <>
+                                                    <tr key={`${conf.companyRegcode}-board`} className="border-b">
+                                                        <td className="px-3 py-2 font-medium" rowSpan={3}>
+                                                            {conf.companyName}
+                                                            <br />
+                                                            <span className="text-xs text-gray-500">{conf.companyRegcode}</span>
+                                                        </td>
+                                                        <td className="px-3 py-2">Tiesības iecelt/atlaist vadības vairākumu</td>
+                                                        <td className="px-3 py-2 text-center">
+                                                            <input
+                                                                type="radio"
+                                                                name={`board-${conf.companyRegcode}`}
+                                                                checked={conf.boardControl === 'yes'}
+                                                                onChange={() => updateConfirmation(conf.companyRegcode, 'boardControl', 'yes')}
+                                                                className="w-4 h-4 text-green-600"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2 text-center">
+                                                            <input
+                                                                type="radio"
+                                                                name={`board-${conf.companyRegcode}`}
+                                                                checked={conf.boardControl === 'no'}
+                                                                onChange={() => updateConfirmation(conf.companyRegcode, 'boardControl', 'no')}
+                                                                className="w-4 h-4 text-red-600"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2 text-center">
+                                                            <input
+                                                                type="radio"
+                                                                name={`board-${conf.companyRegcode}`}
+                                                                checked={conf.boardControl === 'unknown'}
+                                                                onChange={() => updateConfirmation(conf.companyRegcode, 'boardControl', 'unknown')}
+                                                                className="w-4 h-4 text-gray-600"
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                    <tr key={`${conf.companyRegcode}-contract`} className="border-b">
+                                                        <td className="px-3 py-2">Noteicoša ietekme ar līgumu vai statūtiem</td>
+                                                        <td className="px-3 py-2 text-center">
+                                                            <input
+                                                                type="radio"
+                                                                name={`contract-${conf.companyRegcode}`}
+                                                                checked={conf.contractControl === 'yes'}
+                                                                onChange={() => updateConfirmation(conf.companyRegcode, 'contractControl', 'yes')}
+                                                                className="w-4 h-4 text-green-600"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2 text-center">
+                                                            <input
+                                                                type="radio"
+                                                                name={`contract-${conf.companyRegcode}`}
+                                                                checked={conf.contractControl === 'no'}
+                                                                onChange={() => updateConfirmation(conf.companyRegcode, 'contractControl', 'no')}
+                                                                className="w-4 h-4 text-red-600"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2 text-center">
+                                                            <input
+                                                                type="radio"
+                                                                name={`contract-${conf.companyRegcode}`}
+                                                                checked={conf.contractControl === 'unknown'}
+                                                                onChange={() => updateConfirmation(conf.companyRegcode, 'contractControl', 'unknown')}
+                                                                className="w-4 h-4 text-gray-600"
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                    <tr key={`${conf.companyRegcode}-agreement`} className="border-b bg-gray-50">
+                                                        <td className="px-3 py-2">Kontrole ar vienošanos ar citiem dalībniekiem</td>
+                                                        <td className="px-3 py-2 text-center">
+                                                            <input
+                                                                type="radio"
+                                                                name={`agreement-${conf.companyRegcode}`}
+                                                                checked={conf.agreementControl === 'yes'}
+                                                                onChange={() => updateConfirmation(conf.companyRegcode, 'agreementControl', 'yes')}
+                                                                className="w-4 h-4 text-green-600"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2 text-center">
+                                                            <input
+                                                                type="radio"
+                                                                name={`agreement-${conf.companyRegcode}`}
+                                                                checked={conf.agreementControl === 'no'}
+                                                                onChange={() => updateConfirmation(conf.companyRegcode, 'agreementControl', 'no')}
+                                                                className="w-4 h-4 text-red-600"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2 text-center">
+                                                            <input
+                                                                type="radio"
+                                                                name={`agreement-${conf.companyRegcode}`}
+                                                                checked={conf.agreementControl === 'unknown'}
+                                                                onChange={() => updateConfirmation(conf.companyRegcode, 'agreementControl', 'unknown')}
+                                                                className="w-4 h-4 text-gray-600"
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                    {hasAnyYesConfirmation(conf.companyRegcode) && (
+                                                        <tr key={`${conf.companyRegcode}-explanation`} className="bg-green-50">
+                                                            <td colSpan={5} className="px-3 py-2">
+                                                                <label className="block text-xs text-gray-600 mb-1">Paskaidrojums (ieteicams):</label>
+                                                                <textarea
+                                                                    value={conf.explanation}
+                                                                    onChange={(e) => updateConfirmation(conf.companyRegcode, 'explanation', e.target.value)}
+                                                                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                                                                    rows={2}
+                                                                    placeholder="Aprakstiet kontroles pamatu..."
+                                                                />
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {hasUnknownConfirmations() && (
+                                    <div className="mt-4 bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-800">
+                                        ⚠️ Daļa kontroles kritēriju nav izvērtēti. Atbildība par MVK statusa pareizību paliek uzņēmumam.
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Section 1: Autonomous (if applicable) */}
                         {mvkData.scenario.company_type === "AUTONOMOUS" && (
