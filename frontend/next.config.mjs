@@ -2,10 +2,11 @@
 const nextConfig = {
     output: "standalone",
     async rewrites() {
+        const backendUrl = process.env.BACKEND_URL || 'https://uznemumu-registrs-production.up.railway.app';
         return [
             {
                 source: '/api/:path*',
-                destination: `${process.env.BACKEND_URL || 'http://localhost:8001'}/:path*`,
+                destination: `${backendUrl}/:path*`,
             },
         ];
     },
