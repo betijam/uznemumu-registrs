@@ -568,6 +568,8 @@ def get_related_companies(regcode: int, year: int = 2024):
         "linked": linked
     }
 
+# Alias route for compatibility (frontend may call without /companies/ prefix)
+@router.get("/mvk-declaration/{regcode}")
 @router.get("/companies/{regcode}/mvk-declaration")
 def get_mvk_declaration(regcode: int, year: int = 2024):
     """
