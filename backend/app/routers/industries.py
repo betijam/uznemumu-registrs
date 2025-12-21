@@ -2,9 +2,22 @@ from fastapi import APIRouter, Query
 from sqlalchemy import text
 from etl.loader import engine
 import logging
+import math
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+def safe_float(value):
+    """Convert to float, returning None for inf/nan/None values"""
+    if value is None:
+        return None
+    try:
+        f = float(value)
+        if math.isinf(f) or math.isnan(f):
+            return None
+        return f
+    except (ValueError, TypeError):
+        return None
 
 @router.get("/industries/{nace_section}")
 def get_industry_companies(
@@ -79,8 +92,8 @@ def get_industry_companies(
                     "rank": idx + 1,
                     "regcode": c[0],
                     "name": c[1],
-                    "turnover": float(c[8]) if c[8] else None,
-                    "profit": float(c[9]) if c[9] else None,
+                    "turnover": safe_float(c[8]),
+                    "profit": safe_float(c[9]),
                     "employees": c[4] or c[10],
                     "year": c[11],
                     "company_size": c[5],
@@ -139,8 +152,8 @@ def get_top_100(
                         "regcode": c[0],
                         "name": c[1],
                         "industry": c[3],
-                        "turnover": float(c[8]) if c[8] is not None else None,
-                        "profit": float(c[9]) if c[9] is not None else None,
+                        "turnover": safe_float(c[8]),
+                        "profit": safe_float(c[9]),
                         "employees": c[4] or c[10],
                         "year": c[11],
                         "company_size": c[5],
