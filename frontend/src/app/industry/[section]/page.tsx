@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 import CompanySizeBadge from '@/components/CompanySizeBadge';
@@ -26,16 +27,21 @@ interface IndustryData {
     companies: Company[];
 }
 
-export default function IndustryPage({ params }: { params: { section: string } }) {
+export default function IndustryPage() {
+    // useParams hook - stable way to access route params in client components
+    const params = useParams();
+    const section = params.section as string;
+
     const [data, setData] = useState<IndustryData | null>(null);
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState<'turnover' | 'profit'>('turnover');
 
     const fetchData = async (sort: 'turnover' | 'profit') => {
+        if (!section) return;
         setLoading(true);
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
         try {
-            const res = await fetch(`${API_URL}/industries/${params.section}?sort_by=${sort}`);
+            const res = await fetch(`${API_URL}/industries/${section}?sort_by=${sort}`);
             const json = await res.json();
             setData(json);
         } catch (error) {
@@ -46,7 +52,7 @@ export default function IndustryPage({ params }: { params: { section: string } }
 
     useEffect(() => {
         fetchData(sortBy);
-    }, [sortBy, params.section]);
+    }, [sortBy, section]);
 
     const formatCurrency = (value: number | null) => {
         if (!value) return '-';

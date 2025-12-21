@@ -154,11 +154,11 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                             )}
 
                             {/* PVN Number */}
-                            {company.sepa_identifier && (
+                            {company.pvn_number && (
                                 <div className="mt-2 flex items-center gap-2 text-sm">
                                     <span className="text-gray-500">PVN:</span>
                                     <span className="font-mono text-sm text-primary">
-                                        {company.sepa_identifier}
+                                        {company.pvn_number}
                                     </span>
                                 </div>
                             )}
