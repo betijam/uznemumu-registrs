@@ -136,10 +136,15 @@ def get_top_100(
                     SELECT turnover, profit, employees, year
                     FROM financial_reports
                     WHERE company_regcode = c.regcode
+                      AND turnover IS NOT NULL 
+                      AND turnover > 0
+                      AND turnover < 1e15
                     ORDER BY year DESC
                     LIMIT 1
                 ) f ON true
-                WHERE CASE WHEN :sort_by = 'turnover' THEN f.turnover ELSE f.profit END IS NOT NULL
+                WHERE f.turnover IS NOT NULL
+                  AND f.turnover > 0
+                  AND f.turnover < 1e15
                 ORDER BY sort_value DESC
                 LIMIT 100
             """), {"sort_by": sort_by}).fetchall()
