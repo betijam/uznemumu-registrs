@@ -499,8 +499,13 @@ def get_ownership_chain(conn, start_regcode: int, visited: set = None, depth: in
     return all_linked
 
 
-def find_controlling_physical_persons(conn, regcode: int) -> list:
-    """Find physical persons with >50% control of this company"""
+def find_significant_physical_persons(conn, regcode: int) -> list:
+    """
+    Find ALL physical persons with ≥25% ownership in this company.
+    
+    We want to find everyone who might link this company to others,
+    not just those with >50% control.
+    """
     result = conn.execute(text("""
         WITH company_capital AS (
             SELECT SUM(number_of_shares * share_nominal_value) as total
@@ -520,22 +525,28 @@ def find_controlling_physical_persons(conn, regcode: int) -> list:
           AND p.role = 'member'
           AND p.legal_entity_regcode IS NULL
           AND p.person_code IS NOT NULL
+          AND p.person_code != ''
         GROUP BY p.person_code, p.person_name, cc.total
-        HAVING (SUM(p.number_of_shares * p.share_nominal_value) / NULLIF(cc.total, 0)) > 0.5
+        HAVING (SUM(p.number_of_shares * p.share_nominal_value) / NULLIF(cc.total, 0)) >= 0.25
     """), {"r": regcode}).fetchall()
     
-    return [{"person_code": r.person_code, "name": r.person_name, "percent": float(r.ownership_percent)} for r in result]
+    return [{"person_code": r.person_code, "name": r.person_name, "percent": float(r.ownership_percent) if r.ownership_percent else 0} for r in result]
 
 
-def find_companies_by_controlling_person(conn, person_code: str, exclude_regcode: int, nace_section: str = None) -> list:
+def find_companies_controlled_by_person(conn, person_code: str, exclude_regcode: int) -> list:
     """
-    F1 kritērijs: Atrast citus uzņēmumus, kurus kontrolē tā pati fiziskā persona.
+    F1 kritērijs: Atrast VISUS citus uzņēmumus, kuros šī persona ir dalībnieks.
     
-    Ja persona kontrolē (>50%) vairākus uzņēmumus tajā pašā vai blakustirgū,
-    tie ir SAISTĪTI.
+    Atgriež uzņēmumus ar klasifikāciju:
+    - >50% = LINKED (saistīts)
+    - 25-50% = PARTNER (partneris)
+    - <25% = NAV
     """
+    if not person_code or person_code.strip() == '':
+        return []
+    
     query = """
-        WITH controlled_companies AS (
+        WITH person_companies AS (
             SELECT 
                 c.regcode,
                 c.name,
@@ -552,29 +563,29 @@ def find_companies_by_controlling_person(conn, person_code: str, exclude_regcode
             GROUP BY c.regcode, c.name, c.nace_code, c.nace_section
         )
         SELECT regcode, name, nace_code, nace_section,
-               (person_value / NULLIF(total_capital, 0)) * 100 as ownership_percent
-        FROM controlled_companies
-        WHERE (person_value / NULLIF(total_capital, 0)) > 0.5
+               COALESCE((person_value / NULLIF(total_capital, 0)) * 100, 0) as ownership_percent,
+               CASE 
+                   WHEN (person_value / NULLIF(total_capital, 0)) > 0.5 THEN 'linked'
+                   WHEN (person_value / NULLIF(total_capital, 0)) >= 0.25 THEN 'partner'
+                   ELSE 'minor'
+               END as classification
+        FROM person_companies
+        WHERE (person_value / NULLIF(total_capital, 0)) >= 0.25
     """
     
     result = conn.execute(text(query), {"person_code": person_code, "exclude": exclude_regcode}).fetchall()
     
     companies = []
     for r in result:
-        # Check if same/adjacent market if nace_section provided
-        is_same_market = True
-        if nace_section and r.nace_section:
-            # Same or adjacent NACE section (simplified - just check first letter)
-            is_same_market = r.nace_section == nace_section
-        
         companies.append({
             "regcode": r.regcode,
             "name": r.name,
             "nace_code": r.nace_code,
             "ownership_percent": float(r.ownership_percent) if r.ownership_percent else 0,
-            "same_market": is_same_market
+            "classification": r.classification
         })
     
+    logger.info(f"[PERSON] Found {len(companies)} companies for person_code {person_code[:6]}...")
     return companies
 
 
@@ -616,34 +627,44 @@ def find_all_linked_entities(conn, regcode: int, year: int = 2024) -> dict:
     logger.info(f"[LINKED] Found {len(all_linked)} linked via ownership chain")
     
     # 2. Physical person control (F1 criterion)
-    logger.info(f"[LINKED] Finding controlling physical persons for {regcode}")
-    controlling_persons = find_controlling_physical_persons(conn, regcode)
+    # Find ALL significant persons (≥25%) and their other companies
+    logger.info(f"[LINKED] Finding significant physical persons for {regcode}")
+    significant_persons = find_significant_physical_persons(conn, regcode)
+    logger.info(f"[LINKED] Found {len(significant_persons)} significant persons")
     
-    for person in controlling_persons:
+    for person in significant_persons:
         if not person["person_code"]:
             continue
             
-        # Find other companies controlled by this person
-        other_companies = find_companies_by_controlling_person(
-            conn, person["person_code"], regcode, nace_section
+        # Find ALL other companies where this person has ≥25% ownership
+        other_companies = find_companies_controlled_by_person(
+            conn, person["person_code"], regcode
         )
         
         for other in other_companies:
             if other["regcode"] not in seen_regcodes:
-                # Only link if same/adjacent market
-                if other.get("same_market", True):
-                    seen_regcodes.add(other["regcode"])
-                    via_person.append({
-                        "regcode": other["regcode"],
-                        "name": other["name"],
-                        "ownership_percent": other["ownership_percent"],
-                        "controlling_person": person["name"],
-                        "person_percent": person["percent"],
-                        "relation": "via_person",
-                        "link_reason": f"Kontrolē {person['name']} ({person['percent']:.1f}%)"
-                    })
+                seen_regcodes.add(other["regcode"])
+                
+                entry = {
+                    "regcode": other["regcode"],
+                    "name": other["name"],
+                    "ownership_percent": other["ownership_percent"],
+                    "controlling_person": person["name"],
+                    "person_percent": person["percent"],
+                    "relation": "via_person",
+                    "classification": other["classification"],
+                    "link_reason": f"Kontrolē {person['name']} ({person['percent']:.1f}%)"
+                }
+                
+                # Classify based on person's ownership in the other company
+                if other["classification"] == "linked":
+                    # >50% in other company = LINKED
+                    all_linked.append(entry)
+                else:
+                    # 25-50% in other company = via_person (show separately)
+                    via_person.append(entry)
     
-    logger.info(f"[LINKED] Found {len(via_person)} linked via physical person control")
+    logger.info(f"[LINKED] Found {len(via_person)} companies via physical person control")
     
     # 3. Also get partners (25-50%) - direct only
     partners_result = conn.execute(text("""
