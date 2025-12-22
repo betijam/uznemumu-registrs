@@ -1,39 +1,92 @@
+import { Suspense } from "react";
 import Navbar from "@/components/Navbar";
 import SearchInput from "@/components/SearchInput";
 import Link from "next/link";
 
-// Fetch real statistics from backend
-async function getStats() {
-  // On Railway, always use the public URL (NEXT_PUBLIC_API_URL)
-  // Internal Docker network (INTERNAL_API_URL) only works locally
+// Stats Cards Skeleton for loading state
+function StatsCardsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="bg-white rounded-xl shadow-md p-6">
+          <div className="flex items-center justify-between mb-2">
+            <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-5 w-5 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+          <div className="h-10 w-20 bg-gray-200 rounded animate-pulse mb-2"></div>
+          <div className="h-3 w-32 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Async Stats Cards Component - loads independently
+async function StatsCards() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
+  let stats = null;
   try {
     const res = await fetch(`${API_BASE_URL}/stats`, {
       cache: "no-store",
       next: { revalidate: 3600 }
     });
-    if (!res.ok) return null;
-    return res.json();
+    if (res.ok) stats = await res.json();
   } catch (e) {
     console.error('Failed to fetch stats:', e);
-    return null;
   }
-}
 
-export default async function Home() {
-  const stats = await getStats();
-
-  // Default values if API fails
   const dailyStats = stats?.daily_stats || { new_today: 0, change: 0 };
   const topCompany = stats?.top_earner || { name: "N/A", detail: "" };
   const weeklyProcurements = stats?.weekly_procurements || { amount: "0 €", detail: "Nav datu" };
 
   return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      {/* Daily Stats Card */}
+      <div className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-shadow p-6">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-gray-500">Dienas statistika</h3>
+          <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+        </div>
+        <p className="text-4xl font-bold text-primary mb-1">{dailyStats.new_today}</p>
+        <p className="text-xs text-gray-500">Jauni uzņēmumi šodien</p>
+      </div>
+
+      {/* Top Earner Card */}
+      <div className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-shadow p-6">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-gray-500">TOP Pelnošie</h3>
+          <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </div>
+        <p className="text-2xl font-bold text-primary mb-1">{topCompany.name}</p>
+        <p className="text-xs text-gray-500">{topCompany.detail}</p>
+      </div>
+
+      {/* Weekly Procurements Card */}
+      <div className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-shadow p-6">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-gray-500">Nedēļas iepirkumi</h3>
+          <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <p className="text-4xl font-bold text-primary mb-1">{weeklyProcurements.amount}</p>
+        <p className="text-xs text-gray-500">{weeklyProcurements.detail}</p>
+      </div>
+    </div>
+  );
+}
+
+export default function Home() {
+  return (
     <main className="min-h-screen bg-background">
       <Navbar />
 
-      {/* Hero Section */}
+      {/* Hero Section - renders immediately without waiting for data */}
       <div className="relative bg-gradient-to-br from-primary via-primary-dark to-accent overflow-hidden">
         {/* Background decorative elements */}
         <div className="absolute inset-0 opacity-10">
@@ -99,48 +152,13 @@ export default async function Home() {
         </div>
       </div>
 
-      {/* Professional Data Analytics Section */}
+      {/* Stats Section - loads async with Suspense */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 pb-16 relative z-20">
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {/* Daily Stats Card */}
-          <div className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-gray-500">Dienas statistika</h3>
-              <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-            <p className="text-4xl font-bold text-primary mb-1">{dailyStats.new_today}</p>
-            <p className="text-xs text-gray-500">Jauni uzņēmumi šodien</p>
-          </div>
+        <Suspense fallback={<StatsCardsSkeleton />}>
+          <StatsCards />
+        </Suspense>
 
-          {/* Top Earner Card */}
-          <div className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-gray-500">TOP Pelnošie</h3>
-              <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <p className="text-2xl font-bold text-primary mb-1">{topCompany.name}</p>
-            <p className="text-xs text-gray-500">{topCompany.detail}</p>
-          </div>
-
-          {/* Weekly Procurements Card */}
-          <div className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-gray-500">Nedēļas iepirkumi</h3>
-              <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <p className="text-4xl font-bold text-primary mb-1">{weeklyProcurements.amount}</p>
-            <p className="text-xs text-gray-500">{weeklyProcurements.detail}</p>
-          </div>
-        </div>
-
-        {/* Professional Data Analytics Section */}
+        {/* Professional Data Analytics Section - static content */}
         <div className="bg-white rounded-xl shadow-card p-8">
           <h2 className="text-2xl font-bold text-primary mb-4">Profesionāla datu analītika</h2>
           <p className="text-gray-600 mb-6">
