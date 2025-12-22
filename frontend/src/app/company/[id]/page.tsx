@@ -1,17 +1,32 @@
 import Navbar from "@/components/Navbar";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import CompanyTabs from "@/components/CompanyTabs";
+import dynamic from "next/dynamic";
 import CompanySizeBadge from "@/components/CompanySizeBadge";
-import CompanyMap from "@/components/CompanyMap";
 import CompanySearchBar from "@/components/CompanySearchBar";
 
-// Data Fetching
+// Dynamic import for heavy component - reduces initial bundle
+const CompanyTabs = dynamic(() => import("@/components/CompanyTabs"), {
+    loading: () => (
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4"></div>
+            <div className="space-y-3">
+                <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+        </div>
+    ),
+    ssr: true  // Keep SSR for SEO
+});
+
+// Cache configuration - revalidate every 60 seconds for fresher data with caching
+const CACHE_CONFIG = { next: { revalidate: 60 } };
+
+// Data Fetching with caching
 async function getCompany(id: string) {
-    // On Railway, always use the public URL (NEXT_PUBLIC_API_URL)
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
     try {
-        const res = await fetch(`${API_BASE_URL}/companies/${id}`, { cache: 'no-store' });
+        const res = await fetch(`${API_BASE_URL}/companies/${id}`, CACHE_CONFIG);
         if (!res.ok) return null;
         return res.json();
     } catch (e) {
@@ -20,10 +35,9 @@ async function getCompany(id: string) {
 }
 
 async function getGraph(id: string) {
-    // On Railway, always use the public URL (NEXT_PUBLIC_API_URL)
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
     try {
-        const res = await fetch(`${API_BASE_URL}/companies/${id}/graph`, { cache: 'no-store' });
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/graph`, CACHE_CONFIG);
         if (!res.ok) return { parents: [], children: [] };
         return res.json();
     } catch (e) {
@@ -34,7 +48,7 @@ async function getGraph(id: string) {
 async function getBenchmark(id: string) {
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
     try {
-        const res = await fetch(`${API_BASE_URL}/companies/${id}/benchmark`, { cache: 'no-store' });
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/benchmark`, CACHE_CONFIG);
         if (!res.ok) return null;
         return res.json();
     } catch (e) {
@@ -45,7 +59,7 @@ async function getBenchmark(id: string) {
 async function getCompetitors(id: string) {
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
     try {
-        const res = await fetch(`${API_BASE_URL}/companies/${id}/competitors?limit=5`, { cache: 'no-store' });
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/competitors?limit=5`, CACHE_CONFIG);
         if (!res.ok) return [];
         return res.json();
     } catch (e) {
