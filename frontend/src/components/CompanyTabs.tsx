@@ -193,13 +193,13 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                                     <span className="text-gray-600">Reģistrācijas numurs: </span>
                                     <span className="text-gray-900">{company.regcode}</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-gray-600">Parakstiesīgā persona: </span>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                    <span className="text-gray-600 whitespace-nowrap">Parakstiesīgā persona:</span>
                                     {signatories.length > 0 ? (
                                         <select
                                             value={selectedSignatory}
                                             onChange={(e) => setSelectedSignatory(e.target.value)}
-                                            className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary bg-white"
+                                            className="w-full sm:flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary bg-white"
                                         >
                                             <option value="">-- Izvēlieties --</option>
                                             {signatories.map((s: any, idx: number) => (

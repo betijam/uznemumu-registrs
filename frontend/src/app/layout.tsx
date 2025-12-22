@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
-// Optimized font loading - eliminates render-blocking request
+// Optimized font loading - reduced weights for smaller file size
 const inter = Inter({
   subsets: ["latin"],
-  display: "swap",  // Shows fallback font immediately
+  weight: ["400", "600", "700"],  // Only essential weights, reduces file size
+  display: "optional",  // Faster LCP on slow mobile connections
   variable: "--font-inter",
   preload: true,
+  fallback: ["system-ui", "arial"],
 });
 
 export const metadata: Metadata = {

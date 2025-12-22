@@ -529,53 +529,55 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                         <div className="bg-white rounded-xl shadow-lg p-6">
                             <h2 className="text-xl font-bold text-gray-900 mb-4">📊 Kā sistēma noteica jūsu MVK statusu</h2>
 
-                            <table className="w-full text-sm mb-4">
-                                <thead className="bg-gray-100">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left font-semibold">Kritērijs</th>
-                                        <th className="px-4 py-3 text-left font-semibold">Statuss</th>
-                                        <th className="px-4 py-3 text-left font-semibold">Avots</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr className="border-b">
-                                        <td className="px-4 py-3">Kapitāldaļu attiecības</td>
-                                        <td className="px-4 py-3">
-                                            <span className="text-green-600 font-medium">✅ Noteikts automātiski</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-500">Uzņēmumu reģistra dati</td>
-                                    </tr>
-                                    <tr className="border-b">
-                                        <td className="px-4 py-3">Saistītie uzņēmumi (&gt;50%)</td>
-                                        <td className="px-4 py-3">
-                                            {mvkData.scenario.has_linked ? (
-                                                <span className="text-red-600 font-medium">🔴 {mvkData.section_b.entities.length} atrasti</span>
-                                            ) : (
-                                                <span className="text-gray-500">⚪ Nav atrasti</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-500">UR API</td>
-                                    </tr>
-                                    <tr className="border-b">
-                                        <td className="px-4 py-3">Partneruzņēmumi (25–50%)</td>
-                                        <td className="px-4 py-3">
-                                            {mvkData.scenario.has_partners ? (
-                                                <span className="text-yellow-600 font-medium">🟡 {mvkData.section_a.partners.length} atrasti</span>
-                                            ) : (
-                                                <span className="text-gray-500">⚪ Nav atrasti</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-500">UR API</td>
-                                    </tr>
-                                    <tr className="border-b bg-yellow-50">
-                                        <td className="px-4 py-3">Vadības / līgumu kontrole</td>
-                                        <td className="px-4 py-3">
-                                            <span className="text-orange-600 font-medium">⚠️ Nav iespējams noteikt automātiski</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-500">Lietotāja apliecinājums</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                            <div className="overflow-x-auto -mx-4 sm:mx-0">
+                                <table className="w-full text-sm mb-4 min-w-[400px]">
+                                    <thead className="bg-gray-100">
+                                        <tr>
+                                            <th className="px-3 sm:px-4 py-3 text-left font-semibold">Kritērijs</th>
+                                            <th className="px-3 sm:px-4 py-3 text-left font-semibold">Statuss</th>
+                                            <th className="px-3 sm:px-4 py-3 text-left font-semibold">Avots</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr className="border-b">
+                                            <td className="px-4 py-3">Kapitāldaļu attiecības</td>
+                                            <td className="px-4 py-3">
+                                                <span className="text-green-600 font-medium">✅ Noteikts automātiski</span>
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-500">Uzņēmumu reģistra dati</td>
+                                        </tr>
+                                        <tr className="border-b">
+                                            <td className="px-4 py-3">Saistītie uzņēmumi (&gt;50%)</td>
+                                            <td className="px-4 py-3">
+                                                {mvkData.scenario.has_linked ? (
+                                                    <span className="text-red-600 font-medium">🔴 {mvkData.section_b.entities.length} atrasti</span>
+                                                ) : (
+                                                    <span className="text-gray-500">⚪ Nav atrasti</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-500">UR API</td>
+                                        </tr>
+                                        <tr className="border-b">
+                                            <td className="px-4 py-3">Partneruzņēmumi (25–50%)</td>
+                                            <td className="px-4 py-3">
+                                                {mvkData.scenario.has_partners ? (
+                                                    <span className="text-yellow-600 font-medium">🟡 {mvkData.section_a.partners.length} atrasti</span>
+                                                ) : (
+                                                    <span className="text-gray-500">⚪ Nav atrasti</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-500">UR API</td>
+                                        </tr>
+                                        <tr className="border-b bg-yellow-50">
+                                            <td className="px-4 py-3">Vadības / līgumu kontrole</td>
+                                            <td className="px-4 py-3">
+                                                <span className="text-orange-600 font-medium">⚠️ Nav iespējams noteikt automātiski</span>
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-500">Lietotāja apliecinājums</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
 
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
                                 <p className="font-medium mb-1">⚠️ Svarīgi</p>
