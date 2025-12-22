@@ -108,7 +108,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
 
                     <div className="md:flex md:items-start md:justify-between">
                         <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-3">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3">
                                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${company.status === 'active' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
                                     }`}>
                                     {company.status === 'active' ? 'AKTĪVS' : 'LIKVIDĒTS'}

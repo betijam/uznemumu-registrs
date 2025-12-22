@@ -131,7 +131,7 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
     return (
         <div className="mt-6">
             <div className="border-b border-gray-200 bg-white rounded-t-lg">
-                <nav className="-mb-px flex space-x-8 px-6 overflow-x-auto" aria-label="Tabs">
+                <nav className="-mb-px flex space-x-4 sm:space-x-8 px-4 sm:px-6 overflow-x-auto scrollbar-hide" aria-label="Tabs">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
@@ -216,8 +216,8 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                         </div>
 
                         {/* Financial Chart - Dual-Panel Stacked Bars */}
-                        <div className="border border-gray-200 rounded-lg p-6">
-                            <div className="flex items-center justify-between mb-4">
+                        <div className="border border-gray-200 rounded-lg p-4 sm:p-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
                                 <h3 className="text-lg font-semibold text-primary">Apgrozījums vs Peļņa</h3>
                                 {company.rating && <RatingBadge grade={company.rating.grade} />}
                             </div>
@@ -432,14 +432,14 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                             <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
                                 <h3 className="text-lg font-semibold text-gray-900">Detalizēti Finanšu Rādītāji</h3>
                             </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
+                            <div className="overflow-x-auto -mx-4 sm:mx-0">
+                                <table className="w-full min-w-[500px]">
                                     <thead className="bg-gray-50 border-b border-gray-200">
                                         <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rādītājs</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vērtība</th>
-                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tendence</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Norma</th>
+                                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rādītājs</th>
+                                            <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vērtība</th>
+                                            <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tendence</th>
+                                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Norma</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
@@ -511,14 +511,14 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                                 <h3 className="text-lg font-semibold text-gray-900">Finanšu Vēsture</h3>
                             </div>
                             {financialHistory.length > 0 ? (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full">
+                                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                                    <table className="w-full min-w-[400px]">
                                         <thead className="bg-gray-50 border-b border-gray-200">
                                             <tr>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gads</th>
-                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Apgrozījums</th>
-                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Peļņa</th>
-                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Darbinieki</th>
+                                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gads</th>
+                                                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Apgrozījums</th>
+                                                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Peļņa</th>
+                                                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Darbinieki</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200">
@@ -556,15 +556,15 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                                 <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
                                     <h3 className="text-lg font-semibold text-gray-900">VID Samaksātie Nodokļi</h3>
                                 </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full">
+                                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                                    <table className="w-full min-w-[500px]">
                                         <thead className="bg-gray-50 border-b border-gray-200">
                                             <tr>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gads</th>
-                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">IIN</th>
-                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">VSAOI</th>
-                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vid. Darbinieki</th>
-                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vid. Bruto Alga</th>
+                                                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gads</th>
+                                                <th className="px-2 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">IIN</th>
+                                                <th className="px-2 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">VSAOI</th>
+                                                <th className="px-2 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Vid. Darb.</th>
+                                                <th className="px-2 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Vid. Alga</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200">
