@@ -6,10 +6,11 @@ import "./globals.css";
 const inter = Inter({
   subsets: ["latin"],  // Only latin, not latin-ext (smaller file)
   weight: ["400", "600", "700"],  // Only essential weights
-  display: "block",  // Shows text immediately with fallback, then swaps to Inter
+  display: "swap",  // Shows fallback immediately, swaps to Inter when loaded (Lighthouse recommended)
   variable: "--font-inter",
   preload: true,
   fallback: ["system-ui", "arial"],
+  adjustFontFallback: false,  // Reduces layout shift by not adjusting fallback metrics
 });
 
 export const metadata: Metadata = {
