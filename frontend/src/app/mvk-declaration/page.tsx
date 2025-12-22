@@ -56,6 +56,9 @@ type ConfirmationValue = 'yes' | 'no' | 'unknown';
 interface ControlCriteria {
     companyRegcode: number;
     companyName: string;
+    naceCode?: string;                     // NACE kods uzņēmumam
+    sameMarket?: boolean;                  // Vai tā pati nozare
+    needsConfirmation?: boolean;           // Vai prasa apstiprinājumu
     boardControl: ConfirmationValue;       // Tiesības iecelt/atlaist vadības vairākumu
     contractControl: ConfirmationValue;    // Noteicoša ietekme ar līgumu vai statūtiem
     agreementControl: ConfirmationValue;   // Kontrole ar vienošanos ar citiem dalībniekiem
@@ -113,6 +116,7 @@ export default function MVKDeclarationPage() {
     // Initialize user confirmations when MVK data loads
     const initializeConfirmations = (data: MVKData) => {
         const allEntities: ControlCriteria[] = [];
+        const companyNace = (data as any).company_nace || '';
 
         // Add partners (25-50%)
         data.section_a.partners.forEach((p: any) => {
@@ -120,6 +124,9 @@ export default function MVKDeclarationPage() {
                 allEntities.push({
                     companyRegcode: p.regcode,
                     companyName: p.name || 'Unknown',
+                    naceCode: p.nace_code,
+                    sameMarket: true,
+                    needsConfirmation: false,
                     boardControl: 'unknown',
                     contractControl: 'unknown',
                     agreementControl: 'unknown',
@@ -134,6 +141,27 @@ export default function MVKDeclarationPage() {
                 allEntities.push({
                     companyRegcode: e.regcode,
                     companyName: e.name || 'Unknown',
+                    naceCode: e.nace_code,
+                    sameMarket: e.same_market ?? true,
+                    needsConfirmation: e.needs_confirmation ?? false,
+                    boardControl: 'unknown',
+                    contractControl: 'unknown',
+                    agreementControl: 'unknown',
+                    explanation: ''
+                });
+            }
+        });
+
+        // Add needs_confirmation entities (different NACE)
+        const needsConf = (data as any).needs_confirmation || [];
+        needsConf.forEach((e: any) => {
+            if (e.regcode && !allEntities.find(x => x.companyRegcode === e.regcode)) {
+                allEntities.push({
+                    companyRegcode: e.regcode,
+                    companyName: e.name || 'Unknown',
+                    naceCode: e.nace_code,
+                    sameMarket: false,
+                    needsConfirmation: true,
                     boardControl: 'unknown',
                     contractControl: 'unknown',
                     agreementControl: 'unknown',
@@ -585,11 +613,25 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                         <tbody>
                                             {userConfirmations.map((conf) => (
                                                 <>
-                                                    <tr key={`${conf.companyRegcode}-board`} className="border-b">
+                                                    <tr key={`${conf.companyRegcode}-board`} className={`border-b ${conf.needsConfirmation ? 'bg-orange-50' : ''}`}>
                                                         <td className="px-3 py-2 font-medium" rowSpan={3}>
-                                                            {conf.companyName}
-                                                            <br />
-                                                            <span className="text-xs text-gray-500">{conf.companyRegcode}</span>
+                                                            <div className="flex flex-col gap-1">
+                                                                <span>{conf.companyName}</span>
+                                                                <span className="text-xs text-gray-500">{conf.companyRegcode}</span>
+                                                                {conf.naceCode && (
+                                                                    <span className="text-xs text-blue-600">NACE: {conf.naceCode}</span>
+                                                                )}
+                                                                {conf.needsConfirmation && (
+                                                                    <span className="inline-block px-2 py-0.5 text-xs bg-orange-200 text-orange-800 rounded">
+                                                                        ⚠️ Cita nozare
+                                                                    </span>
+                                                                )}
+                                                                {conf.sameMarket && !conf.needsConfirmation && (
+                                                                    <span className="inline-block px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded">
+                                                                        ✓ Tā pati nozare
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                         <td className="px-3 py-2">Tiesības iecelt/atlaist vadības vairākumu</td>
                                                         <td className="px-3 py-2 text-center">
