@@ -648,20 +648,27 @@ def find_all_linked_entities(conn, regcode: int, year: int = 2024) -> dict:
     - A1/A2: Tiešā kapitāla/balsstiesību kontrole (>50%)
     - E: Ķēdes efekts (A→B→C = A↔C saistīti)
     - F1: Fiziskās personas kontrole (viena persona kontrolē vairākus uzņēmumus)
+    - NACE pārbaude: Fizisko personu grupām jābūt tajā pašā/blakustirgū
     """
     
-    # Get company info
-    company = conn.execute(text("SELECT name, nace_section FROM companies WHERE regcode = :r"), {"r": regcode}).fetchone()
+    # Get company info including NACE code for market comparison
+    company = conn.execute(text("""
+        SELECT name, nace_code, nace_section 
+        FROM companies WHERE regcode = :r
+    """), {"r": regcode}).fetchone()
     if not company:
-        return {"linked": [], "partners": [], "via_person": []}
+        return {"linked": [], "partners": [], "via_person": [], "needs_confirmation": []}
     
     company_name = company.name
-    nace_section = company.nace_section
+    company_nace = company.nace_code  # Full NACE code (e.g., "62.01")
+    nace_prefix = company_nace[:2] if company_nace else None  # First 2 digits for market comparison
+
     
     all_linked = []
     all_partners = []
     via_person = []
     seen_regcodes = set([regcode])  # Don't include self
+    needs_confirmation = []  # Companies that need manual NACE confirmation
     
     # 1. Chain effect (transitive closure) - finds all >50% linked through chains
     logger.info(f"[LINKED] Finding ownership chain for {regcode}")
@@ -679,6 +686,7 @@ def find_all_linked_entities(conn, regcode: int, year: int = 2024) -> dict:
     
     # 2. Physical person control (F1 criterion)
     # Find ALL significant persons (≥25%) and their other companies
+    # IMPORTANT: Must check NACE codes - only same/adjacent market = LINKED
     logger.info(f"[LINKED] Finding significant physical persons for {regcode}")
     significant_persons = find_significant_physical_persons(conn, regcode)
     logger.info(f"[LINKED] Found {len(significant_persons)} significant persons")
@@ -697,6 +705,11 @@ def find_all_linked_entities(conn, regcode: int, year: int = 2024) -> dict:
             if other["regcode"] not in seen_regcodes:
                 seen_regcodes.add(other["regcode"])
                 
+                # Check NACE code match (same market = first 2 digits match)
+                other_nace = other.get("nace_code") or ""
+                other_nace_prefix = other_nace[:2] if other_nace else None
+                same_market = (nace_prefix == other_nace_prefix) if (nace_prefix and other_nace_prefix) else False
+                
                 entry = {
                     "regcode": other["regcode"],
                     "name": other["name"],
@@ -705,18 +718,28 @@ def find_all_linked_entities(conn, regcode: int, year: int = 2024) -> dict:
                     "person_percent": person["percent"],
                     "relation": "via_person",
                     "classification": other["classification"],
+                    "nace_code": other_nace,
+                    "same_market": same_market,
                     "link_reason": f"Kontrolē {person['name']} ({person['percent']:.1f}%)"
                 }
                 
-                # Classify based on person's ownership in the other company
+                # Classify based on person's ownership AND market similarity
                 if other["classification"] == "linked":
-                    # >50% in other company = LINKED
-                    all_linked.append(entry)
+                    if same_market:
+                        # >50% in same market = LINKED (automatic)
+                        entry["link_reason"] += " - tā pati nozare"
+                        all_linked.append(entry)
+                    else:
+                        # >50% in different market = needs confirmation
+                        entry["needs_confirmation"] = True
+                        entry["link_reason"] += " - cita nozare (jāapstiprina)"
+                        needs_confirmation.append(entry)
                 else:
                     # 25-50% in other company = via_person (show separately)
                     via_person.append(entry)
     
     logger.info(f"[LINKED] Found {len(via_person)} companies via physical person control")
+    logger.info(f"[LINKED] Found {len(needs_confirmation)} companies needing NACE confirmation")
     
     # 3. Also get partners (25-50%) - direct only
     partners_result = conn.execute(text("""
@@ -761,10 +784,56 @@ def find_all_linked_entities(conn, regcode: int, year: int = 2024) -> dict:
                 "entity_type": "physical_person"
             })
     
+    # 4. Get LINKED entities' partners (spec: Linked's partner = our partner)
+    # X → Linked B (100%) → Partner C (30%) = C is partner of X
+    for linked_entity in all_linked:
+        linked_regcode = linked_entity.get("regcode")
+        if not linked_regcode:
+            continue
+        
+        linked_partners_result = conn.execute(text("""
+            WITH company_capital AS (
+                SELECT SUM(number_of_shares * share_nominal_value) as total
+                FROM persons WHERE company_regcode = :r AND role = 'member'
+            )
+            SELECT 
+                p.legal_entity_regcode as partner_regcode,
+                p.person_name as partner_name,
+                SUM(p.number_of_shares * p.share_nominal_value) as value,
+                cc.total as total_capital,
+                CASE WHEN cc.total > 0 
+                    THEN (SUM(p.number_of_shares * p.share_nominal_value) / cc.total) * 100 
+                    ELSE 0 
+                END as ownership_percent
+            FROM persons p, company_capital cc
+            WHERE p.company_regcode = :r 
+              AND p.role = 'member'
+              AND p.legal_entity_regcode IS NOT NULL
+            GROUP BY p.legal_entity_regcode, p.person_name, cc.total
+            HAVING (SUM(p.number_of_shares * p.share_nominal_value) / NULLIF(cc.total, 0)) BETWEEN 0.25 AND 0.50
+        """), {"r": linked_regcode}).fetchall()
+        
+        for lp in linked_partners_result:
+            if lp.partner_regcode and lp.partner_regcode not in seen_regcodes:
+                seen_regcodes.add(lp.partner_regcode)
+                all_partners.append({
+                    "regcode": lp.partner_regcode,
+                    "name": lp.partner_name,
+                    "ownership_percent": float(lp.ownership_percent),
+                    "relation": "owner",
+                    "entity_type": "legal_entity",
+                    "via_linked": linked_entity["name"],
+                    "link_reason": f"Saistītā {linked_entity['name']} partneris ({lp.ownership_percent:.1f}%)"
+                })
+    
+    logger.info(f"[LINKED] Final: {len(all_linked)} linked, {len(all_partners)} partners, {len(needs_confirmation)} pending")
+    
     return {
         "linked": all_linked,
         "partners": all_partners,
         "via_person": via_person,
+        "needs_confirmation": needs_confirmation,
+        "company_nace": company_nace,
         "total_linked_count": len(all_linked) + len(via_person)
     }
 
