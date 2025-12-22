@@ -80,10 +80,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function CompanyPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
-    const company = await getCompany(id);
-    const graph = await getGraph(id);
-    const benchmark = await getBenchmark(id);
-    const competitors = await getCompetitors(id);
+
+    // Parallel data fetching - all requests run simultaneously
+    // This reduces total wait time from sum of all requests to max of all requests
+    const [company, graph, benchmark, competitors] = await Promise.all([
+        getCompany(id),
+        getGraph(id),
+        getBenchmark(id),
+        getCompetitors(id)
+    ]);
 
     if (!company) {
         notFound();
