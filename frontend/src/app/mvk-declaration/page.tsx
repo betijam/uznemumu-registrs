@@ -118,15 +118,28 @@ export default function MVKDeclarationPage() {
         const allEntities: ControlCriteria[] = [];
         const companyNace = (data as any).company_nace || '';
 
+        // Get target company NACE for comparison
+        const targetNace = (data as any).company_nace || '';
+        const targetNacePrefix = targetNace ? targetNace.substring(0, 2) : '';
+
+        // Helper function to check if same market (first 2 digits match)
+        const isSameMarket = (naceCode: string | null | undefined): boolean => {
+            if (!targetNacePrefix || !naceCode) return false;
+            const otherPrefix = naceCode.substring(0, 2);
+            return targetNacePrefix === otherPrefix;
+        };
+
         // Add partners (25-50%)
         data.section_a.partners.forEach((p: any) => {
             if (p.regcode) {
+                const pNace = p.nace_code || '';
+                const same = isSameMarket(pNace);
                 allEntities.push({
                     companyRegcode: p.regcode,
                     companyName: p.name || 'Unknown',
-                    naceCode: p.nace_code,
-                    sameMarket: true,
-                    needsConfirmation: false,
+                    naceCode: pNace,
+                    sameMarket: same,
+                    needsConfirmation: !same && pNace !== '',  // Needs confirmation if different NACE
                     boardControl: 'unknown',
                     contractControl: 'unknown',
                     agreementControl: 'unknown',
@@ -138,12 +151,14 @@ export default function MVKDeclarationPage() {
         // Add linked entities
         data.section_b.entities.forEach((e: any) => {
             if (e.regcode && !allEntities.find(x => x.companyRegcode === e.regcode)) {
+                const eNace = e.nace_code || '';
+                const same = e.same_market ?? isSameMarket(eNace);
                 allEntities.push({
                     companyRegcode: e.regcode,
                     companyName: e.name || 'Unknown',
-                    naceCode: e.nace_code,
-                    sameMarket: e.same_market ?? true,
-                    needsConfirmation: e.needs_confirmation ?? false,
+                    naceCode: eNace,
+                    sameMarket: same,
+                    needsConfirmation: e.needs_confirmation ?? (!same && eNace !== ''),
                     boardControl: 'unknown',
                     contractControl: 'unknown',
                     agreementControl: 'unknown',
@@ -159,7 +174,7 @@ export default function MVKDeclarationPage() {
                 allEntities.push({
                     companyRegcode: e.regcode,
                     companyName: e.name || 'Unknown',
-                    naceCode: e.nace_code,
+                    naceCode: e.nace_code || '',
                     sameMarket: false,
                     needsConfirmation: true,
                     boardControl: 'unknown',
