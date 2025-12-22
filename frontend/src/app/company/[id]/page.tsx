@@ -4,6 +4,7 @@ import Link from "next/link";
 import CompanyTabs from "@/components/CompanyTabs";
 import CompanySizeBadge from "@/components/CompanySizeBadge";
 import CompanyMap from "@/components/CompanyMap";
+import CompanySearchBar from "@/components/CompanySearchBar";
 
 // Data Fetching
 async function getCompany(id: string) {
@@ -95,6 +96,11 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
             {/* Header */}
             <div className="bg-white border-b border-gray-200">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    {/* Search Bar for quick navigation */}
+                    <div className="mb-4 max-w-md">
+                        <CompanySearchBar />
+                    </div>
+
                     <div className="md:flex md:items-start md:justify-between">
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-3">
