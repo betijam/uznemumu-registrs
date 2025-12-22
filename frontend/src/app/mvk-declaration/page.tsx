@@ -807,48 +807,50 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                     </button>
                                 </div>
 
-                                <table id="table-section-a" className="w-full text-sm">
-                                    <thead className="bg-gray-100">
-                                        <tr>
-                                            <th className="px-4 py-3 text-left">Nr.</th>
-                                            <th className="px-4 py-3 text-left">Partnerkomercsabiedrība</th>
-                                            <th className="px-4 py-3 text-right">Darbinieki</th>
-                                            <th className="px-4 py-3 text-right">Apgrozījums</th>
-                                            <th className="px-4 py-3 text-right">Bilance</th>
-                                            <th className="px-4 py-3 text-right">%</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {mvkData.section_a.partners.map((partner, idx) => (
-                                            <tr key={idx} className="border-b hover:bg-gray-50">
-                                                <td className="px-4 py-3">{idx + 1}</td>
-                                                <td className="px-4 py-3 font-medium">
-                                                    {partner.regcode ? (
-                                                        <Link href={`/company/${partner.regcode}`} className="text-primary hover:underline">
-                                                            {partner.name}
-                                                        </Link>
-                                                    ) : (
-                                                        partner.name
-                                                    )}
-                                                    {partner.entity_type === "physical_person" && (
-                                                        <span className="ml-2 text-xs bg-gray-200 px-2 py-0.5 rounded">Fiziska persona</span>
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3 text-right">{formatNumber(partner.employees)}</td>
-                                                <td className="px-4 py-3 text-right">{formatCurrency(partner.turnover)}</td>
-                                                <td className="px-4 py-3 text-right">{formatCurrency(partner.balance)}</td>
-                                                <td className="px-4 py-3 text-right font-medium">{partner.ownership_percent}%</td>
+                                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                                    <table id="table-section-a" className="w-full text-sm min-w-[600px]">
+                                        <thead className="bg-gray-100">
+                                            <tr>
+                                                <th className="px-2 sm:px-4 py-3 text-left">Nr.</th>
+                                                <th className="px-2 sm:px-4 py-3 text-left">Partnerkomercsabiedrība</th>
+                                                <th className="px-2 sm:px-4 py-3 text-right">Darbinieki</th>
+                                                <th className="px-2 sm:px-4 py-3 text-right">Apgrozījums</th>
+                                                <th className="px-2 sm:px-4 py-3 text-right">Bilance</th>
+                                                <th className="px-2 sm:px-4 py-3 text-right">%</th>
                                             </tr>
-                                        ))}
-                                        <tr className="bg-yellow-50 font-semibold">
-                                            <td className="px-4 py-3" colSpan={2}>KOPĀ (proporcionāli)</td>
-                                            <td className="px-4 py-3 text-right">{formatNumber(mvkData.section_a.totals.employees)}</td>
-                                            <td className="px-4 py-3 text-right">{formatCurrency(mvkData.section_a.totals.turnover)}</td>
-                                            <td className="px-4 py-3 text-right">{formatCurrency(mvkData.section_a.totals.balance)}</td>
-                                            <td className="px-4 py-3"></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {mvkData.section_a.partners.map((partner, idx) => (
+                                                <tr key={idx} className="border-b hover:bg-gray-50">
+                                                    <td className="px-4 py-3">{idx + 1}</td>
+                                                    <td className="px-4 py-3 font-medium">
+                                                        {partner.regcode ? (
+                                                            <Link href={`/company/${partner.regcode}`} className="text-primary hover:underline">
+                                                                {partner.name}
+                                                            </Link>
+                                                        ) : (
+                                                            partner.name
+                                                        )}
+                                                        {partner.entity_type === "physical_person" && (
+                                                            <span className="ml-2 text-xs bg-gray-200 px-2 py-0.5 rounded">Fiziska persona</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">{formatNumber(partner.employees)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatCurrency(partner.turnover)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatCurrency(partner.balance)}</td>
+                                                    <td className="px-4 py-3 text-right font-medium">{partner.ownership_percent}%</td>
+                                                </tr>
+                                            ))}
+                                            <tr className="bg-yellow-50 font-semibold">
+                                                <td className="px-4 py-3" colSpan={2}>KOPĀ (proporcionāli)</td>
+                                                <td className="px-4 py-3 text-right">{formatNumber(mvkData.section_a.totals.employees)}</td>
+                                                <td className="px-4 py-3 text-right">{formatCurrency(mvkData.section_a.totals.turnover)}</td>
+                                                <td className="px-4 py-3 text-right">{formatCurrency(mvkData.section_a.totals.balance)}</td>
+                                                <td className="px-4 py-3"></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
 
@@ -873,48 +875,50 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                     </button>
                                 </div>
 
-                                <table id="table-section-b" className="w-full text-sm">
-                                    <thead className="bg-gray-100">
-                                        <tr>
-                                            <th className="px-4 py-3 text-left">Nr.</th>
-                                            <th className="px-4 py-3 text-left">Saistītā komercsabiedrība</th>
-                                            <th className="px-4 py-3 text-right">Darbinieki</th>
-                                            <th className="px-4 py-3 text-right">Apgrozījums</th>
-                                            <th className="px-4 py-3 text-right">Bilance</th>
-                                            <th className="px-4 py-3 text-right">%</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {mvkData.section_b.entities.map((entity, idx) => (
-                                            <tr key={idx} className="border-b hover:bg-gray-50">
-                                                <td className="px-4 py-3">{idx + 1}</td>
-                                                <td className="px-4 py-3 font-medium">
-                                                    {entity.regcode ? (
-                                                        <Link href={`/company/${entity.regcode}`} className="text-primary hover:underline">
-                                                            {entity.name}
-                                                        </Link>
-                                                    ) : (
-                                                        entity.name
-                                                    )}
-                                                    <span className="ml-2 text-xs text-gray-500">
-                                                        {entity.relation === "owner" ? "👆 Īpašnieks" : "👇 Meitassab."}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 text-right">{formatNumber(entity.employees)}</td>
-                                                <td className="px-4 py-3 text-right">{formatCurrency(entity.turnover)}</td>
-                                                <td className="px-4 py-3 text-right">{formatCurrency(entity.balance)}</td>
-                                                <td className="px-4 py-3 text-right font-medium">{entity.ownership_percent}%</td>
+                                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                                    <table id="table-section-b" className="w-full text-sm min-w-[600px]">
+                                        <thead className="bg-gray-100">
+                                            <tr>
+                                                <th className="px-2 sm:px-4 py-3 text-left">Nr.</th>
+                                                <th className="px-2 sm:px-4 py-3 text-left">Saistītā komercsabiedrība</th>
+                                                <th className="px-2 sm:px-4 py-3 text-right">Darbinieki</th>
+                                                <th className="px-2 sm:px-4 py-3 text-right">Apgrozījums</th>
+                                                <th className="px-2 sm:px-4 py-3 text-right">Bilance</th>
+                                                <th className="px-2 sm:px-4 py-3 text-right">%</th>
                                             </tr>
-                                        ))}
-                                        <tr className="bg-red-50 font-semibold">
-                                            <td className="px-4 py-3" colSpan={2}>KOPĀ (100%)</td>
-                                            <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.row_2_3.employees)}</td>
-                                            <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_3.turnover)}</td>
-                                            <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_3.balance)}</td>
-                                            <td className="px-4 py-3"></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {mvkData.section_b.entities.map((entity, idx) => (
+                                                <tr key={idx} className="border-b hover:bg-gray-50">
+                                                    <td className="px-4 py-3">{idx + 1}</td>
+                                                    <td className="px-4 py-3 font-medium">
+                                                        {entity.regcode ? (
+                                                            <Link href={`/company/${entity.regcode}`} className="text-primary hover:underline">
+                                                                {entity.name}
+                                                            </Link>
+                                                        ) : (
+                                                            entity.name
+                                                        )}
+                                                        <span className="ml-2 text-xs text-gray-500">
+                                                            {entity.relation === "owner" ? "👆 Īpašnieks" : "👇 Meitassab."}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">{formatNumber(entity.employees)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatCurrency(entity.turnover)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatCurrency(entity.balance)}</td>
+                                                    <td className="px-4 py-3 text-right font-medium">{entity.ownership_percent}%</td>
+                                                </tr>
+                                            ))}
+                                            <tr className="bg-red-50 font-semibold">
+                                                <td className="px-4 py-3" colSpan={2}>KOPĀ (100%)</td>
+                                                <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.row_2_3.employees)}</td>
+                                                <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_3.turnover)}</td>
+                                                <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_3.balance)}</td>
+                                                <td className="px-4 py-3"></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
 
@@ -933,46 +937,48 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                 </button>
                             </div>
 
-                            <table id="table-summary" className="w-full text-sm">
-                                <thead className="bg-gray-100">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left">Rinda</th>
-                                        <th className="px-4 py-3 text-left">Apraksts</th>
-                                        <th className="px-4 py-3 text-right">Darbinieki</th>
-                                        <th className="px-4 py-3 text-right">Apgrozījums</th>
-                                        <th className="px-4 py-3 text-right">Bilance</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr className="border-b">
-                                        <td className="px-4 py-3 font-medium">2.1</td>
-                                        <td className="px-4 py-3">Pašas komercsabiedrības dati</td>
-                                        <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.row_2_1.employees)}</td>
-                                        <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_1.turnover)}</td>
-                                        <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_1.balance)}</td>
-                                    </tr>
-                                    <tr className="border-b bg-yellow-50">
-                                        <td className="px-4 py-3 font-medium">2.2</td>
-                                        <td className="px-4 py-3">Partneruzņēmumu dati (proporcionāli)</td>
-                                        <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.row_2_2.employees)}</td>
-                                        <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_2.turnover)}</td>
-                                        <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_2.balance)}</td>
-                                    </tr>
-                                    <tr className="border-b bg-red-50">
-                                        <td className="px-4 py-3 font-medium">2.3</td>
-                                        <td className="px-4 py-3">Saistīto uzņēmumu dati (100%)</td>
-                                        <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.row_2_3.employees)}</td>
-                                        <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_3.turnover)}</td>
-                                        <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_3.balance)}</td>
-                                    </tr>
-                                    <tr className="bg-primary text-white font-bold">
-                                        <td className="px-4 py-3" colSpan={2}>KOPĀ</td>
-                                        <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.total.employees)}</td>
-                                        <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.total.turnover)}</td>
-                                        <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.total.balance)}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                            <div className="overflow-x-auto -mx-4 sm:mx-0">
+                                <table id="table-summary" className="w-full text-sm min-w-[600px]">
+                                    <thead className="bg-gray-100">
+                                        <tr>
+                                            <th className="px-2 sm:px-4 py-3 text-left">Rinda</th>
+                                            <th className="px-2 sm:px-4 py-3 text-left">Apraksts</th>
+                                            <th className="px-2 sm:px-4 py-3 text-right">Darbinieki</th>
+                                            <th className="px-2 sm:px-4 py-3 text-right">Apgrozījums</th>
+                                            <th className="px-2 sm:px-4 py-3 text-right">Bilance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr className="border-b">
+                                            <td className="px-4 py-3 font-medium">2.1</td>
+                                            <td className="px-4 py-3">Pašas komercsabiedrības dati</td>
+                                            <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.row_2_1.employees)}</td>
+                                            <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_1.turnover)}</td>
+                                            <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_1.balance)}</td>
+                                        </tr>
+                                        <tr className="border-b bg-yellow-50">
+                                            <td className="px-4 py-3 font-medium">2.2</td>
+                                            <td className="px-4 py-3">Partneruzņēmumu dati (proporcionāli)</td>
+                                            <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.row_2_2.employees)}</td>
+                                            <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_2.turnover)}</td>
+                                            <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_2.balance)}</td>
+                                        </tr>
+                                        <tr className="border-b bg-red-50">
+                                            <td className="px-4 py-3 font-medium">2.3</td>
+                                            <td className="px-4 py-3">Saistīto uzņēmumu dati (100%)</td>
+                                            <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.row_2_3.employees)}</td>
+                                            <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_3.turnover)}</td>
+                                            <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_3.balance)}</td>
+                                        </tr>
+                                        <tr className="bg-primary text-white font-bold">
+                                            <td className="px-4 py-3" colSpan={2}>KOPĀ</td>
+                                            <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.total.employees)}</td>
+                                            <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.total.turnover)}</td>
+                                            <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.total.balance)}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
                         {/* MVK Size Classification */}
