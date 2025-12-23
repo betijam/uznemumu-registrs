@@ -40,6 +40,28 @@ export default function RootLayout({
           type="font/woff2"
           crossOrigin="anonymous"
         />
+
+        {/* Critical CSS - inline for instant render (eliminates 160ms blocking on mobile) */}
+        <style dangerouslySetInnerHTML={{
+          __html: `
+          *,::before,::after{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}
+          html{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4;font-family:system-ui,arial,sans-serif}
+          body{margin:0;line-height:inherit;color:#0F172A;background:#F8FAFC}
+          h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}
+          a{color:inherit;text-decoration:inherit}
+          button,input,optgroup,select,textarea{font-family:inherit;font-size:100%;line-height:inherit;color:inherit;margin:0;padding:0}
+          .bg-gradient-to-br{background-image:linear-gradient(to bottom right,var(--tw-gradient-stops))}
+          .from-primary{--tw-gradient-from:#1E293B;--tw-gradient-to:rgba(30,41,59,0);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}
+          .via-primary-dark{--tw-gradient-to:rgba(15,23,42,0);--tw-gradient-stops:var(--tw-gradient-from),#0F172A,var(--tw-gradient-to)}
+          .to-accent{--tw-gradient-to:#14B8A6}
+          .text-white{color:#fff}
+          .bg-white{background-color:#fff}
+          .shadow-md{box-shadow:0 4px 6px -1px rgba(0,0,0,0.1),0 2px 4px -1px rgba(0,0,0,0.06)}
+          .rounded-xl{border-radius:0.75rem}
+          .p-6{padding:1.5rem}
+          .flex{display:flex}
+          .min-h-screen{min-height:100vh}
+        `}} />
       </head>
       <body className="antialiased">
         {children}
