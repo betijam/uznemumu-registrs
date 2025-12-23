@@ -2,15 +2,15 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
-// Optimized font loading - reduced weights and subset for smaller file size
+// Optimized font loading - reduced weights and Latin subset only
 const inter = Inter({
-  subsets: ["latin"],  // Only latin, not latin-ext (smaller file)
-  weight: ["400", "600", "700"],  // Only essential weights
-  display: "swap",  // Shows fallback immediately, swaps to Inter when loaded (Lighthouse recommended)
+  subsets: ["latin"],  // Only Latin characters (no Latin-ext)
+  weight: ["400", "600", "700"],  // Essential weights only
+  display: "swap",  // Show fallback immediately, swap when loaded
   variable: "--font-inter",
-  preload: true,
-  fallback: ["system-ui", "arial"],
-  adjustFontFallback: false,  // Reduces layout shift by not adjusting fallback metrics
+  preload: true,  // Start loading early
+  fallback: ["system-ui", "arial"],  // Fast fallback fonts
+  adjustFontFallback: false,  // Reduce layout shift
 });
 
 export const metadata: Metadata = {
@@ -32,6 +32,14 @@ export default function RootLayout({
         {process.env.NEXT_PUBLIC_API_URL && (
           <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL} />
         )}
+        {/* Preload Inter font to start download early, reducing mobile LCP */}
+        <link
+          rel="preload"
+          href="/_next/static/media/1bffadaabf893a1e.7cd81963.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
       </head>
       <body className="antialiased">
         {children}
