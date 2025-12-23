@@ -15,6 +15,7 @@
     "last 2 Edge versions"
   ],
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@types/lodash.debounce": "^4.0.9",
     "autoprefixer": "^10.4.23",
     "lodash.debounce": "^4.0.8",

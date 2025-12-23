@@ -1,203 +1,106 @@
-import { Suspense } from "react";
+"use client";
+
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
-import SearchInput from "@/components/SearchInput";
+import Footer from "@/components/Footer"; // Assuming we have a footer, or I should omit it if not certain
+import HeroSearch from "@/components/dashboard/HeroSearch";
+import MarketPulse from "@/components/dashboard/MarketPulse";
+import BentoGrid from "@/components/dashboard/BentoGrid";
 import Link from "next/link";
 
-// Stats Cards Skeleton for loading state
-function StatsCardsSkeleton() {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12" style={{ minHeight: '140px' }}>
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="bg-white rounded-xl shadow-md p-6" style={{ minHeight: '140px' }}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
-            <div className="h-5 w-5 bg-gray-200 rounded animate-pulse"></div>
-          </div>
-          <div className="h-10 w-20 bg-gray-200 rounded animate-pulse mb-2"></div>
-          <div className="h-3 w-32 bg-gray-200 rounded animate-pulse"></div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// Async Stats Cards Component - loads independently
-async function StatsCards() {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
-
-  // Server-side logging to diagnose data loading issues
-  console.log('[StatsCards] Fetching from:', `${API_BASE_URL}/stats`);
-
-  let stats = null;
-  try {
-    const res = await fetch(`${API_BASE_URL}/stats`, {
-      next: { revalidate: 3600 }  // Cache for 1 hour
-    });
-
-    console.log('[StatsCards] Response status:', res.status, res.statusText);
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error('[StatsCards] API Error:', res.status, errorText);
-    } else {
-      stats = await res.json();
-      console.log('[StatsCards] Data received:', JSON.stringify(stats));
-    }
-  } catch (e) {
-    console.error('[StatsCards] Fetch failed:', e instanceof Error ? e.message : e);
-  }
-
-  const dailyStats = stats?.daily_stats || { new_today: 0, change: 0 };
-  const topCompany = stats?.top_earner || { name: "N/A", detail: "" };
-  const weeklyProcurements = stats?.weekly_procurements || { amount: "0 €", detail: "Nav datu" };
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-      {/* Daily Stats Card */}
-      <div className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-shadow p-6">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium text-gray-500">Dienas statistika</h3>
-          <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-          </svg>
-        </div>
-        <p className="text-4xl font-bold text-primary mb-1">{dailyStats.new_today}</p>
-        <p className="text-xs text-gray-500">Jauni uzņēmumi šodien</p>
-      </div>
-
-      {/* Top Earner Card */}
-      <div className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-shadow p-6">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium text-gray-500">TOP Pelnošie</h3>
-          <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-        </div>
-        <p className="text-2xl font-bold text-primary mb-1">{topCompany.name}</p>
-        <p className="text-xs text-gray-500">{topCompany.detail}</p>
-      </div>
-
-      {/* Weekly Procurements Card */}
-      <div className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-shadow p-6">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium text-gray-500">Nedēļas iepirkumi</h3>
-          <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <p className="text-4xl font-bold text-primary mb-1">{weeklyProcurements.amount}</p>
-        <p className="text-xs text-gray-500">{weeklyProcurements.detail}</p>
-      </div>
-    </div>
-  );
+interface DashboardData {
+  pulse: {
+    active_companies: number;
+    new_this_week: number;
+    liquidated_this_week: number;
+    total_turnover: number;
+  };
+  tops: {
+    turnover: any[];
+    profit: any[];
+    salaries: any[];
+  };
+  gazeles: any[];
+  latest_registered: any[];
 }
 
 export default function Home() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchDashboard() {
+      try {
+        const res = await fetch('/api/home/dashboard');
+        if (res.ok) {
+          const json = await res.json();
+          setData(json);
+        } else {
+          console.error("Dashboard fetch failed");
+        }
+      } catch (error) {
+        console.error("Dashboard error:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchDashboard();
+  }, []);
+
   return (
-    <main className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50/50">
       <Navbar />
 
-      {/* Hero Section - renders immediately without waiting for data */}
-      <div className="relative bg-gradient-to-br from-primary via-primary-dark to-accent overflow-hidden">
-        {/* Background decorative elements */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full filter blur-3xl"></div>
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-accent rounded-full filter blur-3xl"></div>
-        </div>
+      {/* Hero Section */}
+      <div className="relative pt-20 pb-16 md:pt-32 md:pb-24 overflow-hidden">
+        {/* Background Decor */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-purple-50 to-transparent -z-10"></div>
+        <div className="absolute top-20 right-0 w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute top-20 left-0 w-64 h-64 bg-yellow-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
 
-        <div className="relative z-10 pt-24 pb-32">
-          <div className="text-center">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6">
-              Latvijas Uzņēmumu Reģistrs un<br />Analītika
-            </h1>
-            <p className="text-lg sm:text-xl text-gray-300 mb-10 max-w-3xl mx-auto">
-              Ātra, uzticama un detalizēta informācija par vairāk nekā 200,000 Latvijas uzņēmumiem. Finanšu dati, amatpersonas un vēsture.
-            </p>
+        <div className="container mx-auto px-4 text-center relative z-10">
+          <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 mb-6 tracking-tight">
+            Latvijas Uzņēmumu <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-500">Reģistrs 2.0</span>
+          </h1>
+          <p className="text-lg md:text-xl text-gray-600 mb-10 max-w-2xl mx-auto">
+            Gudrāka meklēšana. Dziļāka analītika. Visi dati vienuviet.
+          </p>
 
-            {/* Search Bar */}
-            <div className="max-w-3xl mx-auto mb-8">
-              <SearchInput className="shadow-2xl" />
-            </div>
+          <HeroSearch />
 
-            {/* Popular Tags */}
-            <div className="flex flex-wrap justify-center gap-2 mb-4">
-              <span className="text-sm text-gray-400">Populāri:</span>
-              <Link
-                href="/industry/41"
-                className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-sm rounded-full transition-colors backdrop-blur-sm"
-              >
-                Būvniecība
-              </Link>
-              <Link
-                href="/industry/62"
-                className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-sm rounded-full transition-colors backdrop-blur-sm"
-              >
-                IT pakalpojumi
-              </Link>
-              <Link
-                href="/top100"
-                className="px-3 py-1 bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white text-sm rounded-full transition-colors font-semibold shadow-lg"
-              >
-                🏆 TOP 100
-              </Link>
-              <Link
-                href="/mvk-declaration"
-                className="px-3 py-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white text-sm rounded-full transition-colors font-semibold shadow-lg"
-              >
-                📋 MVK Deklarācija
-              </Link>
-              <Link
-                href="/industry/01"
-                className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-sm rounded-full transition-colors backdrop-blur-sm"
-              >
-                Lauksaimniecība
-              </Link>
-              <Link
-                href="/industry/47"
-                className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-sm rounded-full transition-colors backdrop-blur-sm"
-              >
-                Mazumtirdzniecība
-              </Link>
-            </div>
+          <div className="mt-8 flex justify-center gap-4 text-sm text-gray-500 flex-wrap">
+            <span>Populāri:</span>
+            <Link href="/tops/profit" className="hover:text-purple-600 hover:underline">Top Pelnošākie</Link>
+            <Link href="/tops/gazelles" className="hover:text-purple-600 hover:underline">Jaunie Uzņēmumi</Link>
+            <Link href="/lists/sanctions" className="hover:text-purple-600 hover:underline">Sankciju Saraksti</Link>
+            <Link href="/lists/tax-debtors" className="hover:text-purple-600 hover:underline">Nodokļu Parādnieki</Link>
           </div>
         </div>
       </div>
 
-      {/* Stats Section - loads async with Suspense */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 pb-16 relative z-20">
-        <Suspense fallback={<StatsCardsSkeleton />}>
-          <StatsCards />
-        </Suspense>
+      {/* Dashboard Content */}
+      <div className="container mx-auto px-4 pb-20">
+        <MarketPulse data={data ? data.pulse : null} loading={loading} />
 
-        {/* Professional Data Analytics Section - static content */}
-        <div className="bg-white rounded-xl shadow-card p-8">
-          <h2 className="text-2xl font-bold text-primary mb-4">Profesionāla datu analītika</h2>
-          <p className="text-gray-600 mb-6">
-            Mūsu platforma piedāvā padziļinātu ieskatu uzņēmumu darbībā,
-            apvienojot publiskos reģistrus ar viedo analītiku.
-          </p>
-          <ul className="space-y-3">
-            <li className="flex items-start">
-              <svg className="w-5 h-5 text-accent mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span className="text-gray-700">Vēsturiskie finanšu dati un tendences</span>
-            </li>
-            <li className="flex items-start">
-              <svg className="w-5 h-5 text-accent mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span className="text-gray-700">Amatpersonu un īpašnieku tīkla kartēšana</span>
-            </li>
-            <li className="flex items-start">
-              <svg className="w-5 h-5 text-accent mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span className="text-gray-700">Valsts iepirkumu uzraudzība un analīze</span>
-            </li>
-          </ul>
-        </div>
+        {loading ? (
+          <div className="w-full h-96 bg-gray-100 rounded-2xl animate-pulse"></div>
+        ) : data ? (
+          <BentoGrid
+            tops={data.tops}
+            latest={data.latest_registered}
+            gazeles={data.gazeles}
+            year={new Date().getFullYear()}
+          />
+        ) : (
+          <div className="text-center py-20 text-gray-500">
+            Neizdevās ielādēt datus. Lūdzu mēģiniet vēlāk.
+          </div>
+        )}
       </div>
-    </main>
+
+      {/* Footer space if needed */}
+      <div className="h-12"></div>
+    </div>
   );
 }

@@ -5,7 +5,7 @@ from asgi_correlation_id import CorrelationIdMiddleware
 import logging
 import os
 from etl import run_all_etl
-from app.routers import search, companies, benchmarking, industries
+from app.routers import search, companies, benchmarking, industries, dashboard
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -45,6 +45,7 @@ app.include_router(search.router)
 app.include_router(companies.router)
 app.include_router(benchmarking.router)
 app.include_router(industries.router)
+app.include_router(dashboard.router)
 
 @app.get("/health")
 def health_check():
