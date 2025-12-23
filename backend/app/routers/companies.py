@@ -477,56 +477,95 @@ def find_direct_subsidiaries(conn, regcode: int, company_name: str) -> list:
 
 def get_ownership_chain(conn, start_regcode: int, visited: set = None, depth: int = 0, max_depth: int = 5) -> list:
     """
-    Recursively find all linked entities through ownership chain (transitive closure).
+    Find all linked entities through ownership chain using PostgreSQL Recursive CTE.
     
+    PERFORMANCE: Replaces Python recursion (N+1 queries) with single SQL query.
     E kritērijs: Ja A→B un B→C (>50%), tad A↔C ir saistīti.
     """
-    if visited is None:
-        visited = set()
+    # Use Recursive CTE for single-query traversal
+    result = conn.execute(text("""
+        WITH RECURSIVE ownership_tree AS (
+            -- 1. STARTING POINT: Direct owners and subsidiaries of target company
+            SELECT 
+                p.company_regcode,
+                p.legal_entity_regcode,
+                p.person_name,
+                p.number_of_shares,
+                p.share_nominal_value,
+                1 as depth,
+                CASE 
+                    WHEN p.legal_entity_regcode IS NOT NULL THEN 'upstream'
+                    ELSE 'downstream'
+                END as direction
+            FROM persons p
+            WHERE (p.company_regcode = :start_reg OR p.legal_entity_regcode = :start_reg)
+              AND p.role = 'member'
+
+            UNION ALL
+
+            -- 2. RECURSION: Follow the ownership chain
+            SELECT 
+                p.company_regcode,
+                p.legal_entity_regcode,
+                p.person_name,
+                p.number_of_shares,
+                p.share_nominal_value,
+                ot.depth + 1,
+                ot.direction
+            FROM persons p
+            JOIN ownership_tree ot ON (
+                -- Upstream: find owners of owners
+                (ot.direction = 'upstream' AND p.company_regcode = ot.legal_entity_regcode)
+                OR
+                -- Downstream: find subsidiaries of subsidiaries  
+                (ot.direction = 'downstream' AND p.legal_entity_regcode = ot.company_regcode)
+            )
+            WHERE ot.depth < :max_depth
+              AND p.role = 'member'
+              AND p.legal_entity_regcode IS NOT NULL
+        ),
+        -- Calculate ownership percentages
+        with_percentages AS (
+            SELECT 
+                ot.*,
+                c.name as entity_name,
+                CASE ot.direction
+                    WHEN 'upstream' THEN ot.legal_entity_regcode
+                    ELSE ot.company_regcode
+                END as target_regcode,
+                SUM(ot.number_of_shares * ot.share_nominal_value) OVER (PARTITION BY ot.company_regcode, ot.legal_entity_regcode) as share_value,
+                SUM(ot.number_of_shares * ot.share_nominal_value) OVER (PARTITION BY ot.company_regcode) as total_capital
+            FROM ownership_tree ot
+            LEFT JOIN companies c ON c.regcode = COALESCE(ot.legal_entity_regcode, ot.company_regcode)
+        )
+        SELECT DISTINCT
+            target_regcode as regcode,
+            entity_name as name,
+            direction,
+            depth,
+            CASE WHEN total_capital > 0 THEN (share_value / total_capital * 100) ELSE NULL END as percent
+        FROM with_percentages
+        WHERE target_regcode != :start_reg
+          AND target_regcode IS NOT NULL
+    """), {"start_reg": start_regcode, "max_depth": max_depth}).fetchall()
     
-    if start_regcode in visited or depth > max_depth:
-        return []
-    
-    visited.add(start_regcode)
+    # Convert to expected format, filtering for >50% (linked)
     all_linked = []
+    seen = set()
     
-    # Get company name for subsidiary search
-    company_row = conn.execute(text("SELECT name FROM companies WHERE regcode = :r"), {"r": start_regcode}).fetchone()
-    company_name = company_row.name if company_row else ""
-    
-    # Find direct owners (upstream)
-    owners = find_direct_owners(conn, start_regcode)
-    for owner in owners:
-        entry = {
-            "regcode": owner["regcode"],
-            "name": owner["name"],
-            "relation": "owner",
-            "ownership_percent": owner["percent"],
-            "chain_depth": depth + 1,
-            "chain_type": "upstream"
-        }
-        all_linked.append(entry)
-        
-        # Recurse to find chain
-        chain = get_ownership_chain(conn, owner["regcode"], visited, depth + 1, max_depth)
-        all_linked.extend(chain)
-    
-    # Find direct subsidiaries (downstream)
-    subsidiaries = find_direct_subsidiaries(conn, start_regcode, company_name)
-    for sub in subsidiaries:
-        entry = {
-            "regcode": sub["regcode"],
-            "name": sub["name"],
-            "relation": "subsidiary",
-            "ownership_percent": sub["percent"],
-            "chain_depth": depth + 1,
-            "chain_type": "downstream"
-        }
-        all_linked.append(entry)
-        
-        # Recurse to find chain
-        chain = get_ownership_chain(conn, sub["regcode"], visited, depth + 1, max_depth)
-        all_linked.extend(chain)
+    for row in result:
+        if row.regcode and row.regcode not in seen:
+            # Only include if >50% ownership (linked status)
+            if row.percent and row.percent > 50:
+                seen.add(row.regcode)
+                all_linked.append({
+                    "regcode": row.regcode,
+                    "name": row.name or f"Company {row.regcode}",
+                    "relation": "owner" if row.direction == "upstream" else "subsidiary",
+                    "ownership_percent": round(row.percent, 2) if row.percent else None,
+                    "chain_depth": row.depth,
+                    "chain_type": row.direction
+                })
     
     return all_linked
 
@@ -672,6 +711,95 @@ def find_companies_controlled_by_person(conn, person_name: str, person_code: str
     return companies
 
 
+def find_all_companies_via_persons_bulk(conn, regcode: int) -> list:
+    """
+    PERFORMANCE: Find ALL companies controlled by significant persons in ONE query.
+    
+    Replaces the N+1 pattern of:
+    - Get N significant persons
+    - For each person, query their other companies
+    
+    With single SQL query that:
+    1. Finds all persons with ≥25% in target company
+    2. Finds all other companies where those persons have ≥25%
+    """
+    result = conn.execute(text("""
+        WITH target_owners AS (
+            -- Step 1: Find all significant owners (≥25%) of target company
+            SELECT 
+                p.person_name,
+                p.person_code,
+                SUM(p.number_of_shares * p.share_nominal_value) as person_value,
+                (SELECT SUM(number_of_shares * share_nominal_value) 
+                 FROM persons WHERE company_regcode = :r AND role = 'member') as total_capital
+            FROM persons p
+            WHERE p.company_regcode = :r
+              AND p.role = 'member'
+              AND p.legal_entity_regcode IS NULL
+            GROUP BY p.person_name, p.person_code
+            HAVING SUM(p.number_of_shares * p.share_nominal_value) / 
+                   NULLIF((SELECT SUM(number_of_shares * share_nominal_value) 
+                          FROM persons WHERE company_regcode = :r AND role = 'member'), 0) >= 0.25
+        ),
+        -- Step 2: Find all OTHER companies where these persons are owners
+        other_companies AS (
+            SELECT 
+                p.company_regcode,
+                c.name as company_name,
+                c.nace_code,
+                c.nace_section,
+                tow.person_name,
+                tow.person_code,
+                (tow.person_value / NULLIF(tow.total_capital, 0) * 100) as person_percent_in_target,
+                SUM(p.number_of_shares * p.share_nominal_value) as person_value_in_other,
+                (SELECT SUM(number_of_shares * share_nominal_value) 
+                 FROM persons WHERE company_regcode = p.company_regcode AND role = 'member') as other_total_capital
+            FROM persons p
+            JOIN target_owners tow ON (
+                LOWER(TRIM(p.person_name)) = LOWER(TRIM(tow.person_name))
+                AND (
+                    tow.person_code IS NULL 
+                    OR p.person_code LIKE SPLIT_PART(tow.person_code, '-', 1) || '%'
+                )
+            )
+            JOIN companies c ON c.regcode = p.company_regcode
+            WHERE p.company_regcode != :r
+              AND p.role = 'member'
+              AND p.legal_entity_regcode IS NULL
+            GROUP BY p.company_regcode, c.name, c.nace_code, c.nace_section, 
+                     tow.person_name, tow.person_code, tow.person_value, tow.total_capital
+        )
+        SELECT 
+            company_regcode as regcode,
+            company_name as name,
+            nace_code,
+            nace_section,
+            person_name,
+            person_code,
+            person_percent_in_target,
+            COALESCE((person_value_in_other / NULLIF(other_total_capital, 0)) * 100, 0) as ownership_percent,
+            CASE 
+                WHEN (person_value_in_other / NULLIF(other_total_capital, 0)) > 0.5 THEN 'linked'
+                WHEN (person_value_in_other / NULLIF(other_total_capital, 0)) >= 0.25 THEN 'partner'
+                ELSE 'minor'
+            END as classification
+        FROM other_companies
+        WHERE (person_value_in_other / NULLIF(other_total_capital, 0)) >= 0.25
+    """), {"r": regcode}).fetchall()
+    
+    return [{
+        "regcode": r.regcode,
+        "name": r.name,
+        "nace_code": r.nace_code,
+        "nace_section": r.nace_section,
+        "controlling_person": r.person_name,
+        "person_code": r.person_code,
+        "person_percent": float(r.person_percent_in_target) if r.person_percent_in_target else 0,
+        "ownership_percent": float(r.ownership_percent) if r.ownership_percent else 0,
+        "classification": r.classification
+    } for r in result]
+
+
 def find_all_linked_entities(conn, regcode: int, year: int = 2024) -> dict:
     """
     Galvenā funkcija: Atrod VISUS saistītos uzņēmumus pēc ES MVU noteikumiem.
@@ -716,59 +844,48 @@ def find_all_linked_entities(conn, regcode: int, year: int = 2024) -> dict:
     
     logger.info(f"[LINKED] Found {len(all_linked)} linked via ownership chain")
     
-    # 2. Physical person control (F1 criterion)
-    # Find ALL significant persons (≥25%) and their other companies
-    # IMPORTANT: Must check NACE codes - only same/adjacent market = LINKED
-    logger.info(f"[LINKED] Finding significant physical persons for {regcode}")
-    significant_persons = find_significant_physical_persons(conn, regcode)
-    logger.info(f"[LINKED] Found {len(significant_persons)} significant persons")
+    # 2. Physical person control (F1 criterion) - BULK QUERY
+    # PERFORMANCE: Single query finds all companies controlled by all significant persons
+    logger.info(f"[LINKED] Finding companies via physical persons for {regcode}")
+    person_controlled = find_all_companies_via_persons_bulk(conn, regcode)
+    logger.info(f"[LINKED] Found {len(person_controlled)} companies via physical persons")
     
-    for person in significant_persons:
-        if not person["name"]:
-            continue
+    for other in person_controlled:
+        if other["regcode"] not in seen_regcodes:
+            seen_regcodes.add(other["regcode"])
             
-        # Find ALL other companies where this person has ≥25% ownership
-        # Uses person_name + person_code prefix for matching
-        other_companies = find_companies_controlled_by_person(
-            conn, person["name"], person.get("person_code"), regcode
-        )
-        
-        for other in other_companies:
-            if other["regcode"] not in seen_regcodes:
-                seen_regcodes.add(other["regcode"])
-                
-                # Check NACE code match (same market = first 2 digits match)
-                other_nace = other.get("nace_code") or ""
-                other_nace_prefix = other_nace[:2] if other_nace else None
-                same_market = (nace_prefix == other_nace_prefix) if (nace_prefix and other_nace_prefix) else False
-                
-                entry = {
-                    "regcode": other["regcode"],
-                    "name": other["name"],
-                    "ownership_percent": other["ownership_percent"],
-                    "controlling_person": person["name"],
-                    "person_percent": person["percent"],
-                    "relation": "via_person",
-                    "classification": other["classification"],
-                    "nace_code": other_nace,
-                    "same_market": same_market,
-                    "link_reason": f"Kontrolē {person['name']} ({person['percent']:.1f}%)"
-                }
-                
-                # Classify based on person's ownership AND market similarity
-                if other["classification"] == "linked":
-                    if same_market:
-                        # >50% in same market = LINKED (automatic)
-                        entry["link_reason"] += " - tā pati nozare"
-                        all_linked.append(entry)
-                    else:
-                        # >50% in different market = needs confirmation
-                        entry["needs_confirmation"] = True
-                        entry["link_reason"] += " - cita nozare (jāapstiprina)"
-                        needs_confirmation.append(entry)
+            # Check NACE code match (same market = first 2 digits match)
+            other_nace = other.get("nace_code") or ""
+            other_nace_prefix = other_nace[:2] if other_nace else None
+            same_market = (nace_prefix == other_nace_prefix) if (nace_prefix and other_nace_prefix) else False
+            
+            entry = {
+                "regcode": other["regcode"],
+                "name": other["name"],
+                "ownership_percent": other["ownership_percent"],
+                "controlling_person": other["controlling_person"],
+                "person_percent": other["person_percent"],
+                "relation": "via_person",
+                "classification": other["classification"],
+                "nace_code": other_nace,
+                "same_market": same_market,
+                "link_reason": f"Kontrolē {other['controlling_person']} ({other['person_percent']:.1f}%)"
+            }
+            
+            # Classify based on person's ownership AND market similarity
+            if other["classification"] == "linked":
+                if same_market:
+                    # >50% in same market = LINKED (automatic)
+                    entry["link_reason"] += " - tā pati nozare"
+                    all_linked.append(entry)
                 else:
-                    # 25-50% in other company = via_person (show separately)
-                    via_person.append(entry)
+                    # >50% in different market = needs confirmation
+                    entry["needs_confirmation"] = True
+                    entry["link_reason"] += " - cita nozare (jāapstiprina)"
+                    needs_confirmation.append(entry)
+            else:
+                # 25-50% in other company = via_person (show separately)
+                via_person.append(entry)
     
     logger.info(f"[LINKED] Found {len(via_person)} companies via physical person control")
     logger.info(f"[LINKED] Found {len(needs_confirmation)} companies needing NACE confirmation")
