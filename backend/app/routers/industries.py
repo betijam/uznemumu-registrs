@@ -448,8 +448,13 @@ def get_industry_detail(
         """), {"code": nace_code, "year": year}).fetchone()
         
         industry_avg_salary = None
-        if salary_data.total_vsaoi and salary_data.total_employees and salary_data.total_employees > 0:
-            industry_avg_salary = round((salary_data.total_vsaoi / 0.3409 / salary_data.total_employees / 12))
+        try:
+            vsaoi = safe_float(salary_data.total_vsaoi) or 0
+            employees = safe_float(salary_data.total_employees) or 0
+            if vsaoi > 0 and employees > 0:
+                industry_avg_salary = round(vsaoi / 0.3409 / employees / 12)
+        except Exception:
+            industry_avg_salary = None
         
         # National average salary
         national_salary_data = conn.execute(text("""
@@ -461,8 +466,13 @@ def get_industry_detail(
         """), {"year": year}).fetchone()
         
         national_avg_salary = None
-        if national_salary_data.total_vsaoi and national_salary_data.total_employees and national_salary_data.total_employees > 0:
-            national_avg_salary = round((national_salary_data.total_vsaoi / 0.3409 / national_salary_data.total_employees / 12))
+        try:
+            nat_vsaoi = safe_float(national_salary_data.total_vsaoi) or 0
+            nat_employees = safe_float(national_salary_data.total_employees) or 0
+            if nat_vsaoi > 0 and nat_employees > 0:
+                national_avg_salary = round(nat_vsaoi / 0.3409 / nat_employees / 12)
+        except Exception:
+            national_avg_salary = None
         
         salary_ratio = None
         if industry_avg_salary and national_avg_salary and national_avg_salary > 0:
