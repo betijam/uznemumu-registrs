@@ -120,12 +120,22 @@ def _get_overview_from_cache(conn):
     """)).fetchone()
     
     turnover_growth = None
-    if macro.total_turnover and prev_year.prev_turnover and prev_year.prev_turnover > 0:
-        turnover_growth = round(((macro.total_turnover - prev_year.prev_turnover) / prev_year.prev_turnover) * 100, 1)
+    try:
+        curr_turnover = safe_float(macro.total_turnover) or 0
+        prev_turnover = safe_float(prev_year.prev_turnover) or 0
+        if curr_turnover > 0 and prev_turnover > 0:
+            turnover_growth = round(((curr_turnover - prev_turnover) / prev_turnover) * 100, 1)
+    except Exception:
+        turnover_growth = None
     
     employee_change = None
-    if macro.total_employees and prev_year.prev_employees and prev_year.prev_employees > 0:
-        employee_change = round(((macro.total_employees - prev_year.prev_employees) / prev_year.prev_employees) * 100, 1)
+    try:
+        curr_employees = safe_float(macro.total_employees) or 0
+        prev_employees = safe_float(prev_year.prev_employees) or 0
+        if curr_employees > 0 and prev_employees > 0:
+            employee_change = round(((curr_employees - prev_employees) / prev_employees) * 100, 1)
+    except Exception:
+        employee_change = None
     
     # 2. Top Growth (by turnover growth %)
     top_growth = conn.execute(text("""
