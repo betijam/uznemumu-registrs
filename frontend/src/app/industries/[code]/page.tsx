@@ -219,16 +219,15 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
                     <FinancialHistoryChart data={data.history} />
                 </div>
 
-                {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Column - Leaders (2/3) */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* TOP 5 Leaders */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                {/* Main Content Grid - Leaders & Sub-Industries */}
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                    {/* Leaders (3/5 width) */}
+                    <div className="lg:col-span-3">
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-full">
                             <div className="flex items-center justify-between px-6 py-4 border-b">
                                 <h2 className="font-semibold text-gray-800">Nozares Līderi (TOP 5)</h2>
                                 <Link
-                                    href={`/industry/${code}`} // Needs actual specific page or filter
+                                    href={`/industry/${code}`}
                                     className="text-sm text-blue-600 hover:underline"
                                 >
                                     Skatīt vairāk →
@@ -284,87 +283,89 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
                         </div>
                     </div>
 
-                    {/* Right Column - Analytics (1/3) */}
-                    <div className="space-y-6">
-                        {/* Sub-Industries */}
+                    {/* Sub-Industries (2/5 width) */}
+                    <div className="lg:col-span-2">
                         <SubIndustryList subIndustries={data.sub_industries} />
+                    </div>
+                </div>
 
-                        {/* Salary Comparison */}
-                        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                            <h3 className="font-semibold text-gray-800 mb-4">Algu Analītika</h3>
-                            <p className="text-xs text-gray-500 mb-4">
-                                Salīdzinājums ar valsts vidējo ({data.stats.national_avg_salary?.toLocaleString() || '-'}€)
-                            </p>
+                {/* Secondary Metrics Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Salary Comparison */}
+                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <h3 className="font-semibold text-gray-800 mb-4">Algu Analītika</h3>
+                        <p className="text-xs text-gray-500 mb-4">
+                            Salīdzinājums ar valsts vidējo ({data.stats.national_avg_salary?.toLocaleString() || '-'}€)
+                        </p>
 
-                            {/* Industry */}
-                            <div className="mb-4">
-                                <div className="flex justify-between text-sm mb-1">
-                                    <span className="text-gray-600">Šī nozare</span>
-                                    <span className="font-semibold text-gray-900">
-                                        {data.stats.avg_salary?.toLocaleString() || '-'}€
-                                    </span>
-                                </div>
-                                <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-purple-500 rounded-full"
-                                        style={{
-                                            width: `${Math.min(100, (data.stats.avg_salary || 0) / (data.stats.national_avg_salary || 1500) * 50)}%`
-                                        }}
-                                    />
-                                </div>
+                        {/* Industry */}
+                        <div className="mb-4">
+                            <div className="flex justify-between text-sm mb-1">
+                                <span className="text-gray-600">Šī nozare</span>
+                                <span className="font-semibold text-gray-900">
+                                    {data.stats.avg_salary?.toLocaleString() || '-'}€
+                                </span>
                             </div>
-
-                            {/* National */}
-                            <div>
-                                <div className="flex justify-between text-sm mb-1">
-                                    <span className="text-gray-600">Valsts vid.</span>
-                                    <span className="font-semibold text-gray-500">
-                                        {data.stats.national_avg_salary?.toLocaleString() || '-'}€
-                                    </span>
-                                </div>
-                                <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-gray-300 rounded-full"
-                                        style={{ width: '50%' }}
-                                    />
-                                </div>
+                            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-purple-500 rounded-full"
+                                    style={{
+                                        width: `${Math.min(100, (data.stats.avg_salary || 0) / (data.stats.national_avg_salary || 1500) * 50)}%`
+                                    }}
+                                />
                             </div>
                         </div>
 
-                        {/* Tax Burden */}
-                        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                            <h3 className="font-semibold text-gray-800 mb-2">Nodokļu Slogs</h3>
-                            <p className="text-4xl font-bold text-gray-900 mb-1">
-                                {data.stats.tax_burden !== null ? `${data.stats.tax_burden}%` : '-'}
-                            </p>
-                            <p className="text-sm text-gray-500">No apgrozījuma tiek samaksāts nodokļos</p>
+                        {/* National */}
+                        <div>
+                            <div className="flex justify-between text-sm mb-1">
+                                <span className="text-gray-600">Valsts vid.</span>
+                                <span className="font-semibold text-gray-500">
+                                    {data.stats.national_avg_salary?.toLocaleString() || '-'}€
+                                </span>
+                            </div>
+                            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gray-300 rounded-full"
+                                    style={{ width: '50%' }}
+                                />
+                            </div>
                         </div>
+                    </div>
 
-                        {/* Market Concentration */}
-                        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                            <h3 className="font-semibold text-gray-800 mb-4">Tirgus Koncentrācija</h3>
-                            <p className="text-5xl font-bold text-blue-600 text-center mb-2">
-                                {data.stats.concentration_val !== undefined
-                                    ? `${data.stats.concentration_val}%`
-                                    : '-'}
-                            </p>
-                            <p className="text-center text-sm text-gray-500 mb-4">
-                                TOP 5 līderi aizņem<br />
-                                {data.stats.concentration_val}% no tirgus
-                            </p>
-                            {data.stats.concentration_level && (
-                                <div className={`text-center px-4 py-2 rounded-lg ${data.stats.concentration_level === 'Augsta'
-                                    ? 'bg-red-50 text-red-700'
-                                    : data.stats.concentration_level === 'Vidēja'
-                                        ? 'bg-yellow-50 text-yellow-700'
-                                        : 'bg-green-50 text-green-700'
-                                    }`}>
-                                    <span className="text-sm font-medium">
-                                        {data.stats.concentration_level} koncentrācija
-                                    </span>
-                                </div>
-                            )}
-                        </div>
+                    {/* Tax Burden */}
+                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <h3 className="font-semibold text-gray-800 mb-2">Nodokļu Slogs</h3>
+                        <p className="text-4xl font-bold text-gray-900 mb-1">
+                            {data.stats.tax_burden !== null ? `${data.stats.tax_burden}%` : '-'}
+                        </p>
+                        <p className="text-sm text-gray-500">No apgrozījuma tiek samaksāts nodokļos</p>
+                    </div>
+
+                    {/* Market Concentration */}
+                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <h3 className="font-semibold text-gray-800 mb-4">Tirgus Koncentrācija</h3>
+                        <p className="text-5xl font-bold text-blue-600 text-center mb-2">
+                            {data.stats.concentration_val !== undefined
+                                ? `${data.stats.concentration_val}%`
+                                : '-'}
+                        </p>
+                        <p className="text-center text-sm text-gray-500 mb-4">
+                            TOP 5 līderi aizņem<br />
+                            {data.stats.concentration_val}% no tirgus
+                        </p>
+                        {data.stats.concentration_level && (
+                            <div className={`text-center px-4 py-2 rounded-lg ${data.stats.concentration_level === 'Augsta'
+                                ? 'bg-red-50 text-red-700'
+                                : data.stats.concentration_level === 'Vidēja'
+                                    ? 'bg-yellow-50 text-yellow-700'
+                                    : 'bg-green-50 text-green-700'
+                                }`}>
+                                <span className="text-sm font-medium">
+                                    {data.stats.concentration_level} koncentrācija
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
