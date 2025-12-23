@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import GaugeChart from './GaugeChart';
 import RisksTab from './RisksTab';
+import CompanySizeBadge from './CompanySizeBadge';
 
 // Helper function for formatting currency
 const formatCurrency = (value: number | null | undefined, decimals = 0) => {
@@ -73,6 +74,7 @@ export default function CompanyTabs({ company, related, competitors = [], benchm
     const [activeTab, setActiveTab] = useState("overview");
     const [selectedSignatory, setSelectedSignatory] = useState<string>("");
     const [copied, setCopied] = useState(false);
+    const [chartMode, setChartMode] = useState<'turnover' | 'profit'>('turnover');
 
     // Get signatories from officers (those with signing rights INDIVIDUALLY or CHAIR positions)
     const positionLabels: { [key: string]: string } = {
@@ -302,30 +304,52 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                             <div className="lg:col-span-2 border border-gray-200 rounded-lg p-5 bg-white">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-lg font-semibold text-gray-900">Finanšu Dinamika</h3>
-                                    <div className="flex gap-2">
-                                        <span className="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-700">Apgrozījums</span>
-                                        <span className="px-3 py-1 text-sm rounded-full bg-gray-50 text-gray-500">Peļņa</span>
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={() => setChartMode('turnover')}
+                                            className={`px-3 py-1 text-sm rounded-full transition-colors ${chartMode === 'turnover'
+                                                ? 'bg-violet-100 text-violet-700 font-medium'
+                                                : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                                                }`}
+                                        >
+                                            Apgrozījums
+                                        </button>
+                                        <button
+                                            onClick={() => setChartMode('profit')}
+                                            className={`px-3 py-1 text-sm rounded-full transition-colors ${chartMode === 'profit'
+                                                ? 'bg-emerald-100 text-emerald-700 font-medium'
+                                                : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                                                }`}
+                                        >
+                                            Peļņa
+                                        </button>
                                     </div>
                                 </div>
 
                                 {financialHistory.length > 0 ? (
                                     <div className="h-64 flex items-end gap-3 px-4">
                                         {financialHistory.slice(0, 5).reverse().map((f: any, idx: number) => {
-                                            const maxTurnover = Math.max(...financialHistory.slice(0, 5).map((x: any) => x.turnover || 0), 1);
-                                            const barHeight = f.turnover ? (f.turnover / maxTurnover) * 200 : 8;
+                                            const dataKey = chartMode === 'turnover' ? 'turnover' : 'profit';
+                                            const values = financialHistory.slice(0, 5).map((x: any) => Math.abs(x[dataKey] || 0));
+                                            const maxValue = Math.max(...values, 1);
+                                            const value = f[dataKey] || 0;
+                                            const barHeight = Math.abs(value) ? (Math.abs(value) / maxValue) * 200 : 8;
                                             const isLatest = idx === financialHistory.slice(0, 5).length - 1;
+                                            const isNegative = value < 0;
+                                            const barColor = chartMode === 'profit'
+                                                ? (isNegative ? 'bg-red-400 hover:bg-red-500' : (isLatest ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-300 hover:bg-emerald-400'))
+                                                : (isLatest ? 'bg-violet-600 hover:bg-violet-700' : 'bg-violet-300 hover:bg-violet-400');
 
                                             return (
                                                 <div key={f.year} className="flex-1 flex flex-col items-center group relative h-full justify-end">
                                                     <div
-                                                        className={`w-full rounded-t-lg transition-all cursor-pointer ${isLatest ? 'bg-violet-600 hover:bg-violet-700' : 'bg-violet-300 hover:bg-violet-400'
-                                                            }`}
+                                                        className={`w-full rounded-t-lg transition-all cursor-pointer ${barColor}`}
                                                         style={{ height: `${Math.max(barHeight, 8)}px` }}
                                                     >
                                                         {/* Tooltip */}
                                                         <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
                                                             <div className="font-semibold">{f.year}</div>
-                                                            <div>{formatCurrency(f.turnover)}</div>
+                                                            <div className={isNegative ? 'text-red-300' : ''}>{formatCurrency(value)}</div>
                                                         </div>
                                                     </div>
                                                     <div className="mt-2 text-sm text-gray-600">{f.year}</div>
@@ -351,6 +375,11 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                                     </div>
 
                                     <div className="flex justify-between items-center">
+                                        <span className="text-sm text-gray-500">Lielums</span>
+                                        <CompanySizeBadge size={company.company_size} />
+                                    </div>
+
+                                    <div className="flex justify-between items-center">
                                         <span className="text-sm text-gray-500">Vieta Topā</span>
                                         <span className="text-sm font-bold text-emerald-600">
                                             {benchmark?.percentiles?.turnover ? `TOP ${benchmark.percentiles.turnover}%` :
@@ -365,14 +394,18 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                                         {competitors && competitors.length > 0 ? (
                                             <div className="space-y-2">
                                                 {competitors.slice(0, 3).map((comp: any, idx: number) => (
-                                                    <div key={comp.regcode} className="flex justify-between items-center text-sm">
-                                                        <span className="text-gray-700">#{idx + 1} {comp.name}</span>
+                                                    <Link
+                                                        key={comp.regcode}
+                                                        href={`/company/${comp.regcode}`}
+                                                        className="flex justify-between items-center text-sm hover:bg-gray-50 rounded px-1 -mx-1 py-0.5 transition-colors"
+                                                    >
+                                                        <span className="text-gray-700 hover:text-primary">#{idx + 1} {comp.name}</span>
                                                         <span className="text-gray-500 font-medium">
                                                             {comp.turnover >= 1000000
                                                                 ? `${(comp.turnover / 1000000).toFixed(1)} M€`
                                                                 : `${Math.round(comp.turnover / 1000)} k€`}
                                                         </span>
-                                                    </div>
+                                                    </Link>
                                                 ))}
                                             </div>
                                         ) : (
@@ -652,503 +685,511 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                             </div>
                         )}
                     </div>
-                )}
+                )
+                }
 
                 {/* RISKS TAB */}
-                {activeTab === "risks" && (
-                    <RisksTab company={company} />
-                )}
+                {
+                    activeTab === "risks" && (
+                        <RisksTab company={company} />
+                    )
+                }
 
                 {/* MANAGEMENT TAB - 3 Sections: UBOs, Members, Officers */}
-                {activeTab === "management" && (
-                    <div className="space-y-8">
+                {
+                    activeTab === "management" && (
+                        <div className="space-y-8">
 
-                        {/* === 1. PATIESIE LABUMA GUVĒJI (UBOs) === */}
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                <span className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">👤</span>
-                                Patiesie Labuma Guvēji (PLG)
-                            </h3>
-                            {company.ubos && company.ubos.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {company.ubos.map((ubo: any, idx: number) => (
-                                        <div key={idx} className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-white">
-                                            <div className="flex items-start justify-between">
-                                                <div className="font-semibold text-gray-900">{ubo.name}</div>
-                                                {ubo.nationality && (
-                                                    <span className="text-xs px-2 py-0.5 bg-gray-100 rounded font-medium">
-                                                        {ubo.nationality === 'LV' ? '🇱🇻' : ubo.nationality === 'EE' ? '🇪🇪' : ubo.nationality === 'LT' ? '🇱🇹' : ubo.nationality}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="text-sm text-purple-600 font-medium mt-1">Patiesais labuma guvējs</div>
-                                            <div className="text-sm text-gray-600 mt-2">
-                                                {ubo.residence && <div>Dzīvesvieta: {ubo.residence}</div>}
-                                                {ubo.registered_on && <div>Reģistrēts: {ubo.registered_on}</div>}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                                    <p className="text-gray-500">Nav reģistrētu patieso labuma guvēju</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* === 2. DALĪBNIEKI (Members/Shareholders) === */}
-                        <div>
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                    <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">💼</span>
-                                    Dalībnieki (Īpašnieki)
+                            {/* === 1. PATIESIE LABUMA GUVĒJI (UBOs) === */}
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                    <span className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">👤</span>
+                                    Patiesie Labuma Guvēji (PLG)
                                 </h3>
-                                {company.total_capital > 0 && (
-                                    <div className="text-sm text-gray-600">
-                                        Pamatkapitāls: <span className="font-semibold">{company.total_capital.toLocaleString('lv-LV')} EUR</span>
+                                {company.ubos && company.ubos.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {company.ubos.map((ubo: any, idx: number) => (
+                                            <div key={idx} className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-white">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="font-semibold text-gray-900">{ubo.name}</div>
+                                                    {ubo.nationality && (
+                                                        <span className="text-xs px-2 py-0.5 bg-gray-100 rounded font-medium">
+                                                            {ubo.nationality === 'LV' ? '🇱🇻' : ubo.nationality === 'EE' ? '🇪🇪' : ubo.nationality === 'LT' ? '🇱🇹' : ubo.nationality}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-sm text-purple-600 font-medium mt-1">Patiesais labuma guvējs</div>
+                                                <div className="text-sm text-gray-600 mt-2">
+                                                    {ubo.residence && <div>Dzīvesvieta: {ubo.residence}</div>}
+                                                    {ubo.registered_on && <div>Reģistrēts: {ubo.registered_on}</div>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                                        <p className="text-gray-500">Nav reģistrētu patieso labuma guvēju</p>
                                     </div>
                                 )}
                             </div>
-                            {company.members && company.members.length > 0 ? (
-                                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                    <table className="w-full">
-                                        <thead className="bg-gray-50 border-b border-gray-200">
-                                            <tr>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dalībnieks</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Daļas</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vērtība</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">%</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Reģ.</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200">
-                                            {company.members.map((member: any, idx: number) => (
-                                                <tr key={idx} className="hover:bg-gray-50">
-                                                    <td className="px-4 py-3 text-sm">
-                                                        {member.legal_entity_regcode ? (
-                                                            <a href={`/company/${member.legal_entity_regcode}`} className="text-primary hover:underline font-medium flex items-center gap-1">
-                                                                {member.name}
-                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                                                            </a>
-                                                        ) : (
-                                                            <span className="text-gray-900">{member.name}</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm text-right text-gray-600">{member.number_of_shares?.toLocaleString('lv-LV') || '-'}</td>
-                                                    <td className="px-4 py-3 text-sm text-right text-gray-600">{member.share_value > 0 ? `${member.share_value.toLocaleString('lv-LV')} ${member.share_currency}` : '-'}</td>
-                                                    <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">{member.percent > 0 ? `${member.percent}%` : '-'}</td>
-                                                    <td className="px-4 py-3 text-sm text-right text-gray-500">{member.date_from || '-'}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                                    <p className="text-gray-500">Nav reģistrētu dalībnieku</p>
-                                </div>
-                            )}
-                        </div>
 
-                        {/* === 3. AMATPERSONAS (Officers) === */}
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">✍️</span>
-                                Amatpersonas
-                            </h3>
-                            {company.officers && company.officers.length > 0 ? (
-                                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                    <table className="w-full">
-                                        <thead className="bg-gray-50 border-b border-gray-200">
-                                            <tr>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amats</th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vārds, Uzvārds</th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pārstāvības tiesības</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Iecelts</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200">
-                                            {company.officers.map((officer: any, idx: number) => {
-                                                // Position translations
-                                                const positionLabels: { [key: string]: string } = {
-                                                    'BOARD_MEMBER': 'Valdes loceklis',
-                                                    'CHAIR_OF_BOARD': 'Valdes priekšsēdētājs',
-                                                    'COUNCIL_MEMBER': 'Padomes loceklis',
-                                                    'CHAIR_OF_COUNCIL': 'Padomes priekšsēdētājs',
-                                                    'PROCURATOR': 'Prokūrists',
-                                                    'LIQUIDATOR': 'Likvidators',
-                                                    'ADMINISTRATOR': 'Administrators',
-                                                    'AUTHORISED_REPRESENTATIVE': 'Pilnvarotais pārstāvis'
-                                                };
-
-                                                // Representation rights
-                                                const getRepresentation = () => {
-                                                    switch (officer.rights_of_representation) {
-                                                        case 'INDIVIDUALLY': return { text: 'Atsevišķi', icon: '✅', color: 'text-green-600 bg-green-50' };
-                                                        case 'WITH_ALL': return { text: 'Kopā ar visiem', icon: '👥', color: 'text-orange-600 bg-orange-50' };
-                                                        case 'WITH_AT_LEAST': return { text: `Kopā ar vismaz ${officer.representation_with_at_least}`, icon: '👥', color: 'text-yellow-600 bg-yellow-50' };
-                                                        default: return { text: '-', icon: '', color: 'text-gray-500' };
-                                                    }
-                                                };
-                                                const repr = getRepresentation();
-
-                                                return (
-                                                    <tr key={idx} className="hover:bg-gray-50">
-                                                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{positionLabels[officer.position] || officer.position || '-'}</td>
-                                                        <td className="px-4 py-3 text-sm text-gray-900">{officer.name}</td>
-                                                        <td className="px-4 py-3 text-sm">
-                                                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${repr.color}`}>
-                                                                {repr.icon} {repr.text}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-3 text-sm text-right text-gray-500">{officer.registered_on || '-'}</td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                                    <p className="text-gray-500">Nav reģistrētu amatpersonu</p>
-                                </div>
-                            )}
-                        </div>
-
-                    </div>
-                )}
-
-                {/* RELATED COMPANIES TAB - ES MVU Classification */}
-                {activeTab === "related" && (
-                    <div className="space-y-6">
-                        {/* Status Header */}
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-semibold text-gray-900">Saistītie Subjekti (ES MVU / De Minimis)</h3>
-                            <div className={`px-4 py-2 rounded-lg text-sm font-bold ${(related?.status === 'AUTONOMOUS' || !related?.status || related?.status === 'NOT_FOUND') ? 'bg-green-100 text-green-700' :
-                                related?.status === 'PARTNER' ? 'bg-yellow-100 text-yellow-700' :
-                                    related?.status === 'LINKED' ? 'bg-red-100 text-red-700' :
-                                        'bg-green-100 text-green-700'
-                                }`}>
-                                {related?.status === 'PARTNER' ? '🤝 PARTNERI' :
-                                    related?.status === 'LINKED' ? '🔗 SAISTĪTA' : '✅ AUTONOMA'}
-                            </div>
-                        </div>
-                        {/* AUTONOMOUS Status - Big Display */}
-                        {(related?.status === 'AUTONOMOUS' || !related?.status || related?.status === 'NOT_FOUND') && !related?.linked?.length && !related?.partners?.length && (
-                            <div className="text-center py-12 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-lg">
-                                <span className="text-5xl">✅</span>
-                                <h3 className="text-2xl font-bold text-green-700 mt-4">
-                                    AUTONOMA KOMERCSABIEDRĪBA
-                                </h3>
-                                <p className="text-green-600 mt-2 max-w-md mx-auto">
-                                    Šim uzņēmumam nav identificētas partnerkomercsabiedrības (25-50% daļu)
-                                    vai saistītās komercsabiedrības (&gt;50% daļu).
-                                </p>
-                                {related?.total_capital > 0 && (
-                                    <p className="text-sm text-green-500 mt-4">
-                                        Pamatkapitāls: {related.total_capital.toLocaleString('lv-LV')} EUR
-                                    </p>
-                                )}
-                            </div>
-                        )}
-
-                        {/* LINKED Companies Table (>50%) */}
-                        {related?.linked && related.linked.length > 0 && (
+                            {/* === 2. DALĪBNIEKI (Members/Shareholders) === */}
                             <div>
-                                <h4 className="text-md font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                                    <span className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-sm">🔗</span>
-                                    Saistītās Komercsabiedrības (&gt;50% kapitāldaļu)
-                                </h4>
-                                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                    <table className="w-full">
-                                        <thead className="bg-red-50 border-b border-gray-200">
-                                            <tr>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uzņēmums</th>
-                                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tips</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">%</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Darbinieki</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Apgrozījums</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Bilance</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200">
-                                            {related.linked.map((item: any, idx: number) => (
-                                                <tr key={idx} className="hover:bg-gray-50">
-                                                    <td className="px-4 py-3 text-sm">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-lg">{item.entity_type === 'physical_person' ? '👤' : '🏢'}</span>
-                                                            {item.regcode ? (
-                                                                <Link href={`/company/${item.regcode}`} className="text-primary hover:underline font-medium">
-                                                                    {item.name}
-                                                                </Link>
-                                                            ) : (
-                                                                <span className="text-gray-900">
-                                                                    {item.name}
-                                                                    {item.entity_type === 'legal_entity' && <span className="text-gray-400 text-xs ml-1">(ārvalstu)</span>}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-center">
-                                                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${item.entity_type === 'physical_person'
-                                                            ? 'bg-purple-100 text-purple-700'
-                                                            : item.relation === 'owner'
-                                                                ? 'bg-purple-100 text-purple-700'
-                                                                : 'bg-blue-100 text-blue-700'
-                                                            }`}>
-                                                            {item.entity_type === 'physical_person'
-                                                                ? 'Fiziska persona'
-                                                                : item.relation === 'owner' ? 'Mātes' : 'Meitas'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm text-right font-bold text-red-600">{item.ownership_percent}%</td>
-                                                    {item.entity_type === 'physical_person' ? (
-                                                        <td colSpan={3} className="px-4 py-3 text-sm text-center text-gray-400 italic bg-gray-50">Nav attiecināms</td>
-                                                    ) : (
-                                                        <>
-                                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{item.employees || '-'}</td>
-                                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{item.turnover ? `${(item.turnover / 1000).toLocaleString('lv-LV')} k€` : '-'}</td>
-                                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{item.balance ? `${(item.balance / 1000).toLocaleString('lv-LV')} k€` : '-'}</td>
-                                                        </>
-                                                    )}
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                        <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">💼</span>
+                                        Dalībnieki (Īpašnieki)
+                                    </h3>
+                                    {company.total_capital > 0 && (
+                                        <div className="text-sm text-gray-600">
+                                            Pamatkapitāls: <span className="font-semibold">{company.total_capital.toLocaleString('lv-LV')} EUR</span>
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                        )}
-
-                        {/* PARTNER Companies Table (25-50%) */}
-                        {related?.partners && related.partners.length > 0 && (
-                            <div>
-                                <h4 className="text-md font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                                    <span className="w-6 h-6 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 text-sm">🤝</span>
-                                    Partnerkomercsabiedrības (25-50% kapitāldaļu)
-                                </h4>
-                                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                    <table className="w-full">
-                                        <thead className="bg-yellow-50 border-b border-gray-200">
-                                            <tr>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uzņēmums</th>
-                                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tips</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">%</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Darbinieki</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Apgrozījums</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Bilance</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200">
-                                            {related.partners.map((item: any, idx: number) => (
-                                                <tr key={idx} className="hover:bg-gray-50">
-                                                    <td className="px-4 py-3 text-sm">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-lg">{item.entity_type === 'physical_person' ? '👤' : '🏢'}</span>
-                                                            {item.regcode ? (
-                                                                <Link href={`/company/${item.regcode}`} className="text-primary hover:underline font-medium">
-                                                                    {item.name}
-                                                                </Link>
-                                                            ) : (
-                                                                <span className="text-gray-900">
-                                                                    {item.name}
-                                                                    {item.entity_type === 'legal_entity' && <span className="text-gray-400 text-xs ml-1">(ārvalstu)</span>}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-center">
-                                                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${item.entity_type === 'physical_person'
-                                                            ? 'bg-purple-100 text-purple-700'
-                                                            : item.relation === 'owner'
-                                                                ? 'bg-yellow-100 text-yellow-700'
-                                                                : 'bg-blue-100 text-blue-700'
-                                                            }`}>
-                                                            {item.entity_type === 'physical_person'
-                                                                ? 'Fiziska persona'
-                                                                : item.relation === 'owner' ? 'Dalībnieks' : 'Meitas'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm text-right font-semibold text-yellow-600">{item.ownership_percent}%</td>
-                                                    {item.entity_type === 'physical_person' ? (
-                                                        <td colSpan={3} className="px-4 py-3 text-sm text-center text-gray-400 italic bg-gray-50">Nav attiecināms</td>
-                                                    ) : (
-                                                        <>
-                                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{item.employees || '-'}</td>
-                                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{item.turnover ? `${(item.turnover / 1000).toLocaleString('lv-LV')} k€` : '-'}</td>
-                                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{item.balance ? `${(item.balance / 1000).toLocaleString('lv-LV')} k€` : '-'}</td>
-                                                        </>
-                                                    )}
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Capital Info */}
-                        {(related?.status === 'PARTNER' || related?.status === 'LINKED') && related?.total_capital > 0 && (
-                            <div className="text-center text-sm text-gray-500 pt-4 border-t border-gray-200">
-                                Pamatkapitāls: <span className="font-semibold">{related.total_capital.toLocaleString('lv-LV')} EUR</span>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* PROCUREMENTS TAB */}
-                {activeTab === "procurements" && (
-                    <div className="space-y-6">
-                        {/* Header */}
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="text-lg font-semibold text-gray-900">Valsts Iepirkumi</h3>
-                                <p className="text-sm text-gray-500 mt-1">Parāda 10 jaunākos uzvarētos iepirkumus (periods: 2018-2025)</p>
-                            </div>
-                        </div>
-
-                        {company.procurements && company.procurements.length > 0 ? (
-                            <>
-                                {/* KPI Cards */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {/* Total Amount Card */}
-                                    <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-green-200 rounded-lg p-5">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium text-green-700">Uzvarēto iepirkumu summa</span>
-                                            <span className="text-2xl">💰</span>
-                                        </div>
-                                        <p className="text-3xl font-bold text-green-700 mt-2">
-                                            {formatCurrency(company.procurements.reduce((sum: number, p: any) => sum + (p.amount || 0), 0))}
-                                        </p>
-                                    </div>
-
-                                    {/* Contract Count Card */}
-                                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-5">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium text-blue-700">Līgumu skaits</span>
-                                            <span className="text-2xl">📄</span>
-                                        </div>
-                                        <p className="text-3xl font-bold text-blue-700 mt-2">
-                                            {company.procurements.length}
-                                        </p>
-                                    </div>
-
-                                    {/* Top Buyer Card */}
-                                    <div className="bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-200 rounded-lg p-5">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium text-purple-700">Lielākais pasūtītājs</span>
-                                            <span className="text-2xl">🏢</span>
-                                        </div>
-                                        <p className="text-lg font-bold text-purple-700 mt-2 line-clamp-2">
-                                            {(() => {
-                                                const byAuthority = company.procurements.reduce((acc: any, p: any) => {
-                                                    const auth = p.authority || 'Nav norādīts';
-                                                    acc[auth] = (acc[auth] || 0) + (p.amount || 0);
-                                                    return acc;
-                                                }, {});
-                                                const topAuth = Object.entries(byAuthority).sort((a: any, b: any) => b[1] - a[1])[0];
-                                                return topAuth ? topAuth[0] : '-';
-                                            })()}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {/* Blurred Analytics Teaser - Upsell */}
-                                <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                                    <h4 className="text-md font-semibold text-gray-700 mb-4">🔒 Detalizētā Analītika</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="relative bg-white border border-gray-200 rounded-lg p-4 overflow-hidden">
-                                            <div className="filter blur-sm pointer-events-none">
-                                                <span className="text-xs text-gray-500">Uzvaru rādītājs</span>
-                                                <p className="text-2xl font-bold text-gray-800">67%</p>
-                                            </div>
-                                            <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-                                                <span className="text-sm font-medium text-gray-600">🔒 Pro</span>
-                                            </div>
-                                        </div>
-                                        <div className="relative bg-white border border-gray-200 rounded-lg p-4 overflow-hidden">
-                                            <div className="filter blur-sm pointer-events-none">
-                                                <span className="text-xs text-gray-500">Galvenie konkurenti</span>
-                                                <p className="text-lg font-bold text-gray-800">3 uzņēmumi</p>
-                                            </div>
-                                            <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-                                                <span className="text-sm font-medium text-gray-600">🔒 Pro</span>
-                                            </div>
-                                        </div>
-                                        <div className="relative bg-white border border-gray-200 rounded-lg p-4 overflow-hidden">
-                                            <div className="filter blur-sm pointer-events-none">
-                                                <span className="text-xs text-gray-500">Vidējā cenu nobīde</span>
-                                                <p className="text-2xl font-bold text-gray-800">-12%</p>
-                                            </div>
-                                            <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-                                                <span className="text-sm font-medium text-gray-600">🔒 Pro</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Recent Contracts Table */}
-                                <div>
-                                    <h4 className="text-md font-semibold text-gray-700 mb-3">Pēdējie uzvarētie iepirkumi</h4>
+                                {company.members && company.members.length > 0 ? (
                                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                                         <table className="w-full">
                                             <thead className="bg-gray-50 border-b border-gray-200">
                                                 <tr>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pasūtītājs</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priekšmets</th>
-                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Summa</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dalībnieks</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Daļas</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vērtība</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">%</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Reģ.</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-200">
-                                                {company.procurements.slice(0, 5).map((proc: any, idx: number) => (
+                                                {company.members.map((member: any, idx: number) => (
                                                     <tr key={idx} className="hover:bg-gray-50">
-                                                        <td className="px-4 py-3 text-sm text-gray-900">{proc.authority}</td>
-                                                        <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{proc.subject}</td>
-                                                        <td className="px-4 py-3 text-sm text-right font-semibold text-success">{formatCurrency(proc.amount)}</td>
+                                                        <td className="px-4 py-3 text-sm">
+                                                            {member.legal_entity_regcode ? (
+                                                                <a href={`/company/${member.legal_entity_regcode}`} className="text-primary hover:underline font-medium flex items-center gap-1">
+                                                                    {member.name}
+                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                                </a>
+                                                            ) : (
+                                                                <span className="text-gray-900">{member.name}</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-right text-gray-600">{member.number_of_shares?.toLocaleString('lv-LV') || '-'}</td>
+                                                        <td className="px-4 py-3 text-sm text-right text-gray-600">{member.share_value > 0 ? `${member.share_value.toLocaleString('lv-LV')} ${member.share_currency}` : '-'}</td>
+                                                        <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">{member.percent > 0 ? `${member.percent}%` : '-'}</td>
+                                                        <td className="px-4 py-3 text-sm text-right text-gray-500">{member.date_from || '-'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                                        <p className="text-gray-500">Nav reģistrētu dalībnieku</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* === 3. AMATPERSONAS (Officers) === */}
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                    <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">✍️</span>
+                                    Amatpersonas
+                                </h3>
+                                {company.officers && company.officers.length > 0 ? (
+                                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                        <table className="w-full">
+                                            <thead className="bg-gray-50 border-b border-gray-200">
+                                                <tr>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amats</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vārds, Uzvārds</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pārstāvības tiesības</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Iecelts</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                                {company.officers.map((officer: any, idx: number) => {
+                                                    // Position translations
+                                                    const positionLabels: { [key: string]: string } = {
+                                                        'BOARD_MEMBER': 'Valdes loceklis',
+                                                        'CHAIR_OF_BOARD': 'Valdes priekšsēdētājs',
+                                                        'COUNCIL_MEMBER': 'Padomes loceklis',
+                                                        'CHAIR_OF_COUNCIL': 'Padomes priekšsēdētājs',
+                                                        'PROCURATOR': 'Prokūrists',
+                                                        'LIQUIDATOR': 'Likvidators',
+                                                        'ADMINISTRATOR': 'Administrators',
+                                                        'AUTHORISED_REPRESENTATIVE': 'Pilnvarotais pārstāvis'
+                                                    };
+
+                                                    // Representation rights
+                                                    const getRepresentation = () => {
+                                                        switch (officer.rights_of_representation) {
+                                                            case 'INDIVIDUALLY': return { text: 'Atsevišķi', icon: '✅', color: 'text-green-600 bg-green-50' };
+                                                            case 'WITH_ALL': return { text: 'Kopā ar visiem', icon: '👥', color: 'text-orange-600 bg-orange-50' };
+                                                            case 'WITH_AT_LEAST': return { text: `Kopā ar vismaz ${officer.representation_with_at_least}`, icon: '👥', color: 'text-yellow-600 bg-yellow-50' };
+                                                            default: return { text: '-', icon: '', color: 'text-gray-500' };
+                                                        }
+                                                    };
+                                                    const repr = getRepresentation();
+
+                                                    return (
+                                                        <tr key={idx} className="hover:bg-gray-50">
+                                                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{positionLabels[officer.position] || officer.position || '-'}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-900">{officer.name}</td>
+                                                            <td className="px-4 py-3 text-sm">
+                                                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${repr.color}`}>
+                                                                    {repr.icon} {repr.text}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm text-right text-gray-500">{officer.registered_on || '-'}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                                        <p className="text-gray-500">Nav reģistrētu amatpersonu</p>
+                                    </div>
+                                )}
+                            </div>
+
+                        </div>
+                    )
+                }
+
+                {/* RELATED COMPANIES TAB - ES MVU Classification */}
+                {
+                    activeTab === "related" && (
+                        <div className="space-y-6">
+                            {/* Status Header */}
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold text-gray-900">Saistītie Subjekti (ES MVU / De Minimis)</h3>
+                                <div className={`px-4 py-2 rounded-lg text-sm font-bold ${(related?.status === 'AUTONOMOUS' || !related?.status || related?.status === 'NOT_FOUND') ? 'bg-green-100 text-green-700' :
+                                    related?.status === 'PARTNER' ? 'bg-yellow-100 text-yellow-700' :
+                                        related?.status === 'LINKED' ? 'bg-red-100 text-red-700' :
+                                            'bg-green-100 text-green-700'
+                                    }`}>
+                                    {related?.status === 'PARTNER' ? '🤝 PARTNERI' :
+                                        related?.status === 'LINKED' ? '🔗 SAISTĪTA' : '✅ AUTONOMA'}
+                                </div>
+                            </div>
+                            {/* AUTONOMOUS Status - Big Display */}
+                            {(related?.status === 'AUTONOMOUS' || !related?.status || related?.status === 'NOT_FOUND') && !related?.linked?.length && !related?.partners?.length && (
+                                <div className="text-center py-12 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                                    <span className="text-5xl">✅</span>
+                                    <h3 className="text-2xl font-bold text-green-700 mt-4">
+                                        AUTONOMA KOMERCSABIEDRĪBA
+                                    </h3>
+                                    <p className="text-green-600 mt-2 max-w-md mx-auto">
+                                        Šim uzņēmumam nav identificētas partnerkomercsabiedrības (25-50% daļu)
+                                        vai saistītās komercsabiedrības (&gt;50% daļu).
+                                    </p>
+                                    {related?.total_capital > 0 && (
+                                        <p className="text-sm text-green-500 mt-4">
+                                            Pamatkapitāls: {related.total_capital.toLocaleString('lv-LV')} EUR
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* LINKED Companies Table (>50%) */}
+                            {related?.linked && related.linked.length > 0 && (
+                                <div>
+                                    <h4 className="text-md font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                        <span className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-sm">🔗</span>
+                                        Saistītās Komercsabiedrības (&gt;50% kapitāldaļu)
+                                    </h4>
+                                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                        <table className="w-full">
+                                            <thead className="bg-red-50 border-b border-gray-200">
+                                                <tr>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uzņēmums</th>
+                                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tips</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">%</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Darbinieki</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Apgrozījums</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Bilance</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                                {related.linked.map((item: any, idx: number) => (
+                                                    <tr key={idx} className="hover:bg-gray-50">
+                                                        <td className="px-4 py-3 text-sm">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-lg">{item.entity_type === 'physical_person' ? '👤' : '🏢'}</span>
+                                                                {item.regcode ? (
+                                                                    <Link href={`/company/${item.regcode}`} className="text-primary hover:underline font-medium">
+                                                                        {item.name}
+                                                                    </Link>
+                                                                ) : (
+                                                                    <span className="text-gray-900">
+                                                                        {item.name}
+                                                                        {item.entity_type === 'legal_entity' && <span className="text-gray-400 text-xs ml-1">(ārvalstu)</span>}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center">
+                                                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${item.entity_type === 'physical_person'
+                                                                ? 'bg-purple-100 text-purple-700'
+                                                                : item.relation === 'owner'
+                                                                    ? 'bg-purple-100 text-purple-700'
+                                                                    : 'bg-blue-100 text-blue-700'
+                                                                }`}>
+                                                                {item.entity_type === 'physical_person'
+                                                                    ? 'Fiziska persona'
+                                                                    : item.relation === 'owner' ? 'Mātes' : 'Meitas'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-right font-bold text-red-600">{item.ownership_percent}%</td>
+                                                        {item.entity_type === 'physical_person' ? (
+                                                            <td colSpan={3} className="px-4 py-3 text-sm text-center text-gray-400 italic bg-gray-50">Nav attiecināms</td>
+                                                        ) : (
+                                                            <>
+                                                                <td className="px-4 py-3 text-sm text-right text-gray-600">{item.employees || '-'}</td>
+                                                                <td className="px-4 py-3 text-sm text-right text-gray-600">{item.turnover ? `${(item.turnover / 1000).toLocaleString('lv-LV')} k€` : '-'}</td>
+                                                                <td className="px-4 py-3 text-sm text-right text-gray-600">{item.balance ? `${(item.balance / 1000).toLocaleString('lv-LV')} k€` : '-'}</td>
+                                                            </>
+                                                        )}
                                                     </tr>
                                                 ))}
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
+                            )}
 
-                                {/* CTA Button */}
-                                <div className="bg-gradient-to-r from-primary to-accent rounded-lg p-6 text-center">
-                                    <p className="text-white text-lg font-medium mb-3">
-                                        Vēlies redzēt, kuros konkursos {company.name.split('"')[1] || company.name} zaudēja un kas ir viņu sīvākie konkurenti?
+                            {/* PARTNER Companies Table (25-50%) */}
+                            {related?.partners && related.partners.length > 0 && (
+                                <div>
+                                    <h4 className="text-md font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                        <span className="w-6 h-6 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 text-sm">🤝</span>
+                                        Partnerkomercsabiedrības (25-50% kapitāldaļu)
+                                    </h4>
+                                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                        <table className="w-full">
+                                            <thead className="bg-yellow-50 border-b border-gray-200">
+                                                <tr>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uzņēmums</th>
+                                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tips</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">%</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Darbinieki</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Apgrozījums</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Bilance</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                                {related.partners.map((item: any, idx: number) => (
+                                                    <tr key={idx} className="hover:bg-gray-50">
+                                                        <td className="px-4 py-3 text-sm">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-lg">{item.entity_type === 'physical_person' ? '👤' : '🏢'}</span>
+                                                                {item.regcode ? (
+                                                                    <Link href={`/company/${item.regcode}`} className="text-primary hover:underline font-medium">
+                                                                        {item.name}
+                                                                    </Link>
+                                                                ) : (
+                                                                    <span className="text-gray-900">
+                                                                        {item.name}
+                                                                        {item.entity_type === 'legal_entity' && <span className="text-gray-400 text-xs ml-1">(ārvalstu)</span>}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center">
+                                                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${item.entity_type === 'physical_person'
+                                                                ? 'bg-purple-100 text-purple-700'
+                                                                : item.relation === 'owner'
+                                                                    ? 'bg-yellow-100 text-yellow-700'
+                                                                    : 'bg-blue-100 text-blue-700'
+                                                                }`}>
+                                                                {item.entity_type === 'physical_person'
+                                                                    ? 'Fiziska persona'
+                                                                    : item.relation === 'owner' ? 'Dalībnieks' : 'Meitas'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-right font-semibold text-yellow-600">{item.ownership_percent}%</td>
+                                                        {item.entity_type === 'physical_person' ? (
+                                                            <td colSpan={3} className="px-4 py-3 text-sm text-center text-gray-400 italic bg-gray-50">Nav attiecināms</td>
+                                                        ) : (
+                                                            <>
+                                                                <td className="px-4 py-3 text-sm text-right text-gray-600">{item.employees || '-'}</td>
+                                                                <td className="px-4 py-3 text-sm text-right text-gray-600">{item.turnover ? `${(item.turnover / 1000).toLocaleString('lv-LV')} k€` : '-'}</td>
+                                                                <td className="px-4 py-3 text-sm text-right text-gray-600">{item.balance ? `${(item.balance / 1000).toLocaleString('lv-LV')} k€` : '-'}</td>
+                                                            </>
+                                                        )}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Capital Info */}
+                            {(related?.status === 'PARTNER' || related?.status === 'LINKED') && related?.total_capital > 0 && (
+                                <div className="text-center text-sm text-gray-500 pt-4 border-t border-gray-200">
+                                    Pamatkapitāls: <span className="font-semibold">{related.total_capital.toLocaleString('lv-LV')} EUR</span>
+                                </div>
+                            )}
+                        </div>
+                    )
+                }
+
+                {/* PROCUREMENTS TAB */}
+                {
+                    activeTab === "procurements" && (
+                        <div className="space-y-6">
+                            {/* Header */}
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Valsts Iepirkumi</h3>
+                                    <p className="text-sm text-gray-500 mt-1">Parāda 10 jaunākos uzvarētos iepirkumus (periods: 2018-2025)</p>
+                                </div>
+                            </div>
+
+                            {company.procurements && company.procurements.length > 0 ? (
+                                <>
+                                    {/* KPI Cards */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {/* Total Amount Card */}
+                                        <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-green-200 rounded-lg p-5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-medium text-green-700">Uzvarēto iepirkumu summa</span>
+                                                <span className="text-2xl">💰</span>
+                                            </div>
+                                            <p className="text-3xl font-bold text-green-700 mt-2">
+                                                {formatCurrency(company.procurements.reduce((sum: number, p: any) => sum + (p.amount || 0), 0))}
+                                            </p>
+                                        </div>
+
+                                        {/* Contract Count Card */}
+                                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-medium text-blue-700">Līgumu skaits</span>
+                                                <span className="text-2xl">📄</span>
+                                            </div>
+                                            <p className="text-3xl font-bold text-blue-700 mt-2">
+                                                {company.procurements.length}
+                                            </p>
+                                        </div>
+
+                                        {/* Top Buyer Card */}
+                                        <div className="bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-200 rounded-lg p-5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-medium text-purple-700">Lielākais pasūtītājs</span>
+                                                <span className="text-2xl">🏢</span>
+                                            </div>
+                                            <p className="text-lg font-bold text-purple-700 mt-2 line-clamp-2">
+                                                {(() => {
+                                                    const byAuthority = company.procurements.reduce((acc: any, p: any) => {
+                                                        const auth = p.authority || 'Nav norādīts';
+                                                        acc[auth] = (acc[auth] || 0) + (p.amount || 0);
+                                                        return acc;
+                                                    }, {});
+                                                    const topAuth = Object.entries(byAuthority).sort((a: any, b: any) => b[1] - a[1])[0];
+                                                    return topAuth ? topAuth[0] : '-';
+                                                })()}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Blurred Analytics Teaser - Upsell */}
+                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                                        <h4 className="text-md font-semibold text-gray-700 mb-4">🔒 Detalizētā Analītika</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="relative bg-white border border-gray-200 rounded-lg p-4 overflow-hidden">
+                                                <div className="filter blur-sm pointer-events-none">
+                                                    <span className="text-xs text-gray-500">Uzvaru rādītājs</span>
+                                                    <p className="text-2xl font-bold text-gray-800">67%</p>
+                                                </div>
+                                                <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+                                                    <span className="text-sm font-medium text-gray-600">🔒 Pro</span>
+                                                </div>
+                                            </div>
+                                            <div className="relative bg-white border border-gray-200 rounded-lg p-4 overflow-hidden">
+                                                <div className="filter blur-sm pointer-events-none">
+                                                    <span className="text-xs text-gray-500">Galvenie konkurenti</span>
+                                                    <p className="text-lg font-bold text-gray-800">3 uzņēmumi</p>
+                                                </div>
+                                                <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+                                                    <span className="text-sm font-medium text-gray-600">🔒 Pro</span>
+                                                </div>
+                                            </div>
+                                            <div className="relative bg-white border border-gray-200 rounded-lg p-4 overflow-hidden">
+                                                <div className="filter blur-sm pointer-events-none">
+                                                    <span className="text-xs text-gray-500">Vidējā cenu nobīde</span>
+                                                    <p className="text-2xl font-bold text-gray-800">-12%</p>
+                                                </div>
+                                                <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+                                                    <span className="text-sm font-medium text-gray-600">🔒 Pro</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Recent Contracts Table */}
+                                    <div>
+                                        <h4 className="text-md font-semibold text-gray-700 mb-3">Pēdējie uzvarētie iepirkumi</h4>
+                                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                            <table className="w-full">
+                                                <thead className="bg-gray-50 border-b border-gray-200">
+                                                    <tr>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pasūtītājs</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priekšmets</th>
+                                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Summa</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-200">
+                                                    {company.procurements.slice(0, 5).map((proc: any, idx: number) => (
+                                                        <tr key={idx} className="hover:bg-gray-50">
+                                                            <td className="px-4 py-3 text-sm text-gray-900">{proc.authority}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{proc.subject}</td>
+                                                            <td className="px-4 py-3 text-sm text-right font-semibold text-success">{formatCurrency(proc.amount)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    {/* CTA Button */}
+                                    <div className="bg-gradient-to-r from-primary to-accent rounded-lg p-6 text-center">
+                                        <p className="text-white text-lg font-medium mb-3">
+                                            Vēlies redzēt, kuros konkursos {company.name.split('"')[1] || company.name} zaudēja un kas ir viņu sīvākie konkurenti?
+                                        </p>
+                                        <a
+                                            href={`https://www.iepirkumi.animas.lv/${company.regcode}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-primary font-bold rounded-lg hover:bg-gray-100 transition-colors shadow-lg"
+                                        >
+                                            <span>🚀</span>
+                                            Atvērt Pilno Iepirkumu Analītiku
+                                        </a>
+                                        <p className="text-white/80 text-sm mt-3">
+                                            Salīdzini uzņēmumus, atrodi apakšuzņēmēju ķēdes un prognozē nākamos uzvarētājus
+                                        </p>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+                                    <span className="text-4xl">📋</span>
+                                    <h3 className="mt-4 text-lg font-semibold text-gray-900">Nav iepirkumu datu</h3>
+                                    <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
+                                        Šim uzņēmumam nav reģistrēti valsts iepirkumi vai dati vēl nav pieejami.
                                     </p>
                                     <a
                                         href={`https://www.iepirkumi.animas.lv/${company.regcode}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 px-6 py-3 bg-white text-primary font-bold rounded-lg hover:bg-gray-100 transition-colors shadow-lg"
+                                        className="inline-flex items-center gap-2 mt-4 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors"
                                     >
-                                        <span>🚀</span>
-                                        Atvērt Pilno Iepirkumu Analītiku
+                                        Pārbaudīt Iepirkumu platformā
                                     </a>
-                                    <p className="text-white/80 text-sm mt-3">
-                                        Salīdzini uzņēmumus, atrodi apakšuzņēmēju ķēdes un prognozē nākamos uzvarētājus
-                                    </p>
                                 </div>
-                            </>
-                        ) : (
-                            <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
-                                <span className="text-4xl">📋</span>
-                                <h3 className="mt-4 text-lg font-semibold text-gray-900">Nav iepirkumu datu</h3>
-                                <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
-                                    Šim uzņēmumam nav reģistrēti valsts iepirkumi vai dati vēl nav pieejami.
-                                </p>
-                                <a
-                                    href={`https://www.iepirkumi.animas.lv/${company.regcode}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 mt-4 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors"
-                                >
-                                    Pārbaudīt Iepirkumu platformā
-                                </a>
-                            </div>
-                        )}
-                    </div>
-                )}
+                            )}
+                        </div>
+                    )}
             </div>
         </div >
     );
