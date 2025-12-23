@@ -1,15 +1,26 @@
+
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy import text
 from etl.loader import engine
 import logging
+import time
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# In-memory cache for stats (5 minute TTL)
+_stats_cache = {"data": None, "expires": 0}
+STATS_CACHE_TTL = 300  # 5 minutes
+
 @router.get("/stats")
 def get_stats():
-    """Get statistics for the homepage"""
+    """Get statistics for the homepage (cached for 5 minutes)"""
     from datetime import datetime
+    
+    # Return cached data if still valid
+    if _stats_cache["data"] and time.time() < _stats_cache["expires"]:
+        logger.debug("Returning cached stats")
+        return _stats_cache["data"]
     
     stats = {
         "daily_stats": {"new_today": 0, "change": 0},
@@ -70,6 +81,10 @@ def get_stats():
                 
     except Exception as e:
         logger.error(f"Error fetching stats: {e}")
+    
+    # Update cache with new data
+    _stats_cache["data"] = stats
+    _stats_cache["expires"] = time.time() + STATS_CACHE_TTL
     
     return stats
 
