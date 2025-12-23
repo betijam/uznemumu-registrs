@@ -339,6 +339,297 @@ def get_company_details(regcode: int, response: Response):
 
 
 # ================================================================================
+# FAST INITIAL LOAD ENDPOINT (For instant First Contentful Paint)
+# ================================================================================
+
+@router.get("/companies/{regcode}/quick")
+def get_company_quick(regcode: int, response: Response):
+    """
+    Ultra-fast endpoint for initial page render.
+    Returns: Main info, latest finances, risks, rating.
+    Frontend calls lazy-load endpoints for history data after render.
+    
+    Target: <200ms response time (vs 900ms for full /companies/{regcode})
+    """
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    
+    with engine.connect() as conn:
+        # Single query: Company + Latest Financial + Rating in one round-trip
+        res = conn.execute(text("""
+            SELECT 
+                c.*,
+                f.year as fin_year, f.turnover, f.profit, f.employees as fin_employees,
+                r.rating_grade, r.rating_explanation
+            FROM companies c
+            LEFT JOIN LATERAL (
+                SELECT year, turnover, profit, employees 
+                FROM financial_reports 
+                WHERE company_regcode = c.regcode 
+                ORDER BY year DESC LIMIT 1
+            ) f ON true
+            LEFT JOIN company_ratings r ON r.company_regcode = c.regcode
+            WHERE c.regcode = :r
+        """), {"r": regcode}).fetchone()
+        
+        if not res:
+            raise HTTPException(status_code=404, detail="Company not found")
+        
+        # Get active risks count and total score (single query)
+        risks_summary = conn.execute(text("""
+            SELECT COUNT(*) as count, COALESCE(SUM(risk_score), 0) as total_score
+            FROM risks 
+            WHERE company_regcode = :r AND active = TRUE
+        """), {"r": regcode}).fetchone()
+        
+        total_risk_score = int(risks_summary.total_score) if risks_summary else 0
+        
+        return {
+            "regcode": res.regcode,
+            "name": res.name,
+            "address": res.address,
+            "registration_date": str(res.registration_date),
+            "status": res.status,
+            "nace_code": res.nace_code,
+            "nace_text": res.nace_text,
+            "company_size_badge": res.company_size_badge,
+            "pvn_number": res.pvn_number if hasattr(res, 'pvn_number') else None,
+            "is_pvn_payer": res.is_pvn_payer if hasattr(res, 'is_pvn_payer') else False,
+            # Latest finances (just the most recent year)
+            "finances": {
+                "year": res.fin_year,
+                "turnover": float(res.turnover) if res.turnover else None,
+                "profit": float(res.profit) if res.profit else None,
+                "employees": res.fin_employees
+            },
+            # Rating
+            "rating": {
+                "grade": res.rating_grade,
+                "explanation": res.rating_explanation
+            } if res.rating_grade else None,
+            # Risk summary (not full list)
+            "risk_summary": {
+                "count": risks_summary.count if risks_summary else 0,
+                "total_score": total_risk_score,
+                "level": "CRITICAL" if total_risk_score >= 100 else "HIGH" if total_risk_score >= 50 else "MEDIUM" if total_risk_score >= 30 else "LOW" if total_risk_score > 0 else "NONE"
+            }
+        }
+
+
+# ================================================================================
+# LAZY-LOAD ENDPOINTS (For faster initial page render)
+# ================================================================================
+
+@router.get("/companies/{regcode}/financial-history")
+def get_financial_history_endpoint(regcode: int, response: Response):
+    """
+    Lazy-load endpoint for full financial history.
+    Called by frontend AFTER initial page render.
+    """
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    
+    with engine.connect() as conn:
+        fin_rows = conn.execute(text("""
+            SELECT year, turnover, profit, employees, cash_balance,
+                   current_ratio, quick_ratio, cash_ratio,
+                   net_profit_margin, roe, roa, debt_to_equity, equity_ratio, ebitda
+            FROM financial_reports 
+            WHERE company_regcode = :r 
+            ORDER BY year DESC
+        """), {"r": regcode}).fetchall()
+        
+        history = []
+        prev_turnover = None
+        prev_profit = None
+        
+        fin_list = list(fin_rows)
+        fin_list.reverse()
+        
+        for f in fin_list:
+            row = {
+                "year": f.year,
+                "turnover": float(f.turnover) if f.turnover else None,
+                "profit": float(f.profit) if f.profit else None,
+                "employees": f.employees,
+                "cash_balance": float(f.cash_balance) if f.cash_balance else None,
+                "turnover_growth": None,
+                "profit_growth": None,
+                "current_ratio": float(f.current_ratio) if f.current_ratio else None,
+                "quick_ratio": float(f.quick_ratio) if f.quick_ratio else None,
+                "cash_ratio": float(f.cash_ratio) if f.cash_ratio else None,
+                "net_profit_margin": float(f.net_profit_margin) if f.net_profit_margin else None,
+                "roe": float(f.roe) if f.roe else None,
+                "roa": float(f.roa) if f.roa else None,
+                "debt_to_equity": float(f.debt_to_equity) if f.debt_to_equity else None,
+                "equity_ratio": float(f.equity_ratio) if f.equity_ratio else None,
+                "ebitda": float(f.ebitda) if f.ebitda else None
+            }
+            
+            if prev_turnover and f.turnover and prev_turnover != 0:
+                row["turnover_growth"] = round(((float(f.turnover) - prev_turnover) / abs(prev_turnover)) * 100, 1)
+            if prev_profit and f.profit and prev_profit != 0:
+                row["profit_growth"] = round(((float(f.profit) - prev_profit) / abs(prev_profit)) * 100, 1)
+            
+            prev_turnover = float(f.turnover) if f.turnover else None
+            prev_profit = float(f.profit) if f.profit else None
+            history.append(row)
+        
+        history.reverse()
+        return {"financial_history": history}
+
+
+@router.get("/companies/{regcode}/tax-history")
+def get_tax_history_endpoint(regcode: int, response: Response):
+    """Lazy-load endpoint for tax payment history."""
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT year, total_tax_paid, labor_tax_iin, social_tax_vsaoi, avg_employees, nace_code
+            FROM tax_payments 
+            WHERE company_regcode = :r 
+            ORDER BY year DESC
+        """), {"r": regcode}).fetchall()
+        
+        history = []
+        VSAOI_RATE = 0.3409
+        
+        for t in rows:
+            row = {
+                "year": t.year,
+                "total_tax_paid": float(t.total_tax_paid) if t.total_tax_paid else None,
+                "labor_tax_iin": float(t.labor_tax_iin) if t.labor_tax_iin else None,
+                "social_tax_vsaoi": float(t.social_tax_vsaoi) if t.social_tax_vsaoi else None,
+                "avg_employees": float(t.avg_employees) if t.avg_employees else None,
+                "nace_code": t.nace_code,
+                "avg_gross_salary": None,
+                "avg_net_salary": None
+            }
+            
+            if t.social_tax_vsaoi and t.avg_employees and float(t.avg_employees) > 0:
+                vsaoi = float(t.social_tax_vsaoi)
+                employees = float(t.avg_employees)
+                gross_yearly = vsaoi / VSAOI_RATE
+                gross_monthly = gross_yearly / employees / 12
+                row["avg_gross_salary"] = round(gross_monthly, 2)
+                
+                vsaoi_employee = gross_monthly * 0.105
+                iin = (gross_monthly - vsaoi_employee) * 0.20
+                net_monthly = gross_monthly - vsaoi_employee - iin
+                row["avg_net_salary"] = round(net_monthly, 2)
+                
+            history.append(row)
+        return {"tax_history": history}
+
+
+@router.get("/companies/{regcode}/procurements")
+def get_procurements_endpoint(regcode: int, response: Response, limit: int = 50):
+    """Lazy-load endpoint for procurement history."""
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT authority_name, subject, amount, contract_date
+            FROM procurements WHERE winner_regcode = :r
+            ORDER BY contract_date DESC LIMIT :limit
+        """), {"r": regcode, "limit": limit}).fetchall()
+        
+        return {"procurements": [{
+            "authority": p.authority_name, 
+            "subject": p.subject,
+            "amount": float(p.amount) if p.amount else None, 
+            "date": str(p.contract_date)
+        } for p in rows]}
+
+
+@router.get("/companies/{regcode}/persons")
+def get_persons_endpoint(regcode: int, response: Response):
+    """Lazy-load endpoint for UBOs, members, and officers."""
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT person_name, role, share_percent, date_from, 
+                   position, rights_of_representation, representation_with_at_least,
+                   number_of_shares, share_nominal_value, share_currency, legal_entity_regcode,
+                   nationality, residence
+            FROM persons WHERE company_regcode = :r
+        """), {"r": regcode}).fetchall()
+        
+        total_capital = sum((float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)) for p in rows if p.role == 'member')
+        ubos, members, officers = [], [], []
+        
+        for p in rows:
+            if p.role == 'ubo':
+                ubos.append({
+                    "name": p.person_name, "nationality": p.nationality,
+                    "residence": p.residence, "registered_on": str(p.date_from) if p.date_from else None
+                })
+            elif p.role == 'member':
+                share_value = float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)
+                percent = (share_value / total_capital * 100) if total_capital > 0 else 0
+                members.append({
+                    "name": p.person_name, "legal_entity_regcode": int(p.legal_entity_regcode) if p.legal_entity_regcode else None,
+                    "number_of_shares": int(p.number_of_shares) if p.number_of_shares else None,
+                    "share_value": share_value, "share_currency": p.share_currency or "EUR",
+                    "percent": round(percent, 2), "date_from": str(p.date_from) if p.date_from else None
+                })
+            elif p.role == 'officer':
+                officers.append({
+                    "name": p.person_name, "position": p.position,
+                    "rights_of_representation": p.rights_of_representation,
+                    "representation_with_at_least": int(p.representation_with_at_least) if p.representation_with_at_least else None,
+                    "registered_on": str(p.date_from) if p.date_from else None
+                })
+                
+        return {"ubos": ubos, "members": members, "officers": officers, "total_capital": total_capital}
+
+
+@router.get("/companies/{regcode}/risks")
+def get_risks_endpoint(regcode: int, response: Response):
+    """Lazy-load endpoint for full risk details."""
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT risk_type, description, start_date, risk_score,
+                   sanction_program, sanction_list_text, legal_base_url,
+                   suspension_code, suspension_grounds,
+                   measure_type, institution_name, case_number,
+                   liquidation_type, liquidation_grounds
+            FROM risks 
+            WHERE company_regcode = :r AND active = TRUE
+            ORDER BY risk_score DESC, start_date DESC
+        """), {"r": regcode}).fetchall()
+        
+        total_score = sum(r.risk_score or 0 for r in rows)
+        
+        by_type = {'sanctions': [], 'liquidations': [], 'suspensions': [], 'securing_measures': []}
+        for r in rows:
+            risk = {
+                "type": r.risk_type, "description": r.description,
+                "date": str(r.start_date) if r.start_date else None, "score": r.risk_score
+            }
+            if r.risk_type == 'sanction':
+                risk.update({"program": r.sanction_program, "list_text": r.sanction_list_text, "legal_base_url": r.legal_base_url})
+                by_type['sanctions'].append(risk)
+            elif r.risk_type == 'liquidation':
+                risk.update({"liquidation_type": r.liquidation_type, "grounds": r.liquidation_grounds})
+                by_type['liquidations'].append(risk)
+            elif r.risk_type == 'suspension':
+                risk.update({"suspension_code": r.suspension_code, "grounds": r.suspension_grounds})
+                by_type['suspensions'].append(risk)
+            elif r.risk_type == 'securing_measure':
+                risk.update({"measure_type": r.measure_type, "institution": r.institution_name, "case_number": r.case_number})
+                by_type['securing_measures'].append(risk)
+        
+        return {
+            "risks": by_type, 
+            "total_risk_score": total_score,
+            "risk_level": "CRITICAL" if total_score >= 100 else "HIGH" if total_score >= 50 else "MEDIUM" if total_score >= 30 else "LOW" if total_score > 0 else "NONE"
+        }
+
+
+# ================================================================================
 # COMPREHENSIVE LINKED ENTITY DETECTION (EU SME Rules)
 # ================================================================================
 
