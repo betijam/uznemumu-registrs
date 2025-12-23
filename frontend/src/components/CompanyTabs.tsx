@@ -69,7 +69,7 @@ const Sparkline = ({ data }: { data: number[] }) => {
     );
 };
 
-export default function CompanyTabs({ company, related }: { company: any, related: any }) {
+export default function CompanyTabs({ company, related, competitors = [], benchmark = null }: { company: any, related: any, competitors?: any[], benchmark?: any }) {
     const [activeTab, setActiveTab] = useState("overview");
     const [selectedSignatory, setSelectedSignatory] = useState<string>("");
     const [copied, setCopied] = useState(false);
@@ -347,25 +347,93 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm text-gray-500">Nozare</span>
-                                        <span className="text-sm font-medium text-gray-900 text-right">{company.nace_text || company.nace_code || 'Nav datu'}</span>
+                                        <span className="text-sm font-medium text-gray-900 text-right max-w-[180px] truncate">{company.nace_text || company.nace_section_text || 'Nav datu'}</span>
                                     </div>
 
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm text-gray-500">Vieta Topā</span>
                                         <span className="text-sm font-bold text-emerald-600">
-                                            {company.finances?.turnover && company.finances.turnover > 10000000 ? 'TOP 5%' :
-                                                company.finances?.turnover && company.finances.turnover > 1000000 ? 'TOP 15%' :
-                                                    company.finances?.turnover && company.finances.turnover > 100000 ? 'TOP 40%' : 'N/A'}
+                                            {benchmark?.percentiles?.turnover ? `TOP ${benchmark.percentiles.turnover}%` :
+                                                company.finances?.turnover && company.finances.turnover > 10000000 ? 'TOP 5%' :
+                                                    company.finances?.turnover && company.finances.turnover > 1000000 ? 'TOP 15%' :
+                                                        company.finances?.turnover && company.finances.turnover > 100000 ? 'TOP 40%' : 'N/A'}
                                         </span>
                                     </div>
 
                                     <div className="pt-3 border-t border-gray-100">
                                         <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">Tuvākie Konkurenti</div>
-                                        <div className="text-sm text-gray-500 italic">
-                                            Šī funkcija tiek izstrādāta...
-                                        </div>
+                                        {competitors && competitors.length > 0 ? (
+                                            <div className="space-y-2">
+                                                {competitors.slice(0, 3).map((comp: any, idx: number) => (
+                                                    <div key={comp.regcode} className="flex justify-between items-center text-sm">
+                                                        <span className="text-gray-700">#{idx + 1} {comp.name}</span>
+                                                        <span className="text-gray-500 font-medium">
+                                                            {comp.turnover >= 1000000
+                                                                ? `${(comp.turnover / 1000000).toFixed(1)} M€`
+                                                                : `${Math.round(comp.turnover / 1000)} k€`}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm text-gray-500 italic">Nav datu</div>
+                                        )}
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Amatpersonas & Īpašnieki Table */}
+                        <div className="border border-gray-200 rounded-lg p-5 bg-white">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Amatpersonas & Īpašnieki</h3>
+
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full">
+                                    <thead>
+                                        <tr className="border-b border-gray-100">
+                                            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-3">Vārds, Uzvārds</th>
+                                            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-3">Amats</th>
+                                            <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wide pb-3">Kopš</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {/* Officers first */}
+                                        {(company.officers || []).slice(0, 5).map((officer: any, idx: number) => (
+                                            <tr key={`officer-${idx}`} className="hover:bg-gray-50">
+                                                <td className="py-3 text-sm font-medium text-gray-900">{officer.name}</td>
+                                                <td className="py-3 text-sm text-gray-600">
+                                                    {positionLabels[officer.position] || officer.position}
+                                                    {officer.rights_of_representation === 'INDIVIDUALLY' && (
+                                                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                                                            Paraksta tiesības
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 text-sm text-gray-500 text-right">{officer.registered_on || '-'}</td>
+                                            </tr>
+                                        ))}
+                                        {/* Members/Shareholders */}
+                                        {(company.members || []).slice(0, 3).map((member: any, idx: number) => (
+                                            <tr key={`member-${idx}`} className="hover:bg-gray-50">
+                                                <td className="py-3 text-sm font-medium text-gray-900">
+                                                    {member.name}
+                                                    {member.legal_entity_regcode && (
+                                                        <span className="ml-1 text-gray-400 text-xs">(EE)</span>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 text-sm text-gray-600">
+                                                    Dalībnieks ({member.percent || 0}%)
+                                                </td>
+                                                <td className="py-3 text-sm text-gray-500 text-right">{member.date_from || '-'}</td>
+                                            </tr>
+                                        ))}
+                                        {(company.officers?.length === 0 && company.members?.length === 0) && (
+                                            <tr>
+                                                <td colSpan={3} className="py-4 text-center text-sm text-gray-500 italic">Nav datu</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
