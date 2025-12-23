@@ -155,216 +155,217 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                         {/* Copyable Requisites Section */}
                         <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-semibold text-gray-900">📋 Rekvizīti (Līgumiem)</h3>
+                                <div className="space-y-1">
+                                    <div className="text-sm text-gray-600">
+                                        <span className="font-bold text-gray-900">{company.name}</span>, Reģ. Nr. <span className="font-semibold">{company.regcode}</span>
+                                    </div>
+                                    <div className="text-sm text-gray-500">
+                                        Juridiskā adrese: {company.address || '-'}, LV-{company.address?.match(/LV-(\d+)/)?.[1] || '1001'}
+                                    </div>
+                                </div>
                                 <button
                                     onClick={copyRequisites}
                                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${copied
                                         ? 'bg-success text-white'
-                                        : 'bg-primary text-white hover:bg-primary/90'
+                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                                         }`}
                                 >
-                                    {copied ? (
-                                        <>
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            Nokopēts!
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                            </svg>
-                                            Kopēt
-                                        </>
-                                    )}
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                    {copied ? 'Nokopēts!' : 'Kopēt rekvizītus'}
                                 </button>
                             </div>
 
-                            <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 font-mono text-sm">
-                                <div>
-                                    <span className="font-bold text-gray-900">{company.name}</span>
-                                </div>
-                                <div>
-                                    <span className="text-gray-600">Juridiskā adrese: </span>
-                                    <span className="text-gray-900">{company.address || '-'}</span>
-                                </div>
-                                <div>
-                                    <span className="text-gray-600">Reģistrācijas numurs: </span>
-                                    <span className="text-gray-900">{company.regcode}</span>
-                                </div>
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                                    <span className="text-gray-600 whitespace-nowrap">Parakstiesīgā persona:</span>
-                                    {signatories.length > 0 ? (
-                                        <select
-                                            value={selectedSignatory}
-                                            onChange={(e) => setSelectedSignatory(e.target.value)}
-                                            className="w-full sm:flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary bg-white"
-                                        >
-                                            <option value="">-- Izvēlieties --</option>
-                                            {signatories.map((s: any, idx: number) => (
-                                                <option key={idx} value={s.name}>
-                                                    {s.name} ({positionLabels[s.position] || s.position})
-                                                </option>
-                                            ))}
-                                        </select>
-                                    ) : (
-                                        <span className="text-gray-400 italic">Nav datu</span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Financial Chart - Dual-Panel Stacked Bars */}
-                        <div className="border border-gray-200 rounded-lg p-4 sm:p-6">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-                                <h3 className="text-lg font-semibold text-primary">Apgrozījums vs Peļņa</h3>
-                                {company.rating && <RatingBadge grade={company.rating.grade} />}
-                            </div>
-
-                            {financialHistory.length > 0 ? (
-                                <div className="space-y-6">
-                                    {/* Turnover Section */}
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                                            <span className="text-sm font-medium text-gray-700">Apgrozījums</span>
-                                        </div>
-                                        <div className="h-32 flex items-end gap-2">
-                                            {financialHistory.slice(0, 7).reverse().map((f: any, idx: number) => {
-                                                const maxTurnover = Math.max(...financialHistory.slice(0, 7).map((x: any) => x.turnover || 0), 1);
-                                                const barHeight = f.turnover ? (f.turnover / maxTurnover) * 120 : 4; // 120px max height
-
-                                                return (
-                                                    <div key={f.year} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                                                        <div
-                                                            className="w-full bg-blue-500 hover:bg-blue-600 rounded-t transition-all cursor-pointer relative"
-                                                            style={{ height: `${Math.max(barHeight, 4)}px` }}
-                                                        >
-                                                            {/* Tooltip */}
-                                                            <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
-                                                                <div className="font-semibold">{f.year}</div>
-                                                                <div>{formatCurrency(f.turnover)}</div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* Profit Section */}
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <div className="w-3 h-3 bg-emerald-500 rounded"></div>
-                                            <span className="text-sm font-medium text-gray-700">Peļņa</span>
-                                            <span className="text-xs text-gray-400">(sarkans = zaudējumi)</span>
-                                        </div>
-                                        <div className="h-24 flex items-center gap-2 relative">
-                                            {/* Zero line */}
-                                            <div className="absolute left-0 right-0 top-1/2 h-px bg-gray-300 z-0"></div>
-
-                                            {financialHistory.slice(0, 7).reverse().map((f: any, idx: number) => {
-                                                const profits = financialHistory.slice(0, 7).map((x: any) => x.profit || 0);
-                                                const maxAbsProfit = Math.max(...profits.map((p: number) => Math.abs(p)), 1);
-                                                const profit = f.profit || 0;
-                                                const isPositive = profit >= 0;
-                                                const barHeight = (Math.abs(profit) / maxAbsProfit) * 40; // Max 40px height
-
-                                                return (
-                                                    <div key={f.year} className="flex-1 h-full group relative z-10" style={{ position: 'relative' }}>
-                                                        {/* Positive profit bar (grows upward from center) */}
-                                                        {isPositive && (
-                                                            <div
-                                                                className="w-full bg-emerald-500 hover:bg-emerald-600 rounded-t transition-all cursor-pointer absolute left-0 right-0"
-                                                                style={{
-                                                                    height: `${Math.max(barHeight, 3)}px`,
-                                                                    bottom: '50%'
-                                                                }}
-                                                            ></div>
-                                                        )}
-                                                        {/* Negative profit bar (grows downward from center) */}
-                                                        {!isPositive && (
-                                                            <div
-                                                                className="w-full bg-red-500 hover:bg-red-600 rounded-b transition-all cursor-pointer absolute left-0 right-0"
-                                                                style={{
-                                                                    height: `${Math.max(barHeight, 3)}px`,
-                                                                    top: '50%'
-                                                                }}
-                                                            ></div>
-                                                        )}
-                                                        {/* Tooltip */}
-                                                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-30 pointer-events-none">
-                                                            <div className="font-semibold">{f.year}</div>
-                                                            <div className={isPositive ? 'text-emerald-300' : 'text-red-300'}>{formatCurrency(profit)}</div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* Year Labels */}
-                                    <div className="flex gap-2 border-t border-gray-100 pt-3">
-                                        {financialHistory.slice(0, 7).reverse().map((f: any, idx: number) => (
-                                            <div key={f.year} className="flex-1 text-center">
-                                                <span className="text-xs font-medium text-gray-600">{f.year}</span>
-                                                {f.turnover_growth !== null && (
-                                                    <div className="mt-0.5"><GrowthIndicator value={f.turnover_growth} /></div>
-                                                )}
-                                            </div>
+                            {/* Signatory Dropdown - Hidden but included for copy function */}
+                            {signatories.length > 0 && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <span className="text-gray-600">Parakstiesīgā persona:</span>
+                                    <select
+                                        value={selectedSignatory}
+                                        onChange={(e) => setSelectedSignatory(e.target.value)}
+                                        className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary bg-white"
+                                    >
+                                        <option value="">-- Izvēlieties --</option>
+                                        {signatories.map((s: any, idx: number) => (
+                                            <option key={idx} value={s.name}>
+                                                {s.name} ({positionLabels[s.position] || s.position})
+                                            </option>
                                         ))}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="h-64 flex items-center justify-center text-gray-500">
-                                    Nav finanšu datu
+                                    </select>
                                 </div>
                             )}
                         </div>
 
-                        {/* Quick Info Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="border border-gray-200 rounded-lg p-5">
-                                <h4 className="text-md font-semibold text-gray-900 mb-4">Finanšu Rādītāji ({company.finances?.year || "N/A"})</h4>
-                                <dl className="space-y-3">
-                                    <div className="flex justify-between">
-                                        <dt className="text-sm text-gray-600">Apgrozījums</dt>
-                                        <dd className="text-sm font-semibold text-primary flex items-center gap-2">
-                                            {formatCurrency(company.finances?.turnover)}
-                                            <GrowthIndicator value={company.finances?.turnover_growth} />
-                                        </dd>
+                        {/* KPI Cards Row */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                            {/* Apgrozījums */}
+                            <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                                <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                                    Apgrozījums '{String(company.finances?.year || 23).slice(-2)}
+                                </div>
+                                <div className="text-2xl font-bold text-gray-900">
+                                    {company.finances?.turnover
+                                        ? (company.finances.turnover >= 1000000
+                                            ? `${(company.finances.turnover / 1000000).toFixed(1)} M€`
+                                            : `${(company.finances.turnover / 1000).toFixed(0)} k€`)
+                                        : 'N/A'}
+                                </div>
+                                {company.finances?.turnover_growth !== null && company.finances?.turnover_growth !== undefined && (
+                                    <div className={`text-sm font-medium ${company.finances.turnover_growth >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                        {company.finances.turnover_growth >= 0 ? '▲' : '▼'} {Math.abs(company.finances.turnover_growth).toFixed(1)}%
                                     </div>
-                                    <div className="flex justify-between">
-                                        <dt className="text-sm text-gray-600">Peļņa</dt>
-                                        <dd className={`text-sm font-semibold flex items-center gap-2 ${(company.finances?.profit || 0) >= 0 ? 'text-success' : 'text-danger'}`}>
-                                            {formatCurrency(company.finances?.profit)}
-                                            <GrowthIndicator value={company.finances?.profit_growth} />
-                                        </dd>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <dt className="text-sm text-gray-600">Darbinieki</dt>
-                                        <dd className="text-sm font-semibold text-primary">{company.finances?.employees || "-"}</dd>
-                                    </div>
-                                </dl>
+                                )}
                             </div>
 
-                            <div className="border border-gray-200 rounded-lg p-5">
-                                <h4 className="text-md font-semibold text-gray-900 mb-4">Papildu Informācija</h4>
-                                <dl className="space-y-3">
-                                    <div className="flex justify-between">
-                                        <dt className="text-sm text-gray-600">Reģistrācijas datums</dt>
-                                        <dd className="text-sm font-semibold text-gray-900">{company.registration_date || "-"}</dd>
+                            {/* Peļņa */}
+                            <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                                <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                                    Peļņa '{String(company.finances?.year || 23).slice(-2)}
+                                </div>
+                                <div className={`text-2xl font-bold ${(company.finances?.profit || 0) >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
+                                    {company.finances?.profit
+                                        ? (Math.abs(company.finances.profit) >= 1000000
+                                            ? `${(company.finances.profit / 1000000).toFixed(1)} M€`
+                                            : `${(company.finances.profit / 1000).toFixed(0)} k€`)
+                                        : 'N/A'}
+                                </div>
+                                {company.finances?.profit_growth !== null && company.finances?.profit_growth !== undefined && (
+                                    <div className={`text-sm font-medium ${company.finances.profit_growth >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                        {company.finances.profit_growth >= 0 ? '▲' : '▼'} {Math.abs(company.finances.profit_growth).toFixed(0)}%
                                     </div>
-                                    <div className="flex justify-between">
-                                        <dt className="text-sm text-gray-600">Statuss</dt>
-                                        <dd className="text-sm font-semibold text-success">{company.status === "active" ? "Aktīvs" : company.status}</dd>
+                                )}
+                            </div>
+
+                            {/* Darbinieki */}
+                            <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                                <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                                    Darbinieki
+                                </div>
+                                <div className="text-2xl font-bold text-gray-900">
+                                    {company.finances?.employees || company.employee_count || 'N/A'}
+                                </div>
+                                {/* Employee change from previous year */}
+                                {financialHistory.length >= 2 && financialHistory[1]?.employees && (
+                                    <div className={`text-sm font-medium ${(company.finances?.employees || 0) >= (financialHistory[1]?.employees || 0)
+                                        ? 'text-emerald-600' : 'text-red-600'
+                                        }`}>
+                                        {(company.finances?.employees || 0) >= (financialHistory[1]?.employees || 0) ? '▲' : '▼'} {
+                                            Math.abs((company.finances?.employees || 0) - (financialHistory[1]?.employees || 0))
+                                        }
                                     </div>
-                                    <div className="flex justify-between">
-                                        <dt className="text-sm text-gray-600">VID Reitings</dt>
-                                        <dd className="text-sm font-semibold text-gray-900">{company.rating?.grade || "-"}</dd>
+                                )}
+                            </div>
+
+                            {/* Vid. Bruto Alga */}
+                            <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                                <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                                    Vid. Bruto Alga
+                                </div>
+                                <div className="text-2xl font-bold text-gray-900">
+                                    {company.tax_history?.[0]?.avg_gross_salary
+                                        ? `${Math.round(company.tax_history[0].avg_gross_salary).toLocaleString('lv-LV')} €`
+                                        : 'N/A'}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    {company.tax_history?.[0]?.avg_gross_salary && company.nace_text
+                                        ? `pret nozari`
+                                        : ''}
+                                </div>
+                            </div>
+
+                            {/* VID Reitings */}
+                            <div className={`rounded-lg p-4 ${company.rating?.grade === 'A' ? 'bg-emerald-500 text-white' :
+                                company.rating?.grade === 'B' ? 'bg-yellow-500 text-white' :
+                                    company.rating?.grade === 'C' ? 'bg-orange-500 text-white' :
+                                        company.rating?.grade === 'D' ? 'bg-red-500 text-white' :
+                                            'bg-gray-100 text-gray-700'
+                                }`}>
+                                <div className="text-xs uppercase tracking-wide mb-1 opacity-80">
+                                    VID Reitings
+                                </div>
+                                <div className="text-2xl font-bold">
+                                    {company.rating?.grade ? `${company.rating.grade} Klase` : 'Nav datu'}
+                                </div>
+                                <div className="text-sm opacity-80">
+                                    {company.rating?.grade === 'A' ? 'Zems risks' :
+                                        company.rating?.grade === 'B' ? 'Vidējs risks' :
+                                            company.rating?.grade === 'C' ? 'Augsts risks' :
+                                                company.rating?.grade === 'D' ? 'Ļoti augsts risks' : ''}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Two Column Layout: Chart + Market Position */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Finanšu Dinamika Chart - 2 columns */}
+                            <div className="lg:col-span-2 border border-gray-200 rounded-lg p-5 bg-white">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-semibold text-gray-900">Finanšu Dinamika</h3>
+                                    <div className="flex gap-2">
+                                        <span className="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-700">Apgrozījums</span>
+                                        <span className="px-3 py-1 text-sm rounded-full bg-gray-50 text-gray-500">Peļņa</span>
                                     </div>
-                                </dl>
+                                </div>
+
+                                {financialHistory.length > 0 ? (
+                                    <div className="h-64 flex items-end gap-3 px-4">
+                                        {financialHistory.slice(0, 5).reverse().map((f: any, idx: number) => {
+                                            const maxTurnover = Math.max(...financialHistory.slice(0, 5).map((x: any) => x.turnover || 0), 1);
+                                            const barHeight = f.turnover ? (f.turnover / maxTurnover) * 200 : 8;
+                                            const isLatest = idx === financialHistory.slice(0, 5).length - 1;
+
+                                            return (
+                                                <div key={f.year} className="flex-1 flex flex-col items-center group relative h-full justify-end">
+                                                    <div
+                                                        className={`w-full rounded-t-lg transition-all cursor-pointer ${isLatest ? 'bg-violet-600 hover:bg-violet-700' : 'bg-violet-300 hover:bg-violet-400'
+                                                            }`}
+                                                        style={{ height: `${Math.max(barHeight, 8)}px` }}
+                                                    >
+                                                        {/* Tooltip */}
+                                                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
+                                                            <div className="font-semibold">{f.year}</div>
+                                                            <div>{formatCurrency(f.turnover)}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-2 text-sm text-gray-600">{f.year}</div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="h-64 flex items-center justify-center text-gray-500">
+                                        Nav finanšu datu
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Tirgus Pozīcija - 1 column */}
+                            <div className="border border-gray-200 rounded-lg p-5 bg-white">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Tirgus Pozīcija</h3>
+
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm text-gray-500">Nozare</span>
+                                        <span className="text-sm font-medium text-gray-900 text-right">{company.nace_text || company.nace_code || 'Nav datu'}</span>
+                                    </div>
+
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm text-gray-500">Vieta Topā</span>
+                                        <span className="text-sm font-bold text-emerald-600">
+                                            {company.finances?.turnover && company.finances.turnover > 10000000 ? 'TOP 5%' :
+                                                company.finances?.turnover && company.finances.turnover > 1000000 ? 'TOP 15%' :
+                                                    company.finances?.turnover && company.finances.turnover > 100000 ? 'TOP 40%' : 'N/A'}
+                                        </span>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-gray-100">
+                                        <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">Tuvākie Konkurenti</div>
+                                        <div className="text-sm text-gray-500 italic">
+                                            Šī funkcija tiek izstrādāta...
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1081,6 +1082,6 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }

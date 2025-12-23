@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import text
 from etl.loader import engine
 import logging
+import math
 from concurrent.futures import ThreadPoolExecutor
 
 router = APIRouter()
@@ -10,6 +11,18 @@ logger = logging.getLogger(__name__)
 # Global thread pool for parallel database queries
 # Using 8 workers as we have many I/O bound tasks
 _executor = ThreadPoolExecutor(max_workers=8)
+
+def safe_float(val):
+    """Convert value to JSON-safe float. Returns None for inf/NaN."""
+    if val is None:
+        return None
+    try:
+        f = float(val)
+        if math.isnan(f) or math.isinf(f):
+            return None
+        return f
+    except (ValueError, TypeError):
+        return None
 
 def bulk_fetch_financials(conn, regcodes: list, year: int) -> dict:
     """
@@ -37,8 +50,8 @@ def bulk_fetch_financials(conn, regcodes: list, year: int) -> dict:
     for row in result:
         fin_map[row.company_regcode] = {
             "employees": row.employees,
-            "turnover": float(row.turnover) if row.turnover else None,
-            "balance": float(row.total_assets) if row.total_assets else None
+            "turnover": safe_float(row.turnover),
+            "balance": safe_float(row.total_assets)
         }
     
     return fin_map
@@ -128,31 +141,33 @@ def get_company_details(regcode: int, response: Response):
             for f in fin_list:
                 row = {
                     "year": f.year,
-                    "turnover": float(f.turnover) if f.turnover else None,
-                    "profit": float(f.profit) if f.profit else None,
+                    "turnover": safe_float(f.turnover),
+                    "profit": safe_float(f.profit),
                     "employees": f.employees,
-                    "cash_balance": float(f.cash_balance) if f.cash_balance else None,
+                    "cash_balance": safe_float(f.cash_balance),
                     "turnover_growth": None,
                     "profit_growth": None,
-                    "current_ratio": float(f.current_ratio) if f.current_ratio else None,
-                    "quick_ratio": float(f.quick_ratio) if f.quick_ratio else None,
-                    "cash_ratio": float(f.cash_ratio) if f.cash_ratio else None,
-                    "net_profit_margin": float(f.net_profit_margin) if f.net_profit_margin else None,
-                    "roe": float(f.roe) if f.roe else None,
-                    "roa": float(f.roa) if f.roa else None,
-                    "debt_to_equity": float(f.debt_to_equity) if f.debt_to_equity else None,
-                    "equity_ratio": float(f.equity_ratio) if f.equity_ratio else None,
-                    "ebitda": float(f.ebitda) if f.ebitda else None
+                    "current_ratio": safe_float(f.current_ratio),
+                    "quick_ratio": safe_float(f.quick_ratio),
+                    "cash_ratio": safe_float(f.cash_ratio),
+                    "net_profit_margin": safe_float(f.net_profit_margin),
+                    "roe": safe_float(f.roe),
+                    "roa": safe_float(f.roa),
+                    "debt_to_equity": safe_float(f.debt_to_equity),
+                    "equity_ratio": safe_float(f.equity_ratio),
+                    "ebitda": safe_float(f.ebitda)
                 }
                 
                 # Calculate growth %
-                if prev_turnover and f.turnover and prev_turnover != 0:
-                    row["turnover_growth"] = round(((float(f.turnover) - prev_turnover) / abs(prev_turnover)) * 100, 1)
-                if prev_profit and f.profit and prev_profit != 0:
-                    row["profit_growth"] = round(((float(f.profit) - prev_profit) / abs(prev_profit)) * 100, 1)
+                turnover_val = safe_float(f.turnover)
+                profit_val = safe_float(f.profit)
+                if prev_turnover and turnover_val and prev_turnover != 0:
+                    row["turnover_growth"] = round(((turnover_val - prev_turnover) / abs(prev_turnover)) * 100, 1)
+                if prev_profit and profit_val and prev_profit != 0:
+                    row["profit_growth"] = round(((profit_val - prev_profit) / abs(prev_profit)) * 100, 1)
                 
-                prev_turnover = float(f.turnover) if f.turnover else None
-                prev_profit = float(f.profit) if f.profit else None
+                prev_turnover = turnover_val
+                prev_profit = profit_val
                 history.append(row)
             
             history.reverse() # Newest first
@@ -173,10 +188,10 @@ def get_company_details(regcode: int, response: Response):
             for t in rows:
                 row = {
                     "year": t.year,
-                    "total_tax_paid": float(t.total_tax_paid) if t.total_tax_paid else None,
-                    "labor_tax_iin": float(t.labor_tax_iin) if t.labor_tax_iin else None,
-                    "social_tax_vsaoi": float(t.social_tax_vsaoi) if t.social_tax_vsaoi else None,
-                    "avg_employees": float(t.avg_employees) if t.avg_employees else None,
+                    "total_tax_paid": safe_float(t.total_tax_paid),
+                    "labor_tax_iin": safe_float(t.labor_tax_iin),
+                    "social_tax_vsaoi": safe_float(t.social_tax_vsaoi),
+                    "avg_employees": safe_float(t.avg_employees),
                     "nace_code": t.nace_code,
                     "avg_gross_salary": None,
                     "avg_net_salary": None
@@ -296,7 +311,7 @@ def get_company_details(regcode: int, response: Response):
             
             return [{
                 "authority": p.authority_name, "subject": p.subject,
-                "amount": float(p.amount) if p.amount else None, "date": str(p.contract_date)
+                "amount": safe_float(p.amount), "date": str(p.contract_date)
             } for p in rows]
 
     # Execute all queries in parallel
@@ -397,8 +412,8 @@ def get_company_quick(regcode: int, response: Response):
             # Latest finances (just the most recent year)
             "finances": {
                 "year": res.fin_year,
-                "turnover": float(res.turnover) if res.turnover else None,
-                "profit": float(res.profit) if res.profit else None,
+                "turnover": safe_float(res.turnover),
+                "profit": safe_float(res.profit),
                 "employees": res.fin_employees
             },
             # Rating
@@ -447,21 +462,21 @@ def get_financial_history_endpoint(regcode: int, response: Response):
         for f in fin_list:
             row = {
                 "year": f.year,
-                "turnover": float(f.turnover) if f.turnover else None,
-                "profit": float(f.profit) if f.profit else None,
+                "turnover": safe_float(f.turnover),
+                "profit": safe_float(f.profit),
                 "employees": f.employees,
-                "cash_balance": float(f.cash_balance) if f.cash_balance else None,
+                "cash_balance": safe_float(f.cash_balance),
                 "turnover_growth": None,
                 "profit_growth": None,
-                "current_ratio": float(f.current_ratio) if f.current_ratio else None,
-                "quick_ratio": float(f.quick_ratio) if f.quick_ratio else None,
-                "cash_ratio": float(f.cash_ratio) if f.cash_ratio else None,
-                "net_profit_margin": float(f.net_profit_margin) if f.net_profit_margin else None,
-                "roe": float(f.roe) if f.roe else None,
-                "roa": float(f.roa) if f.roa else None,
-                "debt_to_equity": float(f.debt_to_equity) if f.debt_to_equity else None,
-                "equity_ratio": float(f.equity_ratio) if f.equity_ratio else None,
-                "ebitda": float(f.ebitda) if f.ebitda else None
+                "current_ratio": safe_float(f.current_ratio),
+                "quick_ratio": safe_float(f.quick_ratio),
+                "cash_ratio": safe_float(f.cash_ratio),
+                "net_profit_margin": safe_float(f.net_profit_margin),
+                "roe": safe_float(f.roe),
+                "roa": safe_float(f.roa),
+                "debt_to_equity": safe_float(f.debt_to_equity),
+                "equity_ratio": safe_float(f.equity_ratio),
+                "ebitda": safe_float(f.ebitda)
             }
             
             if prev_turnover and f.turnover and prev_turnover != 0:
@@ -469,8 +484,8 @@ def get_financial_history_endpoint(regcode: int, response: Response):
             if prev_profit and f.profit and prev_profit != 0:
                 row["profit_growth"] = round(((float(f.profit) - prev_profit) / abs(prev_profit)) * 100, 1)
             
-            prev_turnover = float(f.turnover) if f.turnover else None
-            prev_profit = float(f.profit) if f.profit else None
+            prev_turnover = safe_float(f.turnover)
+            prev_profit = safe_float(f.profit)
             history.append(row)
         
         history.reverse()
@@ -496,10 +511,10 @@ def get_tax_history_endpoint(regcode: int, response: Response):
         for t in rows:
             row = {
                 "year": t.year,
-                "total_tax_paid": float(t.total_tax_paid) if t.total_tax_paid else None,
-                "labor_tax_iin": float(t.labor_tax_iin) if t.labor_tax_iin else None,
-                "social_tax_vsaoi": float(t.social_tax_vsaoi) if t.social_tax_vsaoi else None,
-                "avg_employees": float(t.avg_employees) if t.avg_employees else None,
+                "total_tax_paid": safe_float(t.total_tax_paid),
+                "labor_tax_iin": safe_float(t.labor_tax_iin),
+                "social_tax_vsaoi": safe_float(t.social_tax_vsaoi),
+                "avg_employees": safe_float(t.avg_employees),
                 "nace_code": t.nace_code,
                 "avg_gross_salary": None,
                 "avg_net_salary": None
@@ -536,7 +551,7 @@ def get_procurements_endpoint(regcode: int, response: Response, limit: int = 50)
         return {"procurements": [{
             "authority": p.authority_name, 
             "subject": p.subject,
-            "amount": float(p.amount) if p.amount else None, 
+            "amount": safe_float(p.amount), 
             "date": str(p.contract_date)
         } for p in rows]}
 
@@ -658,8 +673,8 @@ def get_ownership_percent(conn, owner_regcode_or_person_code: str, target_regcod
               AND p.person_code = :owner
         """), {"target": target_regcode, "owner": owner_regcode_or_person_code}).fetchone()
     
-    if result and result.owner_value and result.total_capital and float(result.total_capital) > 0:
-        return (float(result.owner_value) / float(result.total_capital)) * 100
+    if result and result.owner_value and result.total_capital and safe_float(result.total_capital) > 0:
+        return (safe_float(result.owner_value) / safe_float(result.total_capital)) * 100
     return 0.0
 
 
@@ -687,7 +702,7 @@ def find_direct_owners(conn, regcode: int) -> list:
         HAVING (SUM(p.number_of_shares * p.share_nominal_value) / NULLIF(cc.total, 0)) > 0.5
     """), {"r": regcode}).fetchall()
     
-    return [{"regcode": r.owner_regcode, "name": r.owner_name, "percent": float(r.ownership_percent)} for r in result]
+    return [{"regcode": r.owner_regcode, "name": r.owner_name, "percent": safe_float(r.ownership_percent)} for r in result]
 
 
 def find_direct_subsidiaries(conn, regcode: int, company_name: str) -> list:
@@ -855,7 +870,7 @@ def find_significant_physical_persons(conn, regcode: int) -> list:
     return [{
         "person_code": r.person_code,
         "name": r.person_name,
-        "percent": float(r.ownership_percent) if r.ownership_percent else 0
+        "percent": safe_float(r.ownership_percent) if r.ownership_percent else 0
     } for r in result]
 
 
@@ -954,7 +969,7 @@ def find_companies_controlled_by_person(conn, person_name: str, person_code: str
             "regcode": r.regcode,
             "name": r.name,
             "nace_code": r.nace_code,
-            "ownership_percent": float(r.ownership_percent) if r.ownership_percent else 0,
+            "ownership_percent": safe_float(r.ownership_percent) if r.ownership_percent else 0,
             "classification": r.classification
         })
     
@@ -1045,8 +1060,8 @@ def find_all_companies_via_persons_bulk(conn, regcode: int) -> list:
         "nace_section": r.nace_section,
         "controlling_person": r.person_name,
         "person_code": r.person_code,
-        "person_percent": float(r.person_percent_in_target) if r.person_percent_in_target else 0,
-        "ownership_percent": float(r.ownership_percent) if r.ownership_percent else 0,
+        "person_percent": safe_float(r.person_percent_in_target) if r.person_percent_in_target else 0,
+        "ownership_percent": safe_float(r.ownership_percent) if r.ownership_percent else 0,
         "classification": r.classification
     } for r in result]
 
@@ -1170,7 +1185,7 @@ def find_all_linked_entities(conn, regcode: int, year: int = 2024) -> dict:
             all_partners.append({
                 "regcode": p.partner_regcode,
                 "name": p.partner_name,
-                "ownership_percent": float(p.ownership_percent),
+                "ownership_percent": safe_float(p.ownership_percent),
                 "relation": "owner",
                 "entity_type": "legal_entity"
             })
@@ -1179,7 +1194,7 @@ def find_all_linked_entities(conn, regcode: int, year: int = 2024) -> dict:
             all_partners.append({
                 "regcode": None,
                 "name": p.partner_name,
-                "ownership_percent": float(p.ownership_percent),
+                "ownership_percent": safe_float(p.ownership_percent),
                 "relation": "owner",
                 "entity_type": "physical_person"
             })
@@ -1219,7 +1234,7 @@ def find_all_linked_entities(conn, regcode: int, year: int = 2024) -> dict:
                 all_partners.append({
                     "regcode": lp.partner_regcode,
                     "name": lp.partner_name,
-                    "ownership_percent": float(lp.ownership_percent),
+                    "ownership_percent": safe_float(lp.ownership_percent),
                     "relation": "owner",
                     "entity_type": "legal_entity",
                     "via_linked": linked_entity["name"],
@@ -1282,8 +1297,8 @@ def get_related_companies(regcode: int, year: int = 2024):
         if fin:
             result = {
                 "employees": fin.employees,
-                "turnover": float(fin.turnover) if fin.turnover else None,
-                "balance": float(fin.total_assets) if fin.total_assets else None
+                "turnover": safe_float(fin.turnover),
+                "balance": safe_float(fin.total_assets)
             }
         _fin_cache[related_regcode] = result
         return result
@@ -1527,8 +1542,8 @@ def get_mvk_declaration(regcode: int, year: int = 2024):
         if fin:
             result = {
                 "employees": fin.employees,
-                "turnover": float(fin.turnover) if fin.turnover else None,
-                "balance": float(fin.total_assets) if fin.total_assets else None
+                "turnover": safe_float(fin.turnover),
+                "balance": safe_float(fin.total_assets)
             }
         _fin_cache[related_regcode] = result
         return result
