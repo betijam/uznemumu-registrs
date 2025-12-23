@@ -3,6 +3,7 @@ from sqlalchemy import text, or_
 from app.routers.companies import engine, safe_float
 import math
 import logging
+from typing import Optional
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -24,15 +25,15 @@ def list_companies(
     limit: int = Query(50, ge=1, le=100),
     sort_by: str = Query("turnover", regex="^(turnover|profit|employees|reg_date|salary|tax)$"),
     order: str = Query("desc", regex="^(asc|desc)$"),
-    nace: str = Query(None, description="Partial NACE code, e.g. 62.0"),
-    region: str = Query(None, description="Region search term, e.g. Riga"),
+    nace: Optional[str] = Query(None, description="Partial NACE code, e.g. 62.0"),
+    region: Optional[str] = Query(None, description="Region search term, e.g. Riga"),
     status: str = Query("active", regex="^(active|liquidated|all)$"),
-    min_turnover: int = Query(None),
-    max_turnover: int = Query(None),
-    min_employees: int = Query(None),
-    year: int = Query(None, description="Financial year filter, defaults to latest available if sorting by finance"),
-    has_pvn: bool = Query(None),
-    has_sanctions: bool = Query(None)
+    min_turnover: Optional[int] = Query(None),
+    max_turnover: Optional[int] = Query(None),
+    min_employees: Optional[int] = Query(None),
+    year: Optional[int] = Query(None, description="Financial year filter, defaults to latest available if sorting by finance"),
+    has_pvn: Optional[bool] = Query(None),
+    has_sanctions: Optional[bool] = Query(None)
 ):
     """
     Universal Company Explorer Endpoint.
