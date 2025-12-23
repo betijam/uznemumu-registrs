@@ -71,7 +71,7 @@ export default function Home() {
 
           <div className="mt-8 flex justify-center gap-4 text-sm text-gray-500 flex-wrap">
             <span>Populāri:</span>
-            <Link href="/top-100" className="hover:text-purple-600 hover:underline">TOP 100</Link>
+            <Link href="/explore?sort_by=turnover&order=desc" className="hover:text-purple-600 hover:underline">TOP 100</Link>
             <Link href="/industries/47" className="hover:text-purple-600 hover:underline">Mazumtirdzniecība</Link>
             <Link href="/industries/41" className="hover:text-purple-600 hover:underline">Būvniecība</Link>
             <Link href="/industries/62" className="hover:text-purple-600 hover:underline">IT pakalpojumi</Link>

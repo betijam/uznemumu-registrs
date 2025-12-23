@@ -39,7 +39,7 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
         <div className="w-full max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-8">
                 <h2 className="text-2xl font-bold text-gray-900">Biznesa Vides Pārskats ({year})</h2>
-                <Link href="/analytics" className="text-sm font-medium text-purple-600 hover:text-purple-700">
+                <Link href="/explore" className="text-sm font-medium text-purple-600 hover:text-purple-700">
                     Skatīt visu analītiku →
                 </Link>
             </div>
@@ -53,7 +53,7 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                     items={tops.turnover}
                     valueFormatter={(v) => formatCurrency(v)}
                     colorClass="text-blue-600 bg-blue-50"
-                    linkTo="/tops/turnover"
+                    linkTo="/explore?sort_by=turnover&order=desc"
                 />
 
                 {/* 2. TOP Profit */}
@@ -63,7 +63,7 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                     items={tops.profit}
                     valueFormatter={(v) => formatCurrency(v)}
                     colorClass="text-purple-600 bg-purple-50"
-                    linkTo="/tops/profit"
+                    linkTo="/explore?sort_by=profit&order=desc"
                 />
 
                 {/* 3. Latest Registered (Live Feed) */}
@@ -94,14 +94,13 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                         ))}
                     </div>
                     <div className="mt-6 pt-4 border-t border-gray-50 text-center">
-                        <p className="text-xs text-gray-400">Šodien reģistrēti jauni uzņēmumi</p>
+                        <Link href="/explore?sort_by=reg_date&order=desc" className="text-xs text-purple-600 hover:underline">
+                            Skatīt visus
+                        </Link>
                     </div>
                 </div>
 
-                {/* 4. Gazeles (Merge into full width or keep in grid?) - Let's make it a large card spanning 2 cols or keep standard.
-                   User design showed "Straujākā Izaugsme (Gazeles)" spanning full width or 2 cols.
-                   Let's try to make Gazeles span 2 columns if on desktop. 
-                */}
+                {/* 4. Gazeles */}
                 <div className="lg:col-span-2 bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-8 text-white relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-32 bg-purple-600 rounded-full blur-3xl opacity-20 -mr-16 -mt-16 pointer-events-none"></div>
 
@@ -112,7 +111,7 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                             </div>
                             <h3 className="font-semibold text-lg">Straujākā Izaugsme (Gazeles)</h3>
                         </div>
-                        <Link href="/tops/gazelles" className="text-sm font-medium text-slate-300 hover:text-white bg-white/10 px-4 py-2 rounded-lg">
+                        <Link href="/explore?sort_by=turnover" className="text-sm font-medium text-slate-300 hover:text-white bg-white/10 px-4 py-2 rounded-lg">
                             Skatīt visus
                         </Link>
                     </div>
@@ -136,7 +135,7 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                     items={tops.salaries}
                     valueFormatter={(v) => formatCurrency(v)}
                     colorClass="text-yellow-600 bg-yellow-50"
-                    linkTo="/tops/salaries"
+                    linkTo="/explore?sort_by=salary&order=desc"
                 />
 
             </div>
