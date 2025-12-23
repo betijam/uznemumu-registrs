@@ -71,10 +71,10 @@ export default function Home() {
 
           <div className="mt-8 flex justify-center gap-4 text-sm text-gray-500 flex-wrap">
             <span>Populāri:</span>
-            <Link href="/tops/profit" className="hover:text-purple-600 hover:underline">Top Pelnošākie</Link>
-            <Link href="/tops/gazelles" className="hover:text-purple-600 hover:underline">Jaunie Uzņēmumi</Link>
-            <Link href="/lists/sanctions" className="hover:text-purple-600 hover:underline">Sankciju Saraksti</Link>
-            <Link href="/lists/tax-debtors" className="hover:text-purple-600 hover:underline">Nodokļu Parādnieki</Link>
+            <Link href="/top-100" className="hover:text-purple-600 hover:underline">TOP 100</Link>
+            <Link href="/industries/47" className="hover:text-purple-600 hover:underline">Mazumtirdzniecība</Link>
+            <Link href="/industries/41" className="hover:text-purple-600 hover:underline">Būvniecība</Link>
+            <Link href="/industries/62" className="hover:text-purple-600 hover:underline">IT pakalpojumi</Link>
           </div>
         </div>
       </div>
