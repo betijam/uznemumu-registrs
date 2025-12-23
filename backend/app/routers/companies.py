@@ -6,6 +6,38 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+def bulk_fetch_financials(conn, regcodes: list, year: int) -> dict:
+    """
+    Fetch financial data for multiple companies in a single query.
+    Returns dict: {regcode: {employees, turnover, balance}}
+    
+    This is a performance optimization to avoid N+1 queries.
+    """
+    if not regcodes:
+        return {}
+    
+    # Remove None values and duplicates
+    valid_codes = list(set(r for r in regcodes if r is not None))
+    if not valid_codes:
+        return {}
+    
+    result = conn.execute(text("""
+        SELECT company_regcode, turnover, profit, employees, total_assets
+        FROM financial_reports
+        WHERE company_regcode = ANY(:codes) AND year = :y
+    """), {"codes": valid_codes, "y": year}).fetchall()
+    
+    # Convert to dict for O(1) lookup
+    fin_map = {}
+    for row in result:
+        fin_map[row.company_regcode] = {
+            "employees": row.employees,
+            "turnover": float(row.turnover) if row.turnover else None,
+            "balance": float(row.total_assets) if row.total_assets else None
+        }
+    
+    return fin_map
+
 def calculate_company_size(employees: int, turnover: float, assets: float) -> str:
     """
     Calculate company size according to EU standards (SME definition)
@@ -858,11 +890,19 @@ def get_related_companies(regcode: int, year: int = 2024):
         else:
             return "minor"  # <25%, ignored
     
+    # Financial cache - will be populated by bulk fetch for performance
+    _fin_cache = {}
+    
     def get_financial_data(conn, related_regcode: int, year: int):
-        """Get financial data for a related company"""
+        """Get financial data from cache or single query as fallback"""
         if not related_regcode:
             return {"employees": None, "turnover": None, "balance": None}
         
+        # Check cache first (populated by bulk prefetch)
+        if related_regcode in _fin_cache:
+            return _fin_cache[related_regcode]
+        
+        # Fallback to single query if not in cache
         fin = conn.execute(text("""
             SELECT turnover, profit, employees, total_assets
             FROM financial_reports
@@ -870,13 +910,15 @@ def get_related_companies(regcode: int, year: int = 2024):
             ORDER BY year DESC LIMIT 1
         """), {"r": related_regcode, "y": year}).fetchone()
         
+        result = {"employees": None, "turnover": None, "balance": None}
         if fin:
-            return {
+            result = {
                 "employees": fin.employees,
                 "turnover": float(fin.turnover) if fin.turnover else None,
                 "balance": float(fin.total_assets) if fin.total_assets else None
             }
-        return {"employees": None, "turnover": None, "balance": None}
+        _fin_cache[related_regcode] = result
+        return result
     
     partners = []  # 25-50%
     linked = []    # >50%
@@ -904,6 +946,11 @@ def get_related_companies(regcode: int, year: int = 2024):
             LEFT JOIN companies c ON c.regcode = p.legal_entity_regcode
             WHERE p.company_regcode = :r AND p.role = 'member'
         """), {"r": regcode}).fetchall()
+        
+        # PERFORMANCE: Bulk prefetch financials for all owner legal entities (N+1 fix)
+        owner_regcodes = [o.legal_entity_regcode for o in owners if o.legal_entity_regcode]
+        if owner_regcodes:
+            _fin_cache.update(bulk_fetch_financials(conn, owner_regcodes, year))
         
         logger.info(f"[DEBUG] Company {regcode} ({company_name}): Found {len(owners)} owners")
         for o in owners:
@@ -1001,6 +1048,11 @@ def get_related_companies(regcode: int, year: int = 2024):
                 seen_regcodes.add(sub.regcode)
                 all_subsidiaries.append(sub)
         
+        # PERFORMANCE: Bulk prefetch financials for all subsidiaries (N+1 fix)
+        sub_regcodes = [s.regcode for s in all_subsidiaries if s.regcode and s.regcode != regcode]
+        if sub_regcodes:
+            _fin_cache.update(bulk_fetch_financials(conn, sub_regcodes, year))
+        
         for sub in all_subsidiaries:
             # Skip if this is the same company
             if sub.regcode == regcode:
@@ -1084,10 +1136,17 @@ def get_mvk_declaration(regcode: int, year: int = 2024):
         else:
             return "minor"
     
+    # Financial cache for bulk prefetch optimization (N+1 fix)
+    _fin_cache = {}
+    
     def get_financial_data(conn, related_regcode: int, year: int):
-        """Get financial data for a related company"""
+        """Get financial data from cache or single query as fallback"""
         if not related_regcode:
             return {"employees": None, "turnover": None, "balance": None}
+        
+        # Check cache first
+        if related_regcode in _fin_cache:
+            return _fin_cache[related_regcode]
         
         fin = conn.execute(text("""
             SELECT turnover, profit, employees, total_assets
@@ -1096,13 +1155,15 @@ def get_mvk_declaration(regcode: int, year: int = 2024):
             ORDER BY year DESC LIMIT 1
         """), {"r": related_regcode, "y": year}).fetchone()
         
+        result = {"employees": None, "turnover": None, "balance": None}
         if fin:
-            return {
+            result = {
                 "employees": fin.employees,
                 "turnover": float(fin.turnover) if fin.turnover else None,
                 "balance": float(fin.total_assets) if fin.total_assets else None
             }
-        return {"employees": None, "turnover": None, "balance": None}
+        _fin_cache[related_regcode] = result
+        return result
     
     with engine.connect() as conn:
         # 1. Get Company Info
@@ -1145,6 +1206,11 @@ def get_mvk_declaration(regcode: int, year: int = 2024):
             LEFT JOIN companies c ON c.regcode = p.legal_entity_regcode
             WHERE p.company_regcode = :r AND p.role = 'member'
         """), {"r": regcode}).fetchall()
+        
+        # PERFORMANCE: Bulk prefetch financials for all owner legal entities (N+1 fix)
+        owner_regcodes = [o.legal_entity_regcode for o in owners if o.legal_entity_regcode]
+        if owner_regcodes:
+            _fin_cache.update(bulk_fetch_financials(conn, owner_regcodes, year))
         
         total_capital = sum(
             float(o.number_of_shares or 0) * float(o.share_nominal_value or 0)
