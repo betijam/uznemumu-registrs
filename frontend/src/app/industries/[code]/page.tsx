@@ -18,6 +18,7 @@ interface KPI {
     total_employees: number | null;
     new_companies?: number;
     avg_salary: number | null;
+    national_avg_salary: number | null;
     salary_ratio: number | null;
     concentration_level?: string;
     concentration_val?: number;
