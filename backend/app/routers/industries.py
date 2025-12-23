@@ -384,71 +384,63 @@ def get_industry_detail(
     """
     if response:
         response.headers["Cache-Control"] = "public, max-age=3600"
+    Get detailed statistics for a specific industry (NACE section)
+    """
+    conn = engine.connect()
     
-    with engine.connect() as conn:
-        # Determine data year
-        if year is None:
-            year_result = conn.execute(text("SELECT MAX(year) FROM financial_reports")).scalar()
-            year = year_result or 2023
-        
-        # Get section metadata
-        section_meta = conn.execute(text("""
-            SELECT 
-                nace_section_text as name,
-                COUNT(DISTINCT regcode) as total_companies
-            FROM companies
-            WHERE nace_section = :code
-            GROUP BY nace_section_text
-        """), {"code": nace_code}).fetchone()
-        
-        if not section_meta:
-            return {
-                "nace_code": nace_code,
-                "error": "Industry not found",
-                "meta": None
-            }
-        
-        # 1. KPIs for this industry (current year)
-        kpi_data = conn.execute(text("""
+    # helper for percentage
+    def calc_growth(cur, prev):
+        if cur and prev and prev > 0:
+            return round(((cur - prev) / prev) * 100, 1)
+        return None
+
+    try:
+        # Default to previous year if not specified (current year usually incomplete)
+        if not year:
+            # simple check for max available year
+            max_year_row = conn.execute(text("SELECT MAX(year) FROM financial_reports")).fetchone()
+            year = max_year_row[0] if max_year_row and max_year_row[0] else 2023
+
+        # 1. Basic Info & NACE Name
+        nace_info = NACE_SECTIONS.get(nace_code)
+        nace_name = nace_info["name"] if nace_info else f"Sekcija {nace_code}"
+        nace_icon = nace_info["icon"] if nace_info else "🏢"
+
+        # 2. Main KPIs for Selected Year
+        # We compute this dynamically from companies/financial_reports to be fresh
+        # and consistent with the specific selected 'year'
+        stats = conn.execute(text("""
             SELECT 
                 SUM(f.turnover) as total_turnover,
                 SUM(f.profit) as total_profit,
-                SUM(f.employees) as employee_count,
+                SUM(f.employees) as total_employees,
                 COUNT(DISTINCT c.regcode) as active_companies
             FROM companies c
             LEFT JOIN LATERAL (
                 SELECT turnover, profit, employees
                 FROM financial_reports
                 WHERE company_regcode = c.regcode AND year = :year
+                  AND turnover IS NOT NULL AND turnover < 1e15
             ) f ON true
             WHERE c.nace_section = :code
               AND c.status = 'active'
         """), {"code": nace_code, "year": year}).fetchone()
-        
-        # Previous year for growth calculation
-        prev_kpi = conn.execute(text("""
-            SELECT 
-                SUM(f.turnover) as prev_turnover,
-                SUM(f.profit) as prev_profit
+
+        # Previous Year for Growth
+        prev_stats = conn.execute(text("""
+            SELECT SUM(f.turnover) as total_turnover
             FROM companies c
             LEFT JOIN LATERAL (
-                SELECT turnover, profit
+                SELECT turnover
                 FROM financial_reports
                 WHERE company_regcode = c.regcode AND year = :prev_year
+                  AND turnover IS NOT NULL AND turnover < 1e15
             ) f ON true
             WHERE c.nace_section = :code
+              AND c.status = 'active'
         """), {"code": nace_code, "prev_year": year - 1}).fetchone()
-        
-        # Calculate growth percentages
-        turnover_growth = None
-        if kpi_data.total_turnover and prev_kpi.prev_turnover and prev_kpi.prev_turnover > 0:
-            turnover_growth = round(((kpi_data.total_turnover - prev_kpi.prev_turnover) / prev_kpi.prev_turnover) * 100, 1)
-        
-        profit_growth = None
-        if kpi_data.total_profit and prev_kpi.prev_profit and prev_kpi.prev_profit > 0:
-            profit_growth = round(((kpi_data.total_profit - prev_kpi.prev_profit) / prev_kpi.prev_profit) * 100, 1)
-        
-        # 2. Average Salary for this industry
+
+        # Salary Data (from tax_payments)
         salary_data = conn.execute(text("""
             SELECT 
                 SUM(t.social_tax_vsaoi) as total_vsaoi,
@@ -492,8 +484,11 @@ def get_industry_detail(
         salary_ratio = None
         if industry_avg_salary and national_avg_salary and national_avg_salary > 0:
             salary_ratio = round(industry_avg_salary / national_avg_salary, 1)
-        
-        # 3. TOP 5 Leaders
+
+        # 3. Market Share Base (Total Industry Turnover)
+        total_industry_turnover = safe_float(stats.total_turnover) or 0
+
+        # 4. TOP 5 Leaders with Market Share
         leaders = conn.execute(text("""
             SELECT 
                 c.regcode,
@@ -506,7 +501,7 @@ def get_industry_detail(
                 SELECT turnover, profit, employees
                 FROM financial_reports
                 WHERE company_regcode = c.regcode AND year = :year
-                  AND turnover IS NOT NULL AND turnover > 0
+                  AND turnover IS NOT NULL AND turnover > 0 AND turnover < 1e15
             ) f ON true
             WHERE c.nace_section = :code
               AND c.status = 'active'
@@ -514,92 +509,137 @@ def get_industry_detail(
             ORDER BY f.turnover DESC
             LIMIT 5
         """), {"code": nace_code, "year": year}).fetchall()
+
+        leaders_data = []
+        for l in leaders:
+            t_val = safe_float(l.turnover) or 0
+            market_share = 0
+            if total_industry_turnover > 0:
+                market_share = round((t_val / total_industry_turnover) * 100, 2)
+            
+            leaders_data.append({
+                "regcode": l.regcode,
+                "name": l.name,
+                "turnover": t_val,
+                "turnover_formatted": format_large_number(t_val),
+                "profit": safe_float(l.profit),
+                "profit_formatted": format_large_number(l.profit),
+                "employees": l.employees,
+                "market_share": market_share
+            })
         
-        # 4. Tax Burden
+        # 5. Tax Burden
         tax_data = conn.execute(text("""
             SELECT 
-                SUM(t.total_tax_paid) as total_tax,
-                SUM(f.turnover) as total_turnover
+                SUM(t.total_tax_paid) as total_tax
             FROM companies c
             LEFT JOIN LATERAL (
                 SELECT total_tax_paid FROM tax_payments
                 WHERE company_regcode = c.regcode AND year = :year
             ) t ON true
-            LEFT JOIN LATERAL (
-                SELECT turnover FROM financial_reports
-                WHERE company_regcode = c.regcode AND year = :year
-            ) f ON true
             WHERE c.nace_section = :code
         """), {"code": nace_code, "year": year}).fetchone()
         
         tax_burden = None
-        if tax_data.total_tax and tax_data.total_turnover and tax_data.total_turnover > 0:
-            tax_burden = round((tax_data.total_tax / tax_data.total_turnover) * 100, 1)
+        total_tax = safe_float(tax_data.total_tax) or 0
+        if total_industry_turnover > 0:
+            tax_burden = round((total_tax / total_industry_turnover) * 100, 2)
+
+        # 6. Market Concentration (HHI proxy / Top 5 share)
+        concentration_val = 0
+        if leaders_data and total_industry_turnover > 0:
+            top5_sum = sum(l['turnover'] for l in leaders_data)
+            concentration_val = round((top5_sum / total_industry_turnover) * 100, 1)
         
-        # 5. Market Concentration (TOP 5 share)
-        top5_turnover = sum(safe_float(l.turnover) or 0 for l in leaders)
-        total_turnover = safe_float(kpi_data.total_turnover) or 0
-        top5_concentration = None
-        concentration_level = None
-        if top5_turnover and total_turnover > 0:
-            top5_concentration = round((top5_turnover / total_turnover) * 100, 1)
-            if top5_concentration >= 60:
-                concentration_level = "Augsta"
-            elif top5_concentration >= 40:
-                concentration_level = "Vidēja"
-            else:
-                concentration_level = "Zema"
+        concentration_level = "Zema"
+        if concentration_val > 40: concentration_level = "Vidēja"
+        if concentration_val > 70: concentration_level = "Augsta"
+
+        # 7. Financial History (Last 5 Years)
+        # We want years: [year-4, year-3, year-2, year-1, year]
+        start_year = year - 4
+        history_rows = conn.execute(text("""
+            SELECT 
+                f.year,
+                SUM(f.turnover) as total_turnover,
+                SUM(f.profit) as total_profit
+            FROM companies c
+            JOIN financial_reports f ON f.company_regcode = c.regcode
+            WHERE c.nace_section = :code
+              AND f.year BETWEEN :start_year AND :end_year
+              AND f.turnover IS NOT NULL AND f.turnover < 1e15
+            GROUP BY f.year
+            ORDER BY f.year ASC
+        """), {"code": nace_code, "start_year": start_year, "end_year": year}).fetchall()
+
+        history_data = [
+            {
+                "year": row.year,
+                "turnover": safe_float(row.total_turnover),
+                "profit": safe_float(row.total_profit)
+            }
+            for row in history_rows
+        ]
+
+        # 8. Sub-industry Breakdown (Level 2 NACE)
+        # NACE codes starting with the section code (mapped) or handle standard mapping
+        # Ideally, companies table has `nace_code` (4 digits). We can group by left(nace_code, 2).
+        # Actually, standard NACE: Level 1 is Section (A-U), Level 2 is 2 digits (01-99).
+        # We need to join companies and group by their 2-digit code.
+        # Note: c.nace_code in database is likely the 4-digit code (e.g., 6201). 
+        # So we group by LEFT(nace_code, 2).
         
-        # 6. New companies this year
-        new_companies = conn.execute(text("""
-            SELECT COUNT(*) FROM companies
-            WHERE nace_section = :code
-              AND EXTRACT(YEAR FROM registration_date) = :year
-        """), {"code": nace_code, "year": year}).scalar() or 0
-        
+        sub_industries_rows = conn.execute(text("""
+            SELECT 
+                LEFT(c.nace_code, 2) as sub_code,
+                MAX(c.nace_text) as sub_name_sample, 
+                SUM(f.turnover) as sub_turnover
+            FROM companies c
+            LEFT JOIN LATERAL (
+                 SELECT turnover FROM financial_reports WHERE company_regcode = c.regcode AND year = :year ORDER BY year DESC LIMIT 1
+            ) f ON true
+            WHERE c.nace_section = :code
+              AND c.nace_code IS NOT NULL
+              AND f.turnover IS NOT NULL
+            GROUP BY LEFT(c.nace_code, 2)
+            ORDER BY sub_turnover DESC
+            LIMIT 10
+        """), {"code": nace_code, "year": year}).fetchall()
+
+        sub_industries = []
+        for row in sub_industries_rows:
+            st = safe_float(row.sub_turnover) or 0
+            share = 0
+            if total_industry_turnover > 0:
+                share = round((st / total_industry_turnover) * 100, 1)
+            
+            # Simple name cleanup if needed, or fetch official NACE level 2 names if available
+            # For now using max(nace_text) might allow us to get a representative name
+            # Ideally we'd have a NACE dictionary table. 
+            name = row.sub_name_sample or f"Apakšnozare {row.sub_code}"
+            
+            sub_industries.append({
+                "code": row.sub_code,
+                "name": name,
+                "turnover": st,
+                "formatted_turnover": format_large_number(st),
+                "share": share
+            })
+
         return {
             "nace_code": nace_code,
-            "data_year": year,
-            "available_years": [2021, 2022, 2023],  # Can be made dynamic
-            "meta": {
-                "name": NACE_SECTIONS.get(nace_code, {}).get("name", section_meta.name),
-                "icon": NACE_SECTIONS.get(nace_code, {}).get("icon", "📊"),
-                "description": f"NACE sekcija {nace_code}"
-            },
-            "kpi": {
-                "total_turnover": safe_float(kpi_data.total_turnover),
-                "total_turnover_formatted": format_large_number(kpi_data.total_turnover),
-                "turnover_growth": turnover_growth,
-                "total_profit": safe_float(kpi_data.total_profit),
-                "total_profit_formatted": format_large_number(kpi_data.total_profit),
-                "profit_growth": profit_growth,
-                "active_companies": safe_int(kpi_data.active_companies),
-                "new_companies": new_companies,
+            "nace_name": nace_name,
+            "icon": nace_icon,
+            "year": year,
+            "stats": {
+                "total_turnover": safe_float(stats.total_turnover),
+                "total_turnover_formatted": format_large_number(stats.total_turnover),
+                "turnover_growth": calc_growth(safe_float(stats.total_turnover), safe_float(prev_stats.total_turnover)),
+                "total_profit": safe_float(stats.total_profit),
+                "total_profit_formatted": format_large_number(stats.total_profit),
+                "active_companies": stats.active_companies or 0,
+                "total_employees": safe_int(stats.total_employees),
                 "avg_salary": industry_avg_salary,
-                "salary_ratio": salary_ratio
-            },
-            "leaders": [
-                {
-                    "rank": idx + 1,
-                    "regcode": l.regcode,
-                    "name": l.name,
-                    "turnover": safe_float(l.turnover),
-                    "turnover_formatted": format_large_number(l.turnover),
-                    "profit": safe_float(l.profit),
-                    "profit_formatted": format_large_number(l.profit),
-                    "employees": safe_int(l.employees)
-                }
-                for idx, l in enumerate(leaders)
-            ],
-            "salary_analytics": {
-                "industry_avg": industry_avg_salary,
-                "national_avg": national_avg_salary,
-                "ratio": salary_ratio,
-                "ratio_text": f"{salary_ratio}x pret vidējo" if salary_ratio else None
-            },
-            "tax_burden": {
-                "percent": tax_burden,
-                "description": "No apgrozījuma tiek samaksāts nodokļos"
             },
             "market_concentration": {
                 "top5_percent": top5_concentration,
