@@ -95,12 +95,12 @@ function ExploreContent() {
                 key: 'name',
                 label: 'Uzņēmums',
                 render: (val: any, row: any) => (
-                    <div>
-                        <a href={`/company/${row.regcode}`} className="font-semibold text-gray-900 hover:text-purple-600">
+                    <div className="max-w-[200px] md:max-w-[300px]">
+                        <a href={`/company/${row.regcode}`} className="font-semibold text-gray-900 hover:text-purple-600 block truncate" title={val}>
                             {val}
                         </a>
                         <div className="text-gray-500 text-xs">Reg. nr. {row.regcode}</div>
-                        {row.nace && <span className="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded mt-1 truncate max-w-[200px]">{row.nace}</span>}
+                        {row.nace && <span className="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded mt-1 truncate max-w-full">{row.nace}</span>}
                     </div>
                 )
             }

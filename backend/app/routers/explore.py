@@ -85,9 +85,10 @@ def list_companies(
         # Usually 'active' means status IS NULL (active) or 'A'.
         # Let's try basic ILIKE matching for safety or simple logic.
         if status == "active":
-             where_clauses.append("(c.status ILIKE 'aktīvs' OR c.status IS NULL OR c.status = 'A')")
+             # "Active" usually means status is NULL, empty, 'A', or 'Aktīvs'
+             where_clauses.append("(c.status IS NULL OR c.status = '' OR c.status = 'A' OR c.status ILIKE 'aktīvs')")
         elif status == "liquidated":
-             where_clauses.append("(c.status ILIKE 'likvidēts' OR c.status = 'L')")
+             where_clauses.append("(c.status = 'L' OR c.status ILIKE 'likvidēts' OR c.status ILIKE 'steigta likvidācija')")
     
     if nace:
         where_clauses.append("c.nace_code LIKE :nace")
