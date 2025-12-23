@@ -39,16 +39,15 @@ def get_stats():
             stats["daily_stats"]["new_today"] = today_count
             stats["daily_stats"]["change"] = today_count - yesterday_count
             
-            # Get top earner by CURRENT YEAR turnover
-            top_earner = conn.execute(text("""
+            # Get top earner by most recent year with data
+            top_earner =conn.execute(text("""
                 SELECT c.name, f.turnover, f.year
                 FROM financial_reports f
                 JOIN companies c ON c.regcode = f.company_regcode
-                WHERE f.turnover IS NOT NULL 
-                  AND f.year = :current_year
-                ORDER BY f.turnover DESC
+                WHERE f.turnover IS NOT NULL
+                ORDER BY f.year DESC, f.turnover DESC
                 LIMIT 1
-            """), {"current_year": current_year}).fetchone()
+            """)).fetchone()
             
             if top_earner:
                 stats["top_earner"]["name"] = top_earner.name

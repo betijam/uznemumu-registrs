@@ -6,9 +6,9 @@ import Link from "next/link";
 // Stats Cards Skeleton for loading state
 function StatsCardsSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12" style={{ minHeight: '140px' }}>
       {[1, 2, 3].map((i) => (
-        <div key={i} className="bg-white rounded-xl shadow-md p-6">
+        <div key={i} className="bg-white rounded-xl shadow-md p-6" style={{ minHeight: '140px' }}>
           <div className="flex items-center justify-between mb-2">
             <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
             <div className="h-5 w-5 bg-gray-200 rounded animate-pulse"></div>
