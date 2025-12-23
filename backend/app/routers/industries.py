@@ -108,6 +108,8 @@ def _get_overview_from_cache(conn):
             MAX(data_year) as data_year
         FROM industry_stats_materialized
         WHERE nace_level = 1
+        AND nace_code != '00'
+        AND nace_name NOT ILIKE '%Cita nozare%'
     """)).fetchone()
     
     # Get previous year for trends
@@ -141,7 +143,10 @@ def _get_overview_from_cache(conn):
     top_growth = conn.execute(text("""
         SELECT nace_code, nace_name, turnover_growth
         FROM industry_stats_materialized
-        WHERE nace_level = 1 AND turnover_growth IS NOT NULL
+        WHERE nace_level = 1 
+        AND turnover_growth IS NOT NULL
+        AND nace_code != '00'
+        AND nace_name NOT ILIKE '%Cita nozare%'
         ORDER BY turnover_growth DESC
         LIMIT 3
     """)).fetchall()
@@ -149,8 +154,12 @@ def _get_overview_from_cache(conn):
     # 3. Top Salary (by avg gross salary)
     top_salary = conn.execute(text("""
         SELECT nace_code, nace_name, avg_gross_salary
+        SELECT nace_code, nace_name, avg_gross_salary
         FROM industry_stats_materialized
-        WHERE nace_level = 1 AND avg_gross_salary IS NOT NULL
+        WHERE nace_level = 1 
+        AND avg_gross_salary IS NOT NULL
+        AND nace_code != '00'
+        AND nace_name NOT ILIKE '%Cita nozare%'
         ORDER BY avg_gross_salary DESC
         LIMIT 3
     """)).fetchall()
@@ -158,8 +167,12 @@ def _get_overview_from_cache(conn):
     # 4. Top Turnover (by absolute turnover)
     top_turnover = conn.execute(text("""
         SELECT nace_code, nace_name, total_turnover
+        SELECT nace_code, nace_name, total_turnover
         FROM industry_stats_materialized
-        WHERE nace_level = 1 AND total_turnover IS NOT NULL
+        WHERE nace_level = 1 
+        AND total_turnover IS NOT NULL
+        AND nace_code != '00'
+        AND nace_name NOT ILIKE '%Cita nozare%'
         ORDER BY total_turnover DESC
         LIMIT 3
     """)).fetchall()
@@ -172,6 +185,8 @@ def _get_overview_from_cache(conn):
             avg_gross_salary, active_companies
         FROM industry_stats_materialized
         WHERE nace_level = 1
+        AND nace_code != '00'
+        AND nace_name NOT ILIKE '%Cita nozare%'
         ORDER BY nace_code
     """)).fetchall()
     

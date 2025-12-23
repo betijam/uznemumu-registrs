@@ -60,6 +60,12 @@ export default function IndustriesPage() {
     const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [showSearch, setShowSearch] = useState(false);
 
+    // Sorting state
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Section; direction: 'asc' | 'desc' }>({
+        key: 'nace_code',
+        direction: 'asc'
+    });
+
     useEffect(() => {
         fetchOverview();
     }, []);
@@ -96,6 +102,26 @@ export default function IndustriesPage() {
         return () => clearTimeout(timer);
     }, [searchQuery, handleSearch]);
 
+    const handleSort = (key: keyof Section) => {
+        setSortConfig(current => ({
+            key,
+            direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc'
+        }));
+    };
+
+    const sortedSections = [...(data?.sections || [])].sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+
+        if (aValue === null && bValue === null) return 0;
+        if (aValue === null) return 1;
+        if (bValue === null) return -1;
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+
     const formatGrowth = (value: number | null | undefined) => {
         if (value === null || value === undefined) return null;
         const isPositive = value >= 0;
@@ -118,37 +144,37 @@ export default function IndustriesPage() {
         <div className="min-h-screen bg-gray-50">
             <Navbar />
 
-            {/* Hero Section */}
-            <div className="bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 text-white py-20 px-4">
+            {/* Compact Hero Section */}
+            <div className="bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 text-white py-12 px-4 shadow-xl">
                 <div className="max-w-6xl mx-auto text-center">
-                    <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                    <h1 className="text-3xl md:text-4xl font-bold mb-3">
                         Latvijas Ekonomikas Analītika
                     </h1>
-                    <p className="text-lg text-gray-300 mb-10">
-                        Izpēti tirgus tendences, algas un līderus 88 nozarēs
+                    <p className="text-base text-gray-300 mb-6">
+                        Tirgus tendences, algas un līderi 88 nozarēs
                     </p>
 
                     {/* Search Box */}
-                    <div className="max-w-2xl mx-auto relative">
+                    <div className="max-w-xl mx-auto relative">
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Meklēt nozari (piem., 'IT', 'Būvniecība', 'Mežsaimniecība')..."
-                            className="w-full px-6 py-4 rounded-xl text-gray-800 bg-white shadow-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Meklēt nozari..."
+                            className="w-full px-5 py-3 rounded-lg text-gray-800 bg-white shadow-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
 
                         {/* Search Results Dropdown */}
                         {showSearch && searchResults.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl z-50 max-h-80 overflow-auto">
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl z-50 max-h-80 overflow-auto border border-gray-100">
                                 {searchResults.map((result) => (
                                     <Link
                                         key={result.code}
                                         href={`/industries/${result.code}`}
-                                        className="flex items-center px-6 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0"
+                                        className="flex items-center px-5 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0"
                                         onClick={() => setShowSearch(false)}
                                     >
-                                        <span className="text-2xl mr-3">{result.icon}</span>
+                                        <span className="text-xl mr-3">{result.icon}</span>
                                         <div>
                                             <span className="font-medium text-gray-800">{result.code}</span>
                                             <span className="text-gray-500 ml-2">{result.name}</span>
@@ -169,104 +195,95 @@ export default function IndustriesPage() {
                 <div className="max-w-7xl mx-auto px-4 py-8 -mt-8">
 
                     {/* Macro Grid - 4 KPIs */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10 relative z-10">
                         {/* Total Turnover */}
-                        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
-                            <p className="text-xs font-medium text-gray-500 uppercase mb-1">
+                        <div className="bg-white rounded-xl shadow-lg p-5 border-t-4 border-blue-500 hover:-translate-y-1 transition-transform duration-200">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
                                 Kopējais Apgrozījums ({data.macro.data_year})
                             </p>
-                            <p className="text-3xl font-bold text-gray-900 mb-1">
-                                {data.macro.total_turnover_formatted || '-'}
-                            </p>
-                            {formatGrowth(data.macro.turnover_growth)}
-                            {data.macro.turnover_growth && (
-                                <span className="text-xs text-gray-500 ml-1">pret {(data.macro.data_year || 2023) - 1}</span>
-                            )}
+                            <div className="flex items-baseline gap-2">
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {data.macro.total_turnover_formatted || '-'}
+                                </p>
+                                {formatGrowth(data.macro.turnover_growth)}
+                            </div>
                         </div>
 
                         {/* Employment */}
-                        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
-                            <p className="text-xs font-medium text-gray-500 uppercase mb-1">Nodarbinātie</p>
-                            <p className="text-3xl font-bold text-gray-900 mb-1">
-                                {data.macro.total_employees?.toLocaleString() || '-'}
-                            </p>
-                            {formatGrowth(data.macro.employee_change)}
-                            {data.macro.employee_change !== null && (
-                                <span className="text-xs text-gray-500 ml-1">izmaiņas</span>
-                            )}
+                        <div className="bg-white rounded-xl shadow-lg p-5 border-t-4 border-green-500 hover:-translate-y-1 transition-transform duration-200">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Nodarbinātie</p>
+                            <div className="flex items-baseline gap-2">
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {data.macro.total_employees?.toLocaleString() || '-'}
+                                </p>
+                                {formatGrowth(data.macro.employee_change)}
+                            </div>
                         </div>
 
                         {/* Average Salary */}
-                        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-purple-500">
-                            <p className="text-xs font-medium text-gray-500 uppercase mb-1">Vid. Bruto Alga</p>
-                            <p className="text-3xl font-bold text-gray-900 mb-1">
+                        <div className="bg-white rounded-xl shadow-lg p-5 border-t-4 border-purple-500 hover:-translate-y-1 transition-transform duration-200">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Vid. Bruto Alga</p>
+                            <p className="text-2xl font-bold text-gray-900">
                                 {data.macro.avg_salary ? `${data.macro.avg_salary.toLocaleString()} €` : '-'}
                             </p>
-                            <span className="text-xs text-gray-500">mēnesī (vidēji)</span>
+                            <span className="text-xs text-gray-400 mt-1 block">mēnesī</span>
                         </div>
 
                         {/* Total Profit */}
-                        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-amber-500">
-                            <p className="text-xs font-medium text-gray-500 uppercase mb-1">Kopējā Peļņa</p>
-                            <p className="text-3xl font-bold text-gray-900 mb-1">
+                        <div className="bg-white rounded-xl shadow-lg p-5 border-t-4 border-amber-500 hover:-translate-y-1 transition-transform duration-200">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Kopējā Peļņa</p>
+                            <p className="text-2xl font-bold text-gray-900">
                                 {data.macro.total_profit_formatted || '-'}
                             </p>
-                            <span className="text-xs text-gray-500">rentabilitāte</span>
+                            <span className="text-xs text-gray-400 mt-1 block">rentabilitāte</span>
                         </div>
                     </div>
 
                     {/* Top Lists Section */}
                     <div className="mb-12">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Nozaru Topi</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
                             {/* Fastest Growth */}
-                            <div className="bg-white rounded-xl shadow-md p-6">
-                                <div className="flex items-center mb-4">
+                            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                                <div className="flex items-center mb-4 pb-2 border-b border-gray-100">
                                     <span className="text-2xl mr-2">🚀</span>
                                     <h3 className="font-semibold text-gray-800">Straujākā Izaugsme</h3>
-                                    <span className="ml-auto text-xs font-medium text-gray-500">YoY</span>
                                 </div>
                                 <div className="space-y-3">
-                                    {data.top_growth.length > 0 ? data.top_growth.map((item, idx) => (
+                                    {data.top_growth.map((item, idx) => (
                                         <Link
                                             key={item.nace_code}
                                             href={`/industries/${item.nace_code}`}
-                                            className="flex items-center justify-between hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                                            className="flex items-center justify-between hover:bg-blue-50 p-2 -mx-2 rounded-lg transition-colors group"
                                         >
-                                            <div className="flex items-center">
-                                                <span className="text-gray-500 w-5">{idx + 1}</span>
-                                                <span className="text-gray-700 ml-2">{item.name} ({item.nace_code})</span>
+                                            <div className="flex items-center min-w-0">
+                                                <span className="text-gray-400 w-6 font-mono text-sm">{idx + 1}</span>
+                                                <span className="text-gray-700 ml-1 truncate group-hover:text-blue-600 text-sm font-medium">{item.name}</span>
                                             </div>
-                                            <span className="text-green-600 font-semibold">+{item.growth_percent}%</span>
+                                            <span className="text-green-600 font-bold text-sm ml-2">+{item.growth_percent}%</span>
                                         </Link>
-                                    )) : (
-                                        <p className="text-gray-400 text-sm">Nav datu</p>
-                                    )}
+                                    ))}
                                 </div>
                             </div>
 
                             {/* Highest Salaries */}
-                            <div className="bg-white rounded-xl shadow-md p-6">
-                                <div className="flex items-center mb-4">
+                            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                                <div className="flex items-center mb-4 pb-2 border-b border-gray-100">
                                     <span className="text-2xl mr-2">💰</span>
-                                    <h3 className="font-semibold text-gray-800">Lielākās Algas (Bruto)</h3>
-                                    <span className="ml-auto text-xs font-medium text-gray-500">€</span>
+                                    <h3 className="font-semibold text-gray-800">Lielākās Algas</h3>
                                 </div>
                                 <div className="space-y-3">
                                     {data.top_salary.map((item, idx) => (
                                         <Link
                                             key={item.nace_code}
                                             href={`/industries/${item.nace_code}`}
-                                            className="flex items-center justify-between hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                                            className="flex items-center justify-between hover:bg-blue-50 p-2 -mx-2 rounded-lg transition-colors group"
                                         >
-                                            <div className="flex items-center">
-                                                <span className="text-gray-500 w-5">{idx + 1}</span>
-                                                <span className="text-gray-700 ml-2">{item.name} ({item.nace_code})</span>
+                                            <div className="flex items-center min-w-0">
+                                                <span className="text-gray-400 w-6 font-mono text-sm">{idx + 1}</span>
+                                                <span className="text-gray-700 ml-1 truncate group-hover:text-blue-600 text-sm font-medium">{item.name}</span>
                                             </div>
-                                            <span className="text-purple-600 font-semibold">
+                                            <span className="text-purple-600 font-bold text-sm ml-2">
                                                 {item.avg_salary?.toLocaleString()} €
-                                                <span className="text-xs text-gray-400 ml-1">vidēji</span>
                                             </span>
                                         </Link>
                                     ))}
@@ -274,24 +291,23 @@ export default function IndustriesPage() {
                             </div>
 
                             {/* Highest Turnover */}
-                            <div className="bg-white rounded-xl shadow-md p-6">
-                                <div className="flex items-center mb-4">
+                            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                                <div className="flex items-center mb-4 pb-2 border-b border-gray-100">
                                     <span className="text-2xl mr-2">📊</span>
                                     <h3 className="font-semibold text-gray-800">Lielākais Apgrozījums</h3>
-                                    <span className="ml-auto text-xs font-medium text-gray-500">Vol</span>
                                 </div>
                                 <div className="space-y-3">
                                     {data.top_turnover.map((item, idx) => (
                                         <Link
                                             key={item.nace_code}
                                             href={`/industries/${item.nace_code}`}
-                                            className="flex items-center justify-between hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                                            className="flex items-center justify-between hover:bg-blue-50 p-2 -mx-2 rounded-lg transition-colors group"
                                         >
-                                            <div className="flex items-center">
-                                                <span className="text-gray-500 w-5">{idx + 1}</span>
-                                                <span className="text-gray-700 ml-2">{item.name} ({item.nace_code})</span>
+                                            <div className="flex items-center min-w-0">
+                                                <span className="text-gray-400 w-6 font-mono text-sm">{idx + 1}</span>
+                                                <span className="text-gray-700 ml-1 truncate group-hover:text-blue-600 text-sm font-medium">{item.name}</span>
                                             </div>
-                                            <span className="text-blue-600 font-semibold">{item.turnover_formatted}</span>
+                                            <span className="text-blue-600 font-bold text-sm ml-2">{item.turnover_formatted}</span>
                                         </Link>
                                     ))}
                                 </div>
@@ -299,57 +315,91 @@ export default function IndustriesPage() {
                         </div>
                     </div>
 
-                    {/* All Industries Grid */}
-                    <div>
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-2xl font-bold text-gray-900">Visas Nozares (NACE Klasifikators)</h2>
-                            <button className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                                Kārtot A-Z
-                            </button>
+                    {/* Industries Table View */}
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+                        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                            <h2 className="text-lg font-bold text-gray-900">Visas Nozares (NACE Klasifikators)</h2>
+                            <span className="text-xs text-gray-500 font-medium bg-gray-200 px-2 py-1 rounded">
+                                {data.sections.length} sekcijas
+                            </span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {data.sections.map((section) => (
-                                <Link
-                                    key={section.nace_code}
-                                    href={`/industries/${section.nace_code}`}
-                                    className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all p-6 border border-gray-100 group"
-                                >
-                                    <div className="flex items-start mb-4">
-                                        <span className="text-3xl mr-3">{section.icon}</span>
-                                        <div>
-                                            <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
-                                                {section.nace_code}. {section.name}
-                                            </h3>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-2 text-sm">
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase">Apgrozījums</p>
-                                            <p className="font-semibold text-gray-800">{section.turnover_formatted || '-'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase">Vid. Alga</p>
-                                            <p className="font-semibold text-gray-800">
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th
+                                            scope="col"
+                                            className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 group"
+                                            onClick={() => handleSort('nace_code')}
+                                        >
+                                            Kods {sortConfig.key === 'nace_code' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                        </th>
+                                        <th
+                                            scope="col"
+                                            className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 group"
+                                            onClick={() => handleSort('name')}
+                                        >
+                                            Nosaukums {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                        </th>
+                                        <th
+                                            scope="col"
+                                            className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 group"
+                                            onClick={() => handleSort('turnover')}
+                                        >
+                                            Apgrozījums {sortConfig.key === 'turnover' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                        </th>
+                                        <th
+                                            scope="col"
+                                            className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 group"
+                                            onClick={() => handleSort('avg_salary')}
+                                        >
+                                            Vid. Alga {sortConfig.key === 'avg_salary' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                        </th>
+                                        <th
+                                            scope="col"
+                                            className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 group"
+                                            onClick={() => handleSort('turnover_growth')}
+                                        >
+                                            Izaugsme {sortConfig.key === 'turnover_growth' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                        </th>
+                                        <th scope="col" className="relative px-6 py-3">
+                                            <span className="sr-only">Skatīt</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {sortedSections.map((section) => (
+                                        <tr key={section.nace_code} className="hover:bg-blue-50 transition-colors group">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                <div className="flex items-center">
+                                                    <span className="text-xl mr-2">{section.icon}</span>
+                                                    {section.nace_code}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-700 font-medium">
+                                                <Link href={`/industries/${section.nace_code}`} className="group-hover:text-blue-600 hover:underline block">
+                                                    {section.name}
+                                                </Link>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-semibold">
+                                                {section.turnover_formatted || '-'}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-purple-600 font-semibold bg-purple-50 rounded-lg bg-opacity-30">
                                                 {section.avg_salary ? `${section.avg_salary.toLocaleString()} €` : '-'}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase">Izaugsme</p>
-                                            <p className={`font-semibold ${section.turnover_growth !== null
-                                                    ? section.turnover_growth >= 0
-                                                        ? 'text-green-600'
-                                                        : 'text-red-600'
-                                                    : 'text-gray-400'
-                                                }`}>
-                                                {section.turnover_growth !== null
-                                                    ? `${section.turnover_growth >= 0 ? '▲' : '▼'} ${Math.abs(section.turnover_growth)}%`
-                                                    : '-'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                                                {formatGrowth(section.turnover_growth)}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <Link href={`/industries/${section.nace_code}`} className="text-blue-600 hover:text-blue-900 font-bold">
+                                                    →
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
