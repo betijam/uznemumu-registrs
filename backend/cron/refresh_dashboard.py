@@ -54,6 +54,7 @@ def calculate_dashboard_stats():
             JOIN companies c ON c.regcode = f.company_regcode
             WHERE f.year = :year 
               AND f.turnover IS NOT NULL
+              AND f.turnover <> 'NaN'
             ORDER BY f.turnover DESC
             LIMIT 5
         """), {"year": latest_year}).fetchall()
@@ -69,6 +70,7 @@ def calculate_dashboard_stats():
             JOIN companies c ON c.regcode = f.company_regcode
             WHERE f.year = :year 
               AND f.profit IS NOT NULL
+              AND f.profit <> 'NaN'
             ORDER BY f.profit DESC
             LIMIT 5
         """), {"year": latest_year}).fetchall()
@@ -108,11 +110,17 @@ def calculate_dashboard_stats():
         gazeles = conn.execute(text("""
             WITH cur AS (
                 SELECT company_regcode, turnover 
-                FROM financial_reports WHERE year = :year AND turnover > 1000000
+                FROM financial_reports 
+                WHERE year = :year 
+                  AND turnover > 1000000 
+                  AND turnover <> 'NaN'
             ),
             prev AS (
                 SELECT company_regcode, turnover 
-                FROM financial_reports WHERE year = :prev_year AND turnover > 100000
+                FROM financial_reports 
+                WHERE year = :prev_year 
+                  AND turnover > 100000 
+                  AND turnover <> 'NaN'
             )
             SELECT 
                 c.name,
