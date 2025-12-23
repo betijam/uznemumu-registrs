@@ -384,8 +384,7 @@ def get_industry_detail(
     """
     if response:
         response.headers["Cache-Control"] = "public, max-age=3600"
-    Get detailed statistics for a specific industry (NACE section)
-    """
+
     conn = engine.connect()
     
     # helper for percentage
