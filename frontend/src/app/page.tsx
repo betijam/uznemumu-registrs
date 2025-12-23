@@ -28,8 +28,7 @@ async function StatsCards() {
   let stats = null;
   try {
     const res = await fetch(`${API_BASE_URL}/stats`, {
-      cache: "no-store",
-      next: { revalidate: 3600 }
+      next: { revalidate: 3600 }  // Cache for 1 hour
     });
     if (res.ok) stats = await res.json();
   } catch (e) {
