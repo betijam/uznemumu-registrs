@@ -639,13 +639,24 @@ def get_industry_detail(
                 "active_companies": stats.active_companies or 0,
                 "total_employees": safe_int(stats.total_employees),
                 "avg_salary": industry_avg_salary,
+                "national_avg_salary": national_avg_salary,
+                "salary_ratio": salary_ratio,
+                "tax_burden": tax_burden,
+                "concentration_val": concentration_val,
+                "concentration_level": concentration_level
             },
-            "market_concentration": {
-                "top5_percent": top5_concentration,
-                "level": concentration_level,
-                "description": "TOP 5 uzņēmumu tirgus daļa"
-            }
+            "leaders": leaders_data,
+            "history": history_data,
+            "sub_industries": sub_industries
         }
+
+    except Exception as e:
+        logger.error(f"Error fetching industry detail: {e}")
+        if response:
+            response.status_code = 500
+        return {"error": str(e)}
+    finally:
+        conn.close()
 
 
 # ============================================================================
