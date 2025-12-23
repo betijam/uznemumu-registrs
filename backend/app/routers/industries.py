@@ -154,7 +154,6 @@ def _get_overview_from_cache(conn):
     # 3. Top Salary (by avg gross salary)
     top_salary = conn.execute(text("""
         SELECT nace_code, nace_name, avg_gross_salary
-        SELECT nace_code, nace_name, avg_gross_salary
         FROM industry_stats_materialized
         WHERE nace_level = 1 
         AND avg_gross_salary IS NOT NULL
@@ -166,7 +165,6 @@ def _get_overview_from_cache(conn):
     
     # 4. Top Turnover (by absolute turnover)
     top_turnover = conn.execute(text("""
-        SELECT nace_code, nace_name, total_turnover
         SELECT nace_code, nace_name, total_turnover
         FROM industry_stats_materialized
         WHERE nace_level = 1 
