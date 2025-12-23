@@ -25,14 +25,26 @@ function StatsCardsSkeleton() {
 async function StatsCards() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
+  // Server-side logging to diagnose data loading issues
+  console.log('[StatsCards] Fetching from:', `${API_BASE_URL}/stats`);
+
   let stats = null;
   try {
     const res = await fetch(`${API_BASE_URL}/stats`, {
       next: { revalidate: 3600 }  // Cache for 1 hour
     });
-    if (res.ok) stats = await res.json();
+
+    console.log('[StatsCards] Response status:', res.status, res.statusText);
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('[StatsCards] API Error:', res.status, errorText);
+    } else {
+      stats = await res.json();
+      console.log('[StatsCards] Data received:', JSON.stringify(stats));
+    }
   } catch (e) {
-    console.error('Failed to fetch stats:', e);
+    console.error('[StatsCards] Fetch failed:', e instanceof Error ? e.message : e);
   }
 
   const dailyStats = stats?.daily_stats || { new_today: 0, change: 0 };
