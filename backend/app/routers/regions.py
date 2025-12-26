@@ -304,7 +304,7 @@ def get_territory_industries(
                 total_revenue=safe_float(row.total_revenue),
                 total_employees=row.total_employees,
                 company_count=row.company_count,
-                revenue_share=safe_float(row.total_revenue / total_revenue * 100) if row.total_revenue else None
+                revenue_share=safe_float(float(row.total_revenue) / total_revenue * 100) if row.total_revenue else None
             )
             for row in result.fetchall()
         ]
