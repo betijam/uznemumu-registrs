@@ -124,8 +124,8 @@ export default function WorkforceView({ companies }: WorkforceViewProps) {
             },
             tooltip: {
                 callbacks: {
-                    label: function (context) {
-                        return context.dataset.label + ': ' + context.parsed.y.toLocaleString('lv-LV');
+                    label: function (context: any) {
+                        return context.dataset.label + ': ' + (context.parsed.y?.toLocaleString('lv-LV') || '0');
                     }
                 }
             }
