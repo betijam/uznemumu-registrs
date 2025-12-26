@@ -86,7 +86,7 @@ export default function CompanySearchBar() {
 
             {/* Dropdown */}
             {showDropdown && suggestions.length > 0 && (
-                <div className="absolute w-full mt-1 bg-white rounded-lg shadow-xl z-50 overflow-hidden border border-gray-200 max-h-80 overflow-y-auto">
+                <div className="absolute w-full mt-1 bg-white rounded-lg shadow-xl z-[9999] overflow-hidden border border-gray-200 max-h-80 overflow-y-auto">
                     {suggestions.map((company) => (
                         <button
                             key={company.regcode}
