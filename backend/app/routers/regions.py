@@ -87,6 +87,20 @@ class CompareRequest(BaseModel):
 # Endpoints
 # ============================================================================
 
+import math
+
+def safe_float(val):
+    """Convert value to JSON-safe float. Returns None for inf/NaN."""
+    if val is None:
+        return None
+    try:
+        f = float(val)
+        if math.isnan(f) or math.isinf(f):
+            return None
+        return f
+    except (ValueError, TypeError):
+        return None
+
 @router.get("/overview", response_model=List[TerritoryOverview])
 def get_regions_overview(
     year: Optional[int] = Query(None, description="Year for data (default: latest)"),
@@ -146,12 +160,12 @@ def get_regions_overview(
                 name=row.name,
                 type=row.type,
                 year=row.year,
-                total_revenue=float(row.total_revenue) if row.total_revenue else None,
-                total_profit=float(row.total_profit) if row.total_profit else None,
+                total_revenue=safe_float(row.total_revenue),
+                total_profit=safe_float(row.total_profit),
                 total_employees=row.total_employees,
-                avg_salary=float(row.avg_salary) if row.avg_salary else None,
+                avg_salary=safe_float(row.avg_salary),
                 company_count=row.company_count,
-                revenue_growth_yoy=float(row.revenue_growth_yoy) if row.revenue_growth_yoy else None
+                revenue_growth_yoy=safe_float(row.revenue_growth_yoy)
             )
             for row in result.fetchall()
         ]
@@ -224,21 +238,21 @@ def get_territory_details(
             type=territory.type,
             level=territory.level,
             year=year,
-            total_revenue=float(stats.total_revenue) if stats and stats.total_revenue else None,
-            total_profit=float(stats.total_profit) if stats and stats.total_profit else None,
+            total_revenue=safe_float(stats.total_revenue) if stats else None,
+            total_profit=safe_float(stats.total_profit) if stats else None,
             total_employees=stats.total_employees if stats else None,
-            avg_salary=float(stats.avg_salary) if stats and stats.avg_salary else None,
+            avg_salary=safe_float(stats.avg_salary) if stats else None,
             company_count=stats.company_count if stats else None,
-            revenue_growth_yoy=float(stats.revenue_growth_yoy) if stats and stats.revenue_growth_yoy else None,
-            employee_growth_yoy=float(stats.employee_growth_yoy) if stats and stats.employee_growth_yoy else None,
-            salary_growth_yoy=float(stats.salary_growth_yoy) if stats and stats.salary_growth_yoy else None,
+            revenue_growth_yoy=safe_float(stats.revenue_growth_yoy) if stats else None,
+            employee_growth_yoy=safe_float(stats.employee_growth_yoy) if stats else None,
+            salary_growth_yoy=safe_float(stats.salary_growth_yoy) if stats else None,
             history=[
                 {
                     "year": h.year,
-                    "total_revenue": float(h.total_revenue) if h.total_revenue else None,
-                    "total_profit": float(h.total_profit) if h.total_profit else None,
+                    "total_revenue": safe_float(h.total_revenue),
+                    "total_profit": safe_float(h.total_profit),
                     "total_employees": h.total_employees,
-                    "avg_salary": float(h.avg_salary) if h.avg_salary else None,
+                    "avg_salary": safe_float(h.avg_salary),
                     "company_count": h.company_count
                 }
                 for h in history
@@ -287,10 +301,10 @@ def get_territory_industries(
             IndustryBreakdown(
                 industry_code=row.industry_code,
                 industry_name=row.industry_name,
-                total_revenue=float(row.total_revenue) if row.total_revenue else None,
+                total_revenue=safe_float(row.total_revenue),
                 total_employees=row.total_employees,
                 company_count=row.company_count,
-                revenue_share=round(float(row.total_revenue) / total_revenue * 100, 1) if row.total_revenue else None
+                revenue_share=safe_float(row.total_revenue / total_revenue * 100) if row.total_revenue else None
             )
             for row in result.fetchall()
         ]
@@ -338,8 +352,8 @@ def get_territory_top_companies(
             TopCompany(
                 regcode=row.regcode,
                 name=row.name,
-                turnover=float(row.turnover) if row.turnover else None,
-                profit=float(row.profit) if row.profit else None,
+                turnover=safe_float(row.turnover),
+                profit=safe_float(row.profit),
                 employees=row.employees,
                 nace_text=row.nace_text
             )
@@ -401,14 +415,14 @@ def compare_territories(
                 "code": row.code,
                 "name": row.name,
                 "type": row.type,
-                "total_revenue": float(row.total_revenue) if row.total_revenue else None,
-                "total_profit": float(row.total_profit) if row.total_profit else None,
+                "total_revenue": safe_float(row.total_revenue),
+                "total_profit": safe_float(row.total_profit),
                 "total_employees": row.total_employees,
-                "avg_salary": float(row.avg_salary) if row.avg_salary else None,
+                "avg_salary": safe_float(row.avg_salary),
                 "company_count": row.company_count,
-                "revenue_growth_yoy": float(row.revenue_growth_yoy) if row.revenue_growth_yoy else None,
-                "employee_growth_yoy": float(row.employee_growth_yoy) if row.employee_growth_yoy else None,
-                "salary_growth_yoy": float(row.salary_growth_yoy) if row.salary_growth_yoy else None
+                "revenue_growth_yoy": safe_float(row.revenue_growth_yoy),
+                "employee_growth_yoy": safe_float(row.employee_growth_yoy),
+                "salary_growth_yoy": safe_float(row.salary_growth_yoy)
             })
         
         return {
