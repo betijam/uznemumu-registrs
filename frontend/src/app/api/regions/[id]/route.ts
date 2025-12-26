@@ -4,13 +4,14 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await context.params;
     const { searchParams } = new URL(request.url);
     const year = searchParams.get('year') || '';
 
     try {
-        const url = `${API_URL}/regions/${params.id}/details${year ? `?year=${year}` : ''}`;
+        const url = `${API_URL}/regions/${id}/details${year ? `?year=${year}` : ''}`;
         const res = await fetch(url, {
             next: { revalidate: 900 }
         });
