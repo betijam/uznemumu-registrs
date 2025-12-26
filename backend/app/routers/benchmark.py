@@ -40,7 +40,7 @@ class BenchmarkRequest(BaseModel):
 class SaveSessionRequest(BaseModel):
     companyRegNumbers: List[str] = Field(..., min_items=2, max_items=5)
     year: int
-    source: str = Field(..., regex="^(company_profile|company_list|direct_url)$")
+    source: str = Field(..., pattern="^(company_profile|company_list|direct_url)$")
 
 
 class FinancialData(BaseModel):
