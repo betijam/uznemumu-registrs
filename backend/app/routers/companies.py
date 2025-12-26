@@ -175,16 +175,26 @@ def get_company_details(regcode: int, response: Response):
 
     def get_tax_history():
         with engine.connect() as conn:
+            # Use pre-computed metrics for performance
             rows = conn.execute(text("""
-                SELECT year, total_tax_paid, labor_tax_iin, social_tax_vsaoi, avg_employees, nace_code
-                FROM tax_payments 
-                WHERE company_regcode = :r 
-                ORDER BY year DESC
+                SELECT 
+                    tp.year, 
+                    tp.total_tax_paid, 
+                    tp.labor_tax_iin, 
+                    tp.social_tax_vsaoi, 
+                    tp.avg_employees, 
+                    tp.nace_code,
+                    cm.avg_gross_salary,
+                    cm.avg_net_salary
+                FROM tax_payments tp
+                LEFT JOIN company_computed_metrics cm 
+                    ON tp.company_regcode = cm.company_regcode 
+                    AND tp.year = cm.year
+                WHERE tp.company_regcode = :r 
+                ORDER BY tp.year DESC
             """), {"r": regcode}).fetchall()
             
             history = []
-            VSAOI_RATE = 0.3409
-            
             for t in rows:
                 row = {
                     "year": t.year,
@@ -193,22 +203,9 @@ def get_company_details(regcode: int, response: Response):
                     "social_tax_vsaoi": safe_float(t.social_tax_vsaoi),
                     "avg_employees": safe_float(t.avg_employees),
                     "nace_code": t.nace_code,
-                    "avg_gross_salary": None,
-                    "avg_net_salary": None
+                    "avg_gross_salary": safe_float(t.avg_gross_salary),
+                    "avg_net_salary": safe_float(t.avg_net_salary)
                 }
-                
-                if t.social_tax_vsaoi and t.avg_employees and float(t.avg_employees) > 0:
-                    vsaoi = float(t.social_tax_vsaoi)
-                    employees = float(t.avg_employees)
-                    gross_yearly = vsaoi / VSAOI_RATE
-                    gross_monthly = gross_yearly / employees / 12
-                    row["avg_gross_salary"] = round(gross_monthly, 2)
-                    
-                    vsaoi_employee = gross_monthly * 0.105
-                    iin = (gross_monthly - vsaoi_employee) * 0.20
-                    net_monthly = gross_monthly - vsaoi_employee - iin
-                    row["avg_net_salary"] = round(net_monthly, 2)
-                    
                 history.append(row)
             return history
 
