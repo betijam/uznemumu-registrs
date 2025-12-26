@@ -37,6 +37,12 @@ export default function Navbar() {
                             📊 Nozares
                         </Link>
                         <Link
+                            href="/regions"
+                            className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
+                        >
+                            🗺️ Reģioni
+                        </Link>
+                        <Link
                             href="/explore"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
                         >
@@ -98,6 +104,13 @@ export default function Navbar() {
                             className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
                         >
                             📈 Uzņēmuma analītika
+                        </Link>
+                        <Link
+                            href="/regions"
+                            onClick={() => setIsMenuOpen(false)}
+                            className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
+                        >
+                            🗺️ Reģioni
                         </Link>
                         <Link
                             href="/mvk-declaration"
