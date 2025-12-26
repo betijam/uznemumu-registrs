@@ -129,7 +129,7 @@ def get_company_data_for_year(conn, regcode: str, year: int, max_lookback: int =
                 fr.roe,
                 fr.roa,
                 tp.avg_employees,
-                tp.total_tax_paid
+                tp.social_tax_vsaoi
             FROM companies c
             LEFT JOIN financial_reports fr ON c.regcode = fr.company_regcode AND fr.year = :year
             LEFT JOIN tax_payments tp ON c.regcode = tp.company_regcode AND tp.year = :year
@@ -224,12 +224,16 @@ def calculate_revenue_per_employee(revenue: Optional[float], employees: Optional
     return None
 
 
-def calculate_avg_salary(total_tax: Optional[float], employees: Optional[float]) -> Optional[float]:
-    """Estimate average salary from tax data"""
-    if total_tax is not None and employees is not None and employees > 0:
-        # Rough estimate: divide total labor tax by employee count
-        # This is a simplification; actual calculation depends on tax structure
-        return round(total_tax / employees, 2)
+def calculate_avg_salary(social_tax_vsaoi: Optional[float], avg_employees: Optional[float]) -> Optional[float]:
+    """Calculate average gross salary from VSAOI (social tax)"""
+    VSAOI_RATE = 0.3409  # Social tax rate in Latvia
+    
+    if social_tax_vsaoi is not None and avg_employees is not None and avg_employees > 0:
+        # Calculate gross yearly salary from VSAOI
+        gross_yearly = social_tax_vsaoi / VSAOI_RATE
+        # Calculate monthly salary per employee
+        gross_monthly = gross_yearly / avg_employees / 12
+        return round(gross_monthly, 2)
     return None
 
 
@@ -278,7 +282,7 @@ def get_benchmark_data(request: BenchmarkRequest, response: Response):
             )
             
             avg_salary = calculate_avg_salary(
-                company_data.get('total_tax_paid'),
+                company_data.get('social_tax_vsaoi'),
                 company_data.get('avg_employees')
             )
             

@@ -184,11 +184,23 @@ export default function BenchmarkPage() {
             <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
                 <div className="container mx-auto px-4 py-4">
                     <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Uzņēmumu salīdzinājums</h1>
-                            <p className="text-sm text-gray-600 mt-1">
-                                Salīdzina {benchmarkData.companies.length} uzņēmumus par {benchmarkData.yearRequested}. gadu
-                            </p>
+                        <div className="flex items-center gap-4">
+                            <Link
+                                href="/"
+                                className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
+                                title="Atpakaļ uz sākumlapu"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                <span className="hidden sm:inline">Atpakaļ</span>
+                            </Link>
+                            <div>
+                                <h1 className="text-2xl font-bold text-gray-900">Uzņēmumu salīdzinājums</h1>
+                                <p className="text-sm text-gray-600 mt-1">
+                                    Salīdzina {benchmarkData.companies.length} uzņēmumus par {benchmarkData.yearRequested}. gadu
+                                </p>
+                            </div>
                         </div>
                         <button
                             onClick={handleShare}
