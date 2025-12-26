@@ -6,6 +6,7 @@ import FilterSidebar from "@/components/explore/FilterSidebar";
 import CompanyListTable from "@/components/explore/CompanyListTable";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from 'react';
+import { useComparison } from "@/contexts/ComparisonContext";
 
 // Wrapped component for Suspense
 function ExploreContent() {
@@ -30,6 +31,9 @@ function ExploreContent() {
     const [data, setData] = useState<any[]>([]);
     const [meta, setMeta] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+
+    // Comparison functionality
+    const { selectedCompanies, addCompany, removeCompany, isSelected, canAddMore } = useComparison();
 
     // Sync state to URL
     useEffect(() => {
@@ -91,6 +95,36 @@ function ExploreContent() {
     // Dynamic Columns based on sort/context
     const getColumns = () => {
         const baseColumns: any[] = [
+            // Checkbox column for comparison
+            {
+                key: 'checkbox',
+                label: '',
+                width: '40px',
+                render: (val: any, row: any) => {
+                    const selected = isSelected(row.regcode.toString());
+                    const disabled = !selected && !canAddMore;
+
+                    return (
+                        <input
+                            type="checkbox"
+                            checked={selected}
+                            disabled={disabled}
+                            onChange={(e) => {
+                                if (e.target.checked) {
+                                    addCompany({
+                                        regcode: row.regcode.toString(),
+                                        name: row.name
+                                    });
+                                } else {
+                                    removeCompany(row.regcode.toString());
+                                }
+                            }}
+                            className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                            title={disabled ? 'Maksimālais skaits sasniegts (5)' : 'Pievienot salīdzināšanai'}
+                        />
+                    );
+                }
+            },
             {
                 key: 'name',
                 label: 'Uzņēmums',

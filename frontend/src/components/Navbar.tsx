@@ -37,6 +37,12 @@ export default function Navbar() {
                             📊 Nozares
                         </Link>
                         <Link
+                            href="/explore"
+                            className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
+                        >
+                            📈 Uzņēmuma analītika
+                        </Link>
+                        <Link
                             href="/mvk-declaration"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
                         >
@@ -85,6 +91,13 @@ export default function Navbar() {
                             className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
                         >
                             📊 Nozares
+                        </Link>
+                        <Link
+                            href="/explore"
+                            onClick={() => setIsMenuOpen(false)}
+                            className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
+                        >
+                            📈 Uzņēmuma analītika
                         </Link>
                         <Link
                             href="/mvk-declaration"

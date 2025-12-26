@@ -4,6 +4,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import CompanySizeBadge from "@/components/CompanySizeBadge";
 import CompanySearchBar from "@/components/CompanySearchBar";
+import AddToComparisonButton from "@/components/AddToComparisonButton";
 
 // Dynamic import for heavy component - reduces initial bundle
 const CompanyTabs = dynamic(() => import("@/components/CompanyTabs"), {
@@ -189,6 +190,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                             )}
                         </div>
                         <div className="mt-4 flex gap-3 md:mt-0 md:ml-4">
+                            <AddToComparisonButton company={{ regcode: company.regcode, name: company.name }} />
                             <button className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />

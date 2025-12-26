@@ -5,7 +5,7 @@ from asgi_correlation_id import CorrelationIdMiddleware
 import logging
 import os
 from etl import run_all_etl
-from app.routers import search, companies, benchmarking, industries, dashboard, explore
+from app.routers import search, companies, benchmarking, industries, dashboard, explore, benchmark
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -44,6 +44,7 @@ app.add_middleware(CorrelationIdMiddleware)
 app.include_router(search.router)
 app.include_router(explore.router)  # Check explore before companies (to avoid /companies/list collision)
 app.include_router(companies.router)
+app.include_router(benchmark.router)
 app.include_router(benchmarking.router)
 app.include_router(industries.router)
 app.include_router(dashboard.router)

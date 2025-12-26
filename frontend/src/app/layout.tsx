@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ComparisonProvider } from "@/contexts/ComparisonContext";
+import ComparisonCart from "@/components/benchmark/ComparisonCart";
 
 // Optimized font loading - reduced weights and Latin subset only
 const inter = Inter({
@@ -64,7 +66,10 @@ export default function RootLayout({
         `}} />
       </head>
       <body className="antialiased">
-        {children}
+        <ComparisonProvider>
+          {children}
+          <ComparisonCart />
+        </ComparisonProvider>
       </body>
     </html>
   );
