@@ -10,7 +10,7 @@ interface FilterSidebarProps {
 const REGIONS = [
     { label: "Visa Latvija", value: "" },
     { label: "Rīga", value: "Rīga" },
-    { label: "Pierīga", value: "Pierīga" }, // Not standard in address usually, but let's keep common terms
+    { label: "Pierīga", value: "Pierīga" },
     { label: "Vidzeme", value: "Vidzeme" },
     { label: "Kurzeme", value: "Kurzeme" },
     { label: "Zemgale", value: "Zemgale" },
@@ -24,23 +24,16 @@ const REGIONS = [
     { label: "Rēzekne", value: "Rēzekne" }
 ];
 
-// NACE Selector Component
-function NaceSelector({ value, onChange }: { value: string, onChange: (val: string) => void }) {
-    const [query, setQuery] = useState(value || "");
+// NACE Multi-Selector Component
+function NaceSelector({ value, onChange }: { value: string[], onChange: (val: string[]) => void }) {
+    const [query, setQuery] = useState("");
     const [results, setResults] = useState<any[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const wrapperRef = useRef<HTMLDivElement>(null);
 
-    // Sync query with external value changes (reset)
-    useEffect(() => {
-        if (!value) setQuery("");
-        // If value exists but query is empty (initial load), ideally we should fetch name.
-        // For now, if we have a code but no cached name, we just show the code.
-        if (value && value !== query && !query) {
-            setQuery(value);
-        }
-    }, [value]);
+    // Ensure value is always array
+    const selectedCodes = Array.isArray(value) ? value : (value ? [value] : []);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -75,21 +68,47 @@ function NaceSelector({ value, onChange }: { value: string, onChange: (val: stri
     };
 
     const handleSelect = (item: any) => {
-        onChange(item.code);
-        setQuery(`${item.code} - ${item.name}`);
+        // Prevent duplicates
+        if (!selectedCodes.includes(item.code)) {
+            onChange([...selectedCodes, item.code]);
+        }
+        setQuery(""); // Clear query after select
         setIsOpen(false);
     };
 
+    const removeCode = (codeToRemove: string) => {
+        onChange(selectedCodes.filter(c => c !== codeToRemove));
+    };
+
     return (
-        <div className="relative" ref={wrapperRef}>
+        <div className="relative space-y-2" ref={wrapperRef}>
+            {/* Selected Chips */}
+            {selectedCodes.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                    {selectedCodes.map(code => (
+                        <span key={code} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                            {code}
+                            <button
+                                type="button"
+                                onClick={() => removeCode(code)}
+                                className="ml-1 text-purple-600 hover:text-purple-800 focus:outline-none"
+                            >
+                                ×
+                            </button>
+                        </span>
+                    ))}
+                </div>
+            )}
+
             <input
                 type="text"
-                placeholder="Meklēt nozari (nosaukums vai kods)..."
+                placeholder="Meklēt nozari..."
                 className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-purple-500 focus:ring-purple-500"
                 value={query}
                 onChange={(e) => handleSearch(e.target.value)}
                 onFocus={() => { setIsOpen(true); if (query) handleSearch(query); }}
             />
+
             {isOpen && (results.length > 0 || loading) && (
                 <div className="absolute z-50 w-full bg-white mt-1 border border-gray-100 rounded-md shadow-lg max-h-60 overflow-auto">
                     {loading && <div className="p-2 text-xs text-gray-400">Meklē...</div>}
@@ -122,14 +141,13 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
     const handleChange = (key: string, value: any) => {
         const newFilters = { ...localFilters, [key]: value };
         setLocalFilters(newFilters);
-        // Direct update or debounce could be handled by parent, but here we trigger direct
-        // For sliders/inputs usually debounce, but for select direct is fine.
+        // Direct update for selects/checkboxes
         if (key !== 'min_turnover' && key !== 'min_employees') {
             onFilterChange(newFilters);
         }
     };
 
-    // Separate Apply for text inputs to avoid spamming
+    // Separate Apply for text inputs
     const applyInputs = () => {
         onFilterChange(localFilters);
     };
@@ -196,6 +214,7 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
                     value={localFilters.nace}
                     onChange={(val) => handleChange("nace", val)}
                 />
+                <p className="text-xs text-gray-400 mt-1">Var izvēlēties vairākas</p>
             </div>
 
             <div className="pt-4 border-t border-gray-100">
@@ -259,7 +278,7 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
 
             <button
                 className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                onClick={() => onFilterChange({ status: 'active', page: 1, nace: '', region: '', min_turnover: '', min_employees: '', has_pvn: false, has_sanctions: false })}
+                onClick={() => onFilterChange({ status: 'active', page: 1, nace: [], region: '', min_turnover: '', min_employees: '', has_pvn: false, has_sanctions: false })}
             >
                 Notīrīt filtrus
             </button>

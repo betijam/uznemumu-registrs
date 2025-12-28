@@ -25,7 +25,7 @@ def list_companies(
     limit: int = Query(50, ge=1, le=100),
     sort_by: str = Query("turnover", regex="^(turnover|profit|employees|reg_date|salary|tax)$"),
     order: str = Query("desc", regex="^(asc|desc)$"),
-    nace: Optional[str] = Query(None, description="Partial NACE code, e.g. 62.0"),
+    nace: Optional[List[str]] = Query(None, description="List of NACE codes (partial match)"),
     region: Optional[str] = Query(None, description="Region search term, e.g. Riga"),
     status: str = Query("active", regex="^(active|liquidated|all)$"),
     min_turnover: Optional[int] = Query(None),
@@ -45,16 +45,13 @@ def list_companies(
     offset = (page - 1) * limit
     
     # Determine efficient latest year if not provided
-    # Only if we seek financial data
     if not year:
         # Simple heuristic: last year - 1
         year = 2024 
     
     # Base Query Construction
-    # We join financial_reports carefully
     
     # If sorting by salary, we need tax payments view/cte
-    # optimized CTE for salary
     cte_salary = ""
     if sort_by == "salary":
         cte_salary = f"""
@@ -77,30 +74,32 @@ def list_companies(
     params = {}
     
     if status != "all":
-        # mapping simple status to DB status
-        # In DB: 'A' (Active) or 'Likvidēts' text? 
-        # Checking init.sql/data: often 'A' happens or 'L'. 
-        # Let's assume input is 'active' or 'liquidated' and map based on existing patterns.
-        # Actually init.sql schema says text.
-        # Usually 'active' means status IS NULL (active) or 'A'.
-        # Let's try basic ILIKE matching for safety or simple logic.
         if status == "active":
-             # "Active" usually means status is 'active', 'A', 'Aktīvs' or NULL/empty (if we want to be safe)
-             # DB Analysis shows values are literally 'active' and 'liquidated'
              where_clauses.append("(c.status = 'active' OR c.status = 'A' OR c.status ILIKE 'aktīvs' OR c.status IS NULL OR c.status = '')")
         elif status == "liquidated":
              where_clauses.append("(c.status = 'liquidated' OR c.status = 'L' OR c.status ILIKE 'likvidēts' OR c.status ILIKE 'steigta likvidācija')")
     
     if nace:
-        where_clauses.append("c.nace_code LIKE :nace")
-        params["nace"] = f"{nace}%"
+        # Support multiple NACE codes
+        # If passed as single string with commas, split it
+        # FastAPI handles List[str] if passed as ?nace=A&nace=B
+        # But let's handle safety
+        nace_clauses = []
+        for i, code in enumerate(nace):
+            param_name = f"nace_{i}"
+            nace_clauses.append(f"c.nace_code LIKE :{param_name}")
+            params[param_name] = f"{code}%"
+        
+        if nace_clauses:
+            where_clauses.append(f"({' OR '.join(nace_clauses)})")
         
     if region:
         where_clauses.append("c.address ILIKE :region")
         params["region"] = f"%{region}%"
         
     if min_turnover:
-        where_clauses.append("f.turnover >= :min_t")
+        # IMPORTANT: Exclude NaN because NaN > 5000 is True in Postgres numeric
+        where_clauses.append("(f.turnover >= :min_t AND f.turnover <> 'NaN')")
         params["min_t"] = min_turnover
     
     if max_turnover:
@@ -108,8 +107,8 @@ def list_companies(
         params["max_t"] = max_turnover
         
     if min_employees:
-        if sort_by == "reg_date": # Maybe finance not joined?
-             where_clauses.append("c.employee_count >= :min_e") # Use metadata if available
+        if sort_by == "reg_date": 
+             where_clauses.append("c.employee_count >= :min_e") 
         else:
              where_clauses.append("f.employees >= :min_e")
         params["min_e"] = min_employees
@@ -118,26 +117,19 @@ def list_companies(
         where_clauses.append("c.is_pvn_payer = TRUE")
         
     if has_sanctions:
-        # Join risks? or just check if in risks table
-        # optimized: EXISTS
         where_clauses.append("""
             EXISTS (SELECT 1 FROM risks r WHERE r.company_regcode = c.regcode AND r.active = TRUE AND r.risk_type = 'sanction')
         """)
 
     # Filter NaN from sorting fields to avoid bad data
-    if sort_by in ["turnover", "profit"] and not min_turnover:
+    # ALWAYS exclude NaN if sorting by numeric fields, to satisfy user expectation
+    if sort_by in ["turnover", "profit"]:
         where_clauses.append(f"f.{sort_by} <> 'NaN'")
 
 
     # Dynamic Order Clause
     sort_col = SORT_FIELDS.get(sort_by, "f.turnover")
     order_clause = f"{sort_col} {order.upper()} NULLS LAST"
-    
-    # Financial JOIN logic
-    # We always LEFT JOIN financials to allow listing companies even without stats (unless filtered by them)
-    # But if sort_by is turnover/profit, we might want INNER JOIN to only show those with data?
-    # User requirement: "List page". 
-    # Best practice: LEFT JOIN but if sort is financial, rows with NULL go last.
     
     # Construct Query
     main_query = f"""
@@ -156,9 +148,13 @@ def list_companies(
         LIMIT :limit OFFSET :offset
     """
     
-    # Count Query (Simplified for performance, maybe approximate?)
-    count_query = f"""
-        SELECT COUNT(*) 
+    # KPI / Stats Query
+    stats_query = f"""
+        SELECT 
+            COUNT(*) as total_count,
+            SUM(CASE WHEN f.turnover <> 'NaN' THEN f.turnover ELSE 0 END) as total_turnover,
+            SUM(CASE WHEN f.profit <> 'NaN' THEN f.profit ELSE 0 END) as total_profit,
+            SUM(f.employees) as total_employees
         FROM companies c
         LEFT JOIN financial_reports f ON f.company_regcode = c.regcode AND f.year = :year
         {cte_salary}
@@ -168,13 +164,11 @@ def list_companies(
     
     # Logging for debugging
     logger.info(f"Explorer Request - Status: '{status}', Region: '{region}', NACE: '{nace}'")
-    logger.info(f"Where Clauses: {where_clauses}")
-    logger.info(f"Params: {params}")
     
     try:
         with engine.connect() as conn:
-            # Execute Count
-            total = conn.execute(text(count_query), {**params, "year": year}).scalar()
+            # Execute Stats (includes Count)
+            stats = conn.execute(text(stats_query), {**params, "year": year}).fetchone()
             
             # Execute List
             result = conn.execute(text(main_query), {**params, "limit": limit, "offset": offset, "year": year}).fetchall()
@@ -198,11 +192,17 @@ def list_companies(
             return {
                 "data": companies,
                 "meta": {
-                    "total": total,
+                    "total": stats.total_count,
                     "page": page,
                     "limit": limit,
                     "sort_by": sort_by,
                     "financial_year": year
+                },
+                "stats": {
+                    "count": stats.total_count,
+                    "total_turnover": safe_float(stats.total_turnover),
+                    "total_profit": safe_float(stats.total_profit),
+                    "total_employees": stats.total_employees
                 }
             }
             
