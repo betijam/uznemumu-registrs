@@ -15,6 +15,7 @@ from etl.loader import engine
 import logging
 from uuid import UUID
 import uuid
+import math
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -106,6 +107,18 @@ class BenchmarkResponse(BaseModel):
 # HELPER FUNCTIONS
 # ============================================================================
 
+def safe_float(val):
+    """Convert value to JSON-safe float. Returns None for inf/NaN."""
+    if val is None:
+        return None
+    try:
+        f = float(val)
+        if math.isnan(f) or math.isinf(f):
+            return None
+        return f
+    except (ValueError, TypeError):
+        return None
+
 def get_company_data_for_year(conn, regcode: str, year: int, max_lookback: int = 5):
     """
     Fetch company data for the specified year, falling back to previous years if needed.
@@ -166,7 +179,9 @@ def get_company_trends(conn, regcode: str, years: int = 5):
     
     for row in result:
         if row.turnover is not None:
-            revenue_trend.append({"year": row.year, "value": float(row.turnover)})
+            val = safe_float(row.turnover)
+            if val is not None:
+                revenue_trend.append({"year": row.year, "value": val})
         if row.employees is not None:
             employee_trend.append({"year": row.year, "value": row.employees})
     
@@ -205,7 +220,7 @@ def get_company_ranking(conn, regcode: str, industry_code: str, year: int):
         return {
             "rank": result.revenue_rank,
             "total": result.total_companies,
-            "percentile": float(result.revenue_percentile) if result.revenue_percentile else None
+            "percentile": safe_float(result.revenue_percentile)
         }
     return None
 
@@ -213,14 +228,14 @@ def get_company_ranking(conn, regcode: str, industry_code: str, year: int):
 def calculate_profit_margin(profit: Optional[float], revenue: Optional[float]) -> Optional[float]:
     """Calculate profit margin percentage"""
     if profit is not None and revenue is not None and revenue > 0:
-        return round((profit / revenue) * 100, 2)
+        return safe_float((profit / revenue) * 100)
     return None
 
 
 def calculate_revenue_per_employee(revenue: Optional[float], employees: Optional[int]) -> Optional[float]:
     """Calculate revenue per employee"""
     if revenue is not None and employees is not None and employees > 0:
-        return round(revenue / employees, 2)
+        return safe_float(revenue / employees)
     return None
 
 
@@ -229,11 +244,14 @@ def calculate_avg_salary(social_tax_vsaoi: Optional[float], avg_employees: Optio
     VSAOI_RATE = 0.3409  # Social tax rate in Latvia
     
     if social_tax_vsaoi is not None and avg_employees is not None and avg_employees > 0:
-        # Calculate gross yearly salary from VSAOI
-        gross_yearly = social_tax_vsaoi / VSAOI_RATE
-        # Calculate monthly salary per employee
-        gross_monthly = gross_yearly / avg_employees / 12
-        return round(gross_monthly, 2)
+        try:
+            # Calculate gross yearly salary from VSAOI
+            gross_yearly = float(social_tax_vsaoi) / VSAOI_RATE
+            # Calculate monthly salary per employee
+            gross_monthly = gross_yearly / float(avg_employees) / 12
+            return safe_float(gross_monthly)
+        except (ValueError, TypeError, ZeroDivisionError):
+            return None
     return None
 
 
@@ -277,17 +295,17 @@ def get_benchmark_data(request: BenchmarkRequest, response: Response):
             
             # Calculate metrics
             profit_margin = calculate_profit_margin(
-                company_data.get('profit'),
-                company_data.get('turnover')
+                safe_float(company_data.get('profit')),
+                safe_float(company_data.get('turnover'))
             )
             
             avg_salary = calculate_avg_salary(
-                company_data.get('social_tax_vsaoi'),
-                company_data.get('avg_employees')
+                safe_float(company_data.get('social_tax_vsaoi')),
+                safe_float(company_data.get('avg_employees'))
             )
             
             revenue_per_employee = calculate_revenue_per_employee(
-                company_data.get('turnover'),
+                safe_float(company_data.get('turnover')),
                 company_data.get('employees')
             )
             
@@ -308,10 +326,10 @@ def get_benchmark_data(request: BenchmarkRequest, response: Response):
                 
                 if ind_stats or ranking:
                     industry_benchmark = {
-                        "avgRevenue": float(ind_stats['avg_revenue']) if ind_stats and ind_stats.get('avg_revenue') else None,
-                        "avgProfitMargin": float(ind_stats['avg_profit_margin']) if ind_stats and ind_stats.get('avg_profit_margin') else None,
-                        "avgSalary": float(ind_stats['avg_salary']) if ind_stats and ind_stats.get('avg_salary') else None,
-                        "avgRevenuePerEmployee": float(ind_stats['avg_revenue_per_employee']) if ind_stats and ind_stats.get('avg_revenue_per_employee') else None,
+                        "avgRevenue": safe_float(ind_stats.get('avg_revenue')) if ind_stats else None,
+                        "avgProfitMargin": safe_float(ind_stats.get('avg_profit_margin')) if ind_stats else None,
+                        "avgSalary": safe_float(ind_stats.get('avg_salary')) if ind_stats else None,
+                        "avgRevenuePerEmployee": safe_float(ind_stats.get('avg_revenue_per_employee')) if ind_stats else None,
                         "positionByRevenue": ranking
                     }
             
@@ -323,15 +341,15 @@ def get_benchmark_data(request: BenchmarkRequest, response: Response):
                 "industryName": company_data.get('nace_text'),
                 "dataYear": actual_year,
                 "financials": {
-                    "revenue": float(company_data['turnover']) if company_data.get('turnover') else None,
-                    "profit": float(company_data['profit']) if company_data.get('profit') else None,
+                    "revenue": safe_float(company_data.get('turnover')),
+                    "profit": safe_float(company_data.get('profit')),
                     "profitMargin": profit_margin,
                     "ebit": None,  # Not available in current schema
-                    "ebitda": float(company_data['ebitda']) if company_data.get('ebitda') else None,
-                    "assetsTotal": float(company_data['total_assets']) if company_data.get('total_assets') else None,
-                    "equityTotal": float(company_data['equity']) if company_data.get('equity') else None,
-                    "roe": float(company_data['roe']) if company_data.get('roe') else None,
-                    "roa": float(company_data['roa']) if company_data.get('roa') else None
+                    "ebitda": safe_float(company_data.get('ebitda')),
+                    "assetsTotal": safe_float(company_data.get('total_assets')),
+                    "equityTotal": safe_float(company_data.get('equity')),
+                    "roe": safe_float(company_data.get('roe')),
+                    "roa": safe_float(company_data.get('roa'))
                 },
                 "workforce": {
                     "employees": company_data.get('employees'),
