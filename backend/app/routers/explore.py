@@ -134,7 +134,7 @@ def list_companies(
     # Construct Query
     main_query = f"""
         SELECT 
-            c.regcode, c.name, c.name_in_quotes, c.type, c.type_text, c.addressid,
+            c.regcode, c.name, c.name_in_quotes, c."type" as company_type, c.type_text, c.addressid,
             c.nace_text, c.registration_date, c.status,
             f.turnover, f.profit, f.employees, f.year as fin_year,
             { "salary_calc.avg_gross as avg_salary," if sort_by == "salary" else "NULL as avg_salary," }
@@ -180,7 +180,7 @@ def list_companies(
                     "regcode": r.regcode,
                     "name": r.name,
                     "name_in_quotes": r.name_in_quotes if hasattr(r, 'name_in_quotes') else None,
-                    "type": r.type if hasattr(r, 'type') else None,
+                    "type": r.company_type if hasattr(r, 'company_type') else None,
                     "type_text": r.type_text if hasattr(r, 'type_text') else None,
                     "addressid": r.addressid if hasattr(r, 'addressid') else None,
                     "nace": r.nace_text,
