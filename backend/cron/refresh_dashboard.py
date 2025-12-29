@@ -93,7 +93,7 @@ def calculate_dashboard_stats():
         # Gross Wage = (VSAOI total) / (0.3409 rate) / employees / 12 months roughly.
         # Let's calculate: Total VSAOI / Avg Employees / 12 months / 0.3409
         
-        # Only companies with > 10 employees to avoid 1-person holdings
+        # Only companies with >= 5 employees to avoid 1-person holdings
         top_salaries = conn.execute(text("""
             WITH salary_calc AS (
                 SELECT 
@@ -101,7 +101,7 @@ def calculate_dashboard_stats():
                     (social_tax_vsaoi / NULLIF(avg_employees, 0) / 12 / 0.3409) as estimated_gross
                 FROM tax_payments
                 WHERE year = :year
-                  AND avg_employees >= 10
+                  AND avg_employees >= 5
                   AND social_tax_vsaoi > 0
             )
             SELECT 

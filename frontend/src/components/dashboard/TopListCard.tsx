@@ -14,6 +14,7 @@ interface TopItem {
 
 interface TopListCardProps {
     title: string;
+    subtitle?: string;
     icon: React.ReactNode;
     items: TopItem[];
     valueFormatter: (val: number) => string;
@@ -21,14 +22,17 @@ interface TopListCardProps {
     colorClass?: string;
 }
 
-export default function TopListCard({ title, icon, items, valueFormatter, linkTo, colorClass = "text-blue-600" }: TopListCardProps) {
+export default function TopListCard({ title, subtitle, icon, items, valueFormatter, linkTo, colorClass = "text-blue-600" }: TopListCardProps) {
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3 mb-4">
                 <div className={`p-2 rounded-lg bg-gray-50 ${colorClass}`}>
                     {icon}
                 </div>
-                <h3 className="font-semibold text-gray-900">{title}</h3>
+                <div>
+                    <h3 className="font-semibold text-gray-900">{title}</h3>
+                    {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
+                </div>
             </div>
 
             <div className="flex-1 space-y-5">

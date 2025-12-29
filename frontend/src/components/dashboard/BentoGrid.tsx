@@ -134,6 +134,7 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                 {/* 5. TOP Salaries */}
                 <TopListCard
                     title="Top Algas (Bruto)"
+                    subtitle="Uzņēmumi ar vismaz 5 darbiniekiem"
                     icon={<Icons.Money />}
                     items={tops.salaries}
                     valueFormatter={(v) => formatCurrency(v)}
