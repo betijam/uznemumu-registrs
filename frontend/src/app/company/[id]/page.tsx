@@ -152,7 +152,9 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                                 )}
                             </div>
                             <h1 className="text-3xl font-bold text-primary mb-2">
-                                {company.name}
+                                {company.name_in_quotes && company.type
+                                    ? `${company.name_in_quotes}, ${company.type}`
+                                    : company.name}
                             </h1>
                             <div className="flex items-center gap-4 text-sm text-gray-600">
                                 <span className="flex items-center gap-1">
@@ -181,14 +183,24 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                             )}
 
                             {/* PVN Number */}
-                            {company.pvn_number && (
-                                <div className="mt-2 flex items-center gap-2 text-sm">
-                                    <span className="text-gray-500">PVN:</span>
-                                    <span className="font-mono text-sm text-primary">
-                                        {company.pvn_number}
-                                    </span>
+                            <div className="space-y-1">
+                                <div className="text-sm text-gray-600">
+                                    <span className="font-bold text-gray-900">{company.name_in_quotes && company.type ? `${company.name_in_quotes}, ${company.type}` : company.name}</span>, Reģ. Nr. <span className="font-semibold">{company.regcode}</span>
                                 </div>
-                            )}
+                                {company.name_in_quotes && company.type && (
+                                    <div className="text-xs text-gray-500">
+                                        Pilns nosaukums: {company.name}
+                                    </div>
+                                )}
+                                {company.pvn_number && (
+                                    <div className="mt-2 flex items-center gap-2 text-sm">
+                                        <span className="text-gray-500">PVN:</span>
+                                        <span className="font-mono text-sm text-primary">
+                                            {company.pvn_number}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         <div className="mt-4 flex gap-3 md:mt-0 md:ml-4">
                             <AddToComparisonButton company={{ regcode: company.regcode, name: company.name }} />

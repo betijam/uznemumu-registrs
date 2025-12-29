@@ -160,8 +160,15 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                             <div className="flex items-center justify-between mb-4">
                                 <div className="space-y-1">
                                     <div className="text-sm text-gray-600">
-                                        <span className="font-bold text-gray-900">{company.name}</span>, Reģ. Nr. <span className="font-semibold">{company.regcode}</span>
+                                        <span className="font-bold text-gray-900">
+                                            {company.name_in_quotes && company.type ? `${company.name_in_quotes}, ${company.type}` : company.name}
+                                        </span>, Reģ. Nr. <span className="font-semibold">{company.regcode}</span>
                                     </div>
+                                    {company.name_in_quotes && company.type && (
+                                        <div className="text-xs text-gray-500">
+                                            Pilns nosaukums: {company.name}
+                                        </div>
+                                    )}
                                     <div className="text-sm text-gray-500">
                                         Juridiskā adrese: {company.address || '-'}, LV-{company.address?.match(/LV-(\d+)/)?.[1] || '1001'}
                                     </div>
