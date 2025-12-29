@@ -125,6 +125,13 @@ def list_companies(
     # ALWAYS exclude NaN if sorting by numeric fields, to satisfy user expectation
     if sort_by in ["turnover", "profit"]:
         where_clauses.append(f"f.{sort_by} <> 'NaN'")
+        where_clauses.append(f"f.{sort_by} IS NOT NULL")
+        where_clauses.append("f.{sort_by} > 0".replace("{sort_by}", sort_by))
+    
+    # When sorting by salary, only include companies with salary data (>= 5 employees)
+    if sort_by == "salary":
+        where_clauses.append("salary_calc.avg_gross IS NOT NULL")
+        where_clauses.append("salary_calc.avg_gross > 0")
 
 
     # Dynamic Order Clause

@@ -47,7 +47,7 @@ def calculate_dashboard_stats():
         logger.info(f"Using Financial Year: {latest_year}")
 
 
-        # 2. TOP TURNOVER (Apgrozījums)
+        # 2. TOP TURNOVER (Apgrozījums) - only companies with substantial turnover
         top_turnover = conn.execute(text("""
             SELECT 
                 c.name, 
@@ -62,11 +62,12 @@ def calculate_dashboard_stats():
             WHERE f.year = :year 
               AND f.turnover IS NOT NULL
               AND f.turnover <> 'NaN'
+              AND f.turnover > 0
             ORDER BY f.turnover DESC
             LIMIT 5
         """), {"year": latest_year}).fetchall()
 
-        # 3. TOP PROFIT (Peļņa)
+        # 3. TOP PROFIT (Peļņa) - only companies with positive profit
         top_profit = conn.execute(text("""
             SELECT 
                 c.name, 
@@ -81,6 +82,7 @@ def calculate_dashboard_stats():
             WHERE f.year = :year 
               AND f.profit IS NOT NULL
               AND f.profit <> 'NaN'
+              AND f.profit > 0
             ORDER BY f.profit DESC
             LIMIT 5
         """), {"year": latest_year}).fetchall()
