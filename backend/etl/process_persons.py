@@ -131,7 +131,9 @@ def process_persons(officers_path: str, members_path: str, ubo_path: str):
         # Members
         'number_of_shares', 'share_nominal_value', 'share_currency', 'legal_entity_regcode',
         # UBOs
-        'nationality', 'residence'
+        'nationality', 'residence',
+        # Birth date (calculated)
+        'birth_date'
     ]
     
     for c in target_cols:
@@ -150,6 +152,23 @@ def process_persons(officers_path: str, members_path: str, ubo_path: str):
     df_final['number_of_shares'] = pd.to_numeric(df_final['number_of_shares'], errors='coerce')
     df_final['share_nominal_value'] = pd.to_numeric(df_final['share_nominal_value'], errors='coerce')
     df_final['legal_entity_regcode'] = pd.to_numeric(df_final['legal_entity_regcode'], errors='coerce')
+    
+    # Parse birth_date from person_code (format: DDMMYY-*****)
+    def parse_birth_date(code):
+        if pd.isna(code) or not isinstance(code, str) or len(code) < 6:
+            return None
+        try:
+            # First 6 chars are DDMMYY
+            day = int(code[0:2])
+            month = int(code[2:4])
+            year_short = int(code[4:6])
+            # YY < 30 -> 20YY, else 19YY
+            year = 2000 + year_short if year_short < 30 else 1900 + year_short
+            return pd.Timestamp(year=year, month=month, day=day).date()
+        except (ValueError, TypeError):
+            return None
+    
+    df_final['birth_date'] = df_final['person_code'].apply(parse_birth_date)
     
     # Datumu kolonnas
     for d_col in ['date_from', 'date_to']:
