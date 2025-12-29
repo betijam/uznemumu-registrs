@@ -728,8 +728,8 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                                                 </div>
                                                 <div className="text-sm text-purple-600 font-medium mt-1">Patiesais labuma guvējs</div>
                                                 <div className="text-sm text-gray-600 mt-2">
-                                                    {parseBirthDateFromPersonCode(ubo.person_code) && (
-                                                        <div>Dzimšanas datums: {parseBirthDateFromPersonCode(ubo.person_code)}</div>
+                                                    {(ubo.birth_date || parseBirthDateFromPersonCode(ubo.person_code)) && (
+                                                        <div>Dzimšanas datums: {ubo.birth_date ? ubo.birth_date.split('-').reverse().join('.') : parseBirthDateFromPersonCode(ubo.person_code)}</div>
                                                     )}
                                                     {ubo.residence && <div>Dzīvesvieta: {ubo.residence}</div>}
                                                     {ubo.registered_on && <div>Reģistrēts: {ubo.registered_on}</div>}
@@ -783,7 +783,11 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                                                                 <span className="text-gray-900">{member.name}</span>
                                                             )}
                                                         </td>
-                                                        <td className="px-4 py-3 text-sm text-gray-600">{parseBirthDateFromPersonCode(member.person_code) || '-'}</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-600">
+                                                            {member.birth_date
+                                                                ? member.birth_date.split('-').reverse().join('.')
+                                                                : parseBirthDateFromPersonCode(member.person_code) || '-'}
+                                                        </td>
                                                         <td className="px-4 py-3 text-sm text-right text-gray-600">{member.number_of_shares?.toLocaleString('lv-LV') || '-'}</td>
                                                         <td className="px-4 py-3 text-sm text-right text-gray-600">{member.share_value > 0 ? `${member.share_value.toLocaleString('lv-LV')} ${member.share_currency}` : '-'}</td>
                                                         <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">{member.percent > 0 ? `${member.percent}%` : '-'}</td>
@@ -843,11 +847,20 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                                                     };
                                                     const repr = getRepresentation();
 
+                                                    {/* Helper to display birth date */ }
+                                                    const displayBirthDate = (dateStr: string | null | undefined, personCode: string | null | undefined) => {
+                                                        if (dateStr) {
+                                                            // Format YYYY-MM-DD to DD.MM.YYYY
+                                                            return dateStr.split('-').reverse().join('.');
+                                                        }
+                                                        return parseBirthDateFromPersonCode(personCode);
+                                                    };
+
                                                     return (
                                                         <tr key={idx} className="hover:bg-gray-50">
                                                             <td className="px-4 py-3 text-sm font-medium text-gray-900">{positionLabels[officer.position] || officer.position || '-'}</td>
                                                             <td className="px-4 py-3 text-sm text-gray-900">{officer.name}</td>
-                                                            <td className="px-4 py-3 text-sm text-gray-600">{parseBirthDateFromPersonCode(officer.person_code) || '-'}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">{displayBirthDate(officer.birth_date, officer.person_code) || '-'}</td>
                                                             <td className="px-4 py-3 text-sm">
                                                                 <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${repr.color}`}>
                                                                     {repr.icon} {repr.text}
