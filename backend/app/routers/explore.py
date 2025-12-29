@@ -3,7 +3,7 @@ from sqlalchemy import text, or_
 from app.routers.companies import engine, safe_float
 import math
 import logging
-from typing import Optional
+from typing import Optional, List
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -23,11 +23,11 @@ def list_companies(
     response: Response,
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=100),
-    sort_by: str = Query("turnover", regex="^(turnover|profit|employees|reg_date|salary|tax)$"),
-    order: str = Query("desc", regex="^(asc|desc)$"),
+    sort_by: str = Query("turnover", pattern="^(turnover|profit|employees|reg_date|salary|tax)$"),
+    order: str = Query("desc", pattern="^(asc|desc)$"),
     nace: Optional[List[str]] = Query(None, description="List of NACE codes (partial match)"),
     region: Optional[str] = Query(None, description="Region search term, e.g. Riga"),
-    status: str = Query("active", regex="^(active|liquidated|all)$"),
+    status: str = Query("active", pattern="^(active|liquidated|all)$"),
     min_turnover: Optional[int] = Query(None),
     max_turnover: Optional[int] = Query(None),
     min_employees: Optional[int] = Query(None),

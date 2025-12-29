@@ -664,7 +664,7 @@ def get_industry_detail(
 @router.get("/industries/{nace_section}")
 def get_industry_companies(
     nace_section: str,
-    sort_by: str = Query("turnover", regex="^(turnover|profit)$"),
+    sort_by: str = Query("turnover", pattern="^(turnover|profit)$"),
     limit: int = Query(100, le=500)
 ):
     """
@@ -748,7 +748,7 @@ def get_industry_companies(
 
 @router.get("/top100")
 def get_top_100(
-    sort_by: str = Query("turnover", regex="^(turnover|profit)$")
+    sort_by: str = Query("turnover", pattern="^(turnover|profit)$")
 ):
     """
     Get TOP 100 companies across all industries
