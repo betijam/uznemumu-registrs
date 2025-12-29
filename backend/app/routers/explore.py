@@ -51,15 +51,15 @@ def list_companies(
     
     # Base Query Construction
     
-    # If sorting by salary, we need tax payments view/cte
+    # If sorting by salary, we need tax payments - use INNER JOIN to exclude companies without data
     cte_salary = ""
     if sort_by == "salary":
         cte_salary = f"""
-        LEFT JOIN (
+        INNER JOIN (
             SELECT company_regcode, 
                    (social_tax_vsaoi / NULLIF(avg_employees, 0) / 12 / 0.3409) as avg_gross
             FROM tax_payments 
-            WHERE year = {year} AND avg_employees >= 5
+            WHERE year = {year} AND avg_employees >= 5 AND social_tax_vsaoi > 0
         ) salary_calc ON salary_calc.company_regcode = c.regcode
         """
     
