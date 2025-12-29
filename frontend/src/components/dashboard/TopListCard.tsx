@@ -1,8 +1,12 @@
 import Link from 'next/link';
 import React from 'react';
+import { formatCompanyName } from '@/utils/formatCompanyName';
 
 interface TopItem {
     name: string;
+    name_in_quotes?: string | null;
+    type?: string | null;
+    type_text?: string | null;
     regcode: number;
     value: number;
     industry?: string;
@@ -34,7 +38,7 @@ export default function TopListCard({ title, icon, items, valueFormatter, linkTo
                             <span className="text-sm font-bold text-orange-400 mt-0.5">{idx + 1}</span>
                             <div>
                                 <Link href={`/company/${item.regcode}`} className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
-                                    {item.name}
+                                    {formatCompanyName(item)}
                                 </Link>
                                 {item.industry && (
                                     <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{item.industry}</p>
