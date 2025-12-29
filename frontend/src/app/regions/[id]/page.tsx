@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
+import Navbar from '@/components/Navbar';
+import Link from 'next/link';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import { formatCompanyName } from '@/utils/formatCompanyName';
 import { useParams } from "next/navigation";
-import Link from "next/link";
-import Navbar from "@/components/Navbar";
 
 interface TerritoryDetails {
     id: number;
@@ -142,8 +144,8 @@ export default function RegionDetailsPage() {
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900">{territory.name}</h1>
                             <span className={`inline-block mt-2 text-sm px-3 py-1 rounded-full ${territory.type === "NOVADS"
-                                    ? "bg-blue-100 text-blue-700"
-                                    : "bg-purple-100 text-purple-700"
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-purple-100 text-purple-700"
                                 }`}>
                                 {territory.type === "NOVADS" ? "Novads" :
                                     territory.type === "VALSTSPILSĒTU_PAŠVALDĪBA" ? "Valstspilsēta" : "Pilsēta"}
