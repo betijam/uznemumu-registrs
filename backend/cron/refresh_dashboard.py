@@ -47,6 +47,9 @@ def calculate_dashboard_stats():
         top_turnover = conn.execute(text("""
             SELECT 
                 c.name, 
+                c.name_in_quotes,
+                c."type" as company_type,
+                c.type_text,
                 c.regcode, 
                 f.turnover as value,
                 c.nace_text as industry
@@ -63,6 +66,9 @@ def calculate_dashboard_stats():
         top_profit = conn.execute(text("""
             SELECT 
                 c.name, 
+                c.name_in_quotes,
+                c."type" as company_type,
+                c.type_text,
                 c.regcode, 
                 f.profit as value,
                 c.nace_text as industry
@@ -96,6 +102,9 @@ def calculate_dashboard_stats():
             )
             SELECT 
                 c.name, 
+                c.name_in_quotes,
+                c."type" as company_type,
+                c.type_text,
                 c.regcode, 
                 s.estimated_gross as value,
                 c.nace_text as industry
@@ -124,6 +133,9 @@ def calculate_dashboard_stats():
             )
             SELECT 
                 c.name,
+                c.name_in_quotes,
+                c."type" as company_type,
+                c.type_text,
                 c.regcode,
                 cur.turnover as current_turnover,
                 ROUND(((cur.turnover - prev.turnover) / prev.turnover) * 100, 1) as growth_pct,
@@ -155,6 +167,9 @@ def calculate_dashboard_stats():
             return [
                 {
                     "name": row.name, 
+                    "name_in_quotes": row.name_in_quotes if hasattr(row, 'name_in_quotes') else None,
+                    "type": row.company_type if hasattr(row, 'company_type') else None,
+                    "type_text": row.type_text if hasattr(row, 'type_text') else None,
                     "regcode": row.regcode, 
                     value_key: clean_float(row.value),
                     "industry": row.industry
@@ -166,6 +181,9 @@ def calculate_dashboard_stats():
              return [
                 {
                     "name": row.name, 
+                    "name_in_quotes": row.name_in_quotes if hasattr(row, 'name_in_quotes') else None,
+                    "type": row.company_type if hasattr(row, 'company_type') else None,
+                    "type_text": row.type_text if hasattr(row, 'type_text') else None,
                     "regcode": row.regcode, 
                     "turnover": clean_float(row.current_turnover),
                     "growth": clean_float(row.growth_pct),

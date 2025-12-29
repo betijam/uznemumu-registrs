@@ -133,7 +133,8 @@ def search_companies(q: str = "", nace: str = None):
         order_by = "name ASC"
     
     sql = f"""
-    SELECT regcode, name, address, status, registration_date, 
+    SELECT regcode, name, name_in_quotes, "type" as company_type, type_text,
+           address, status, registration_date, 
            nace_section, nace_section_text
     FROM companies
     WHERE {where_clause}
@@ -148,6 +149,9 @@ def search_companies(q: str = "", nace: str = None):
             result_data.append({
                 "regcode": row.regcode,
                 "name": row.name,
+                "name_in_quotes": row.name_in_quotes if hasattr(row, 'name_in_quotes') else None,
+                "type": row.company_type if hasattr(row, 'company_type') else None,
+                "type_text": row.type_text if hasattr(row, 'type_text') else None,
                 "address": row.address,
                 "status": row.status,
                 "registration_date": str(row.registration_date) if row.registration_date else None,

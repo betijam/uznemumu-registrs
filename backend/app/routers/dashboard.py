@@ -60,7 +60,7 @@ def get_home_dashboard():
         
         # 3. Latest Registered (Live)
         latest_rows = conn.execute(text("""
-            SELECT name, regcode, registration_date 
+            SELECT name, name_in_quotes, "type" as company_type, type_text, regcode, registration_date 
             FROM companies 
             ORDER BY registration_date DESC, regcode DESC 
             LIMIT 5
@@ -69,6 +69,9 @@ def get_home_dashboard():
         latest_registered = [
             {
                 "name": row.name,
+                "name_in_quotes": row.name_in_quotes if hasattr(row, 'name_in_quotes') else None,
+                "type": row.company_type if hasattr(row, 'company_type') else None,
+                "type_text": row.type_text if hasattr(row, 'type_text') else None,
                 "regcode": row.regcode,
                 "date": row.registration_date.isoformat() if row.registration_date else None,
                 # Frontend can calc "time ago" or we can do it here if we had precise datetime
