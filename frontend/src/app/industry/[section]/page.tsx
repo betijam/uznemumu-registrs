@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
+import { notFound } from "next/navigation";
+import { formatCompanyName } from "@/utils/formatCompanyName";
 import CompanySizeBadge from '@/components/CompanySizeBadge';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
@@ -137,7 +139,7 @@ export default function IndustryPage() {
                                                     href={`/company/${company.regcode}`}
                                                     className="text-primary hover:underline font-medium"
                                                 >
-                                                    {company.name}
+                                                    {formatCompanyName(company)}
                                                 </Link>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-900">

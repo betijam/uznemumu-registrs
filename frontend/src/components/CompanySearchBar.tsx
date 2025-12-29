@@ -3,10 +3,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import debounce from "lodash.debounce";
+import { formatCompanyName } from '@/utils/formatCompanyName';
 
 interface Company {
     regcode: number;
     name: string;
+    name_in_quotes?: string;
+    type?: string;
     status?: string;
 }
 
@@ -94,7 +97,7 @@ export default function CompanySearchBar() {
                             className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b last:border-0 transition-colors"
                         >
                             <div>
-                                <span className="font-medium text-gray-900">{company.name}</span>
+                                <span className="font-medium text-gray-900">{formatCompanyName(company)}</span>
                                 <span className="text-sm text-gray-500 ml-2">({company.regcode})</span>
                             </div>
                             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

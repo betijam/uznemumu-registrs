@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
+import { formatCompanyName } from '@/utils/formatCompanyName';
 import CompanySizeBadge from '@/components/CompanySizeBadge';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
@@ -140,7 +141,7 @@ export default function Top100Page() {
                                                     href={`/company/${company.regcode}`}
                                                     className="text-primary hover:underline font-medium"
                                                 >
-                                                    {company.name}
+                                                    {formatCompanyName(company)}
                                                 </Link>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-600">
