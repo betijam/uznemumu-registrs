@@ -282,22 +282,36 @@ def get_company_details(regcode: int, response: Response):
     def get_persons():
         with engine.connect() as conn:
             rows = conn.execute(text("""
-                SELECT person_name, role, share_percent, date_from, birth_date,
+                SELECT person_name, role, share_percent, date_from, person_code,
                        position, rights_of_representation, representation_with_at_least,
                        number_of_shares, share_nominal_value, share_currency, legal_entity_regcode,
                        nationality, residence
                 FROM persons WHERE company_regcode = :r
             """), {"r": regcode}).fetchall()
             
+            def parse_birth_date(person_code):
+                """Parse birth date from Latvian person code (DDMMYY-*****)"""
+                if not person_code or len(person_code) < 6:
+                    return None
+                try:
+                    day = int(person_code[0:2])
+                    month = int(person_code[2:4])
+                    year_short = int(person_code[4:6])
+                    year = 2000 + year_short if year_short < 30 else 1900 + year_short
+                    return f"{year}-{month:02d}-{day:02d}"
+                except (ValueError, TypeError):
+                    return None
+            
             total_capital = sum((float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)) for p in rows if p.role == 'member')
             ubos, members, officers = [], [], []
             
             for p in rows:
+                birth_date = parse_birth_date(p.person_code) if hasattr(p, 'person_code') else None
                 if p.role == 'ubo':
                     ubos.append({
                         "name": p.person_name, "nationality": p.nationality,
                         "residence": p.residence, "registered_on": str(p.date_from) if p.date_from else None,
-                        "birth_date": str(p.birth_date) if hasattr(p, 'birth_date') and p.birth_date else None
+                        "birth_date": birth_date
                     })
                 elif p.role == 'member':
                     share_value = float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)
@@ -307,7 +321,7 @@ def get_company_details(regcode: int, response: Response):
                         "number_of_shares": int(p.number_of_shares) if p.number_of_shares else None,
                         "share_value": share_value, "share_currency": p.share_currency or "EUR",
                         "percent": round(percent, 2), "date_from": str(p.date_from) if p.date_from else None,
-                        "birth_date": str(p.birth_date) if hasattr(p, 'birth_date') and p.birth_date else None
+                        "birth_date": birth_date
                     })
                 elif p.role == 'officer':
                     officers.append({
@@ -315,7 +329,7 @@ def get_company_details(regcode: int, response: Response):
                         "rights_of_representation": p.rights_of_representation,
                         "representation_with_at_least": int(p.representation_with_at_least) if p.representation_with_at_least else None,
                         "registered_on": str(p.date_from) if p.date_from else None,
-                        "birth_date": str(p.birth_date) if hasattr(p, 'birth_date') and p.birth_date else None
+                        "birth_date": birth_date
                     })
                     
             return ubos, members, officers, total_capital
