@@ -3,9 +3,10 @@ import React from 'react';
 interface MarketPulseProps {
     data: {
         active_companies: number;
-        new_this_week: number;
-        liquidated_this_week: number;
+        total_employees: number;
+        avg_salary: number;
         total_turnover: number;
+        data_year?: number;
     } | null;
     loading?: boolean;
 }
@@ -28,14 +29,14 @@ export default function MarketPulse({ data, loading = false }: MarketPulseProps)
             color: "text-gray-900"
         },
         {
-            label: "REĢISTRĒTI ŠONEDĒĻ",
-            value: `+${data.new_this_week}`,
-            color: "text-green-600"
+            label: "DARBINIEKI KOPĀ",
+            value: data.total_employees.toLocaleString(),
+            color: "text-blue-600"
         },
         {
-            label: "LIKVIDĒTI ŠONEDĒĻ",
-            value: `-${data.liquidated_this_week}`,
-            color: "text-red-500"
+            label: "VID. BRUTO ALGA",
+            value: `${data.avg_salary.toLocaleString()} €`,
+            color: "text-green-600"
         },
         {
             label: "KOPĒJAIS APGROZĪJUMS",

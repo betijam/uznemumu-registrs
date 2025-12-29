@@ -31,14 +31,18 @@ def calculate_dashboard_stats():
         logger.info("Starting Dashboard Refresh...")
 
         # 1. Determine LATEST FULL YEAR for financials
-        # We look for the year that has substantial data (e.g. > 1000 reports)
-        max_year_row = conn.execute(text("SELECT MAX(year) FROM financial_reports")).fetchone()
-        latest_year = max_year_row[0] if max_year_row and max_year_row[0] else 2023
+        # Find the most recent year with substantial data (>10,000 reports)
+        year_data = conn.execute(text("""
+            SELECT year, COUNT(*) as cnt 
+            FROM financial_reports 
+            GROUP BY year 
+            HAVING COUNT(*) > 10000 
+            ORDER BY year DESC 
+            LIMIT 1
+        """)).fetchone()
         
-        # Ensure we have enough data for this year, otherwise fall back
-        count_row = conn.execute(text("SELECT COUNT(*) FROM financial_reports WHERE year = :year"), {"year": latest_year}).fetchone()
-        if count_row[0] < 1000:
-            latest_year -= 1
+        latest_year = year_data[0] if year_data else 2023
+        logger.info(f"Best year found: {latest_year} with {year_data[1] if year_data else 'N/A'} records")
 
         logger.info(f"Using Financial Year: {latest_year}")
 
