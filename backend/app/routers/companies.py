@@ -198,8 +198,23 @@ def get_company_details(regcode: int, response: Response):
                 ORDER BY tp.year DESC
             """), {"r": regcode}).fetchall()
             
+            VSAOI_RATE = 0.3409
             history = []
             for t in rows:
+                avg_gross = safe_float(t.avg_gross_salary)
+                avg_net = safe_float(t.avg_net_salary)
+                
+                # Fallback: calculate salary on-the-fly if not in computed metrics
+                if avg_gross is None and t.social_tax_vsaoi and t.avg_employees and float(t.avg_employees) > 0:
+                    vsaoi = float(t.social_tax_vsaoi)
+                    employees = float(t.avg_employees)
+                    gross_yearly = vsaoi / VSAOI_RATE
+                    avg_gross = round(gross_yearly / employees / 12, 2)
+                    
+                    vsaoi_employee = avg_gross * 0.105
+                    iin = (avg_gross - vsaoi_employee) * 0.20
+                    avg_net = round(avg_gross - vsaoi_employee - iin, 2)
+                
                 row = {
                     "year": t.year,
                     "total_tax_paid": safe_float(t.total_tax_paid),
@@ -207,8 +222,8 @@ def get_company_details(regcode: int, response: Response):
                     "social_tax_vsaoi": safe_float(t.social_tax_vsaoi),
                     "avg_employees": safe_float(t.avg_employees),
                     "nace_code": t.nace_code,
-                    "avg_gross_salary": safe_float(t.avg_gross_salary),
-                    "avg_net_salary": safe_float(t.avg_net_salary)
+                    "avg_gross_salary": avg_gross,
+                    "avg_net_salary": avg_net
                 }
                 history.append(row)
             return history
