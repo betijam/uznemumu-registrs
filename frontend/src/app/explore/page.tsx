@@ -7,6 +7,7 @@ import CompanyListTable from "@/components/explore/CompanyListTable";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from 'react';
 import { useComparison } from "@/contexts/ComparisonContext";
+import { formatCompanyName } from "@/utils/formatCompanyName";
 
 // Wrapped component for Suspense
 function ExploreContent() {
@@ -193,8 +194,8 @@ function ExploreContent() {
                 label: 'Uzņēmums',
                 render: (val: any, row: any) => (
                     <div className="max-w-[150px] md:max-w-[240px]">
-                        <a href={`/company/${row.regcode}`} className="font-semibold text-gray-900 hover:text-purple-600 block truncate" title={val}>
-                            {val}
+                        <a href={`/company/${row.regcode}`} className="font-semibold text-gray-900 hover:text-purple-600 block truncate" title={row.name}>
+                            {formatCompanyName(row)}
                         </a>
                         <div className="text-gray-500 text-xs">Reg. nr. {row.regcode}</div>
                         {row.nace && <span className="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded mt-1 truncate max-w-full" title={row.nace}>{row.nace}</span>}
