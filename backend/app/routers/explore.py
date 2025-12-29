@@ -165,8 +165,9 @@ def list_companies(
     
     # Logging for debugging
     logger.info(f"Explorer Request - Status: '{status}', Region: '{region}', NACE: '{nace}'")
+    logger.info(f"WHERE clauses: {where_clauses}")
     logger.info(f"Explorer Query params: {params}, year: {year}")
-    logger.info(f"Explorer Main Query: {main_query[:500]}...")
+    logger.info(f"Explorer Stats Query: {stats_query}")
     
     try:
         with engine.connect() as conn:
