@@ -165,14 +165,20 @@ def list_companies(
     
     # Logging for debugging
     logger.info(f"Explorer Request - Status: '{status}', Region: '{region}', NACE: '{nace}'")
+    logger.info(f"Explorer Query params: {params}, year: {year}")
+    logger.info(f"Explorer Main Query: {main_query[:500]}...")
     
     try:
         with engine.connect() as conn:
             # Execute Stats (includes Count)
+            logger.info("Executing stats query...")
             stats = conn.execute(text(stats_query), {**params, "year": year}).fetchone()
+            logger.info(f"Stats result: count={stats.total_count if stats else 'None'}")
             
             # Execute List
+            logger.info("Executing main query...")
             result = conn.execute(text(main_query), {**params, "limit": limit, "offset": offset, "year": year}).fetchall()
+            logger.info(f"Main query returned {len(result)} rows")
             
             companies = []
             for r in result:
