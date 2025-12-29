@@ -11,9 +11,10 @@ import Link from "next/link";
 interface DashboardData {
   pulse: {
     active_companies: number;
-    new_this_week: number;
-    liquidated_this_week: number;
+    total_employees: number;
+    avg_salary: number;
     total_turnover: number;
+    data_year?: number;
   };
   tops: {
     turnover: any[];
