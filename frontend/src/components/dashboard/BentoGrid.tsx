@@ -1,6 +1,9 @@
+'use client';
+
 import React from 'react';
 import TopListCard from './TopListCard';
 import Link from 'next/link';
+import { formatCompanyName } from '@/utils/formatCompanyName';
 import { BuildingOffice2Icon, BanknotesIcon, CircleStackIcon, BoltIcon, FireIcon } from '@heroicons/react/24/outline'; // Need to install heroicons or use existing icons
 
 // Fallback icons if heroicons not installed, but usually we should have them. 
@@ -83,7 +86,7 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                             <div key={company.regcode} className="flex justify-between items-start animate-fade-in" style={{ animationDelay: `${idx * 100}ms` }}>
                                 <div>
                                     <Link href={`/company/${company.regcode}`} className="font-medium text-gray-900 hover:text-blue-600 block">
-                                        {company.name}
+                                        {formatCompanyName(company)}
                                     </Link>
                                     <p className="text-xs text-gray-400 mt-0.5">{company.regcode}</p>
                                 </div>
@@ -120,7 +123,7 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                         {gazeles.slice(0, 3).map((company) => (
                             <div key={company.regcode} className="bg-white/5 rounded-xl p-5 border border-white/10 hover:bg-white/10 transition-colors group cursor-pointer">
                                 <div className="text-3xl font-bold text-green-400 mb-2">+{company.growth}%</div>
-                                <h4 className="font-bold text-white mb-1 group-hover:text-blue-300 transition-colors line-clamp-1">{company.name}</h4>
+                                <h4 className="font-bold text-white mb-1 group-hover:text-blue-300 transition-colors line-clamp-1">{formatCompanyName(company)}</h4>
                                 <p className="text-sm text-slate-400">Apgrozījums sasniedz {formatCurrency(company.turnover)}</p>
                                 {company.industry && <p className="text-xs text-slate-500 mt-2 line-clamp-1">{company.industry}</p>}
                             </div>

@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import SearchInput from "@/components/SearchInput";
 import Link from "next/link";
+import { formatCompanyName } from "@/utils/formatCompanyName";
 
 async function getSearchResults(query: string) {
     // On Railway, always use the public URL (NEXT_PUBLIC_API_URL)
@@ -86,7 +87,7 @@ export default async function SearchPage({
                                                 </svg>
                                             </div>
                                             <div>
-                                                <h3 className="text-xl font-semibold text-primary mb-1">{company.name}</h3>
+                                                <h3 className="text-xl font-semibold text-primary mb-1">{formatCompanyName(company)}</h3>
                                                 <p className="text-sm text-gray-500">
                                                     Reģ. Nr. {company.regcode}
                                                 </p>

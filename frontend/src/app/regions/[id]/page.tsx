@@ -250,7 +250,7 @@ export default function RegionDetailsPage() {
                                     </div>
                                     <div className="ml-3 flex-1 min-w-0">
                                         <div className="text-sm font-medium text-gray-900 truncate">
-                                            {company.name}
+                                            {formatCompanyName(company)}
                                         </div>
                                         <div className="text-xs text-gray-500 truncate">
                                             {company.nace_text || "-"}
