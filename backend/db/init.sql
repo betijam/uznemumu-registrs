@@ -2,6 +2,10 @@
 CREATE TABLE companies (
     regcode BIGINT PRIMARY KEY, 
     name TEXT NOT NULL,
+    name_in_quotes TEXT,          -- Short company name (e.g., "ANIMAS")
+    type TEXT,                     -- Company type abbreviation (e.g., "SIA", "AS")
+    type_text TEXT,                -- Full company type description
+    addressid TEXT,                -- Address identifier from register
     address TEXT,
     registration_date DATE,
     status TEXT, 

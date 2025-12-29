@@ -101,6 +101,10 @@ def get_company_details(regcode: int, response: Response):
         company = {
             "regcode": res.regcode,
             "name": res.name,
+            "name_in_quotes": res.name_in_quotes if hasattr(res, 'name_in_quotes') else None,
+            "type": res.type if hasattr(res, 'type') else None,
+            "type_text": res.type_text if hasattr(res, 'type_text') else None,
+            "addressid": res.addressid if hasattr(res, 'addressid') else None,
             "address": res.address,
             "registration_date": str(res.registration_date),
             "status": res.status,
@@ -398,6 +402,10 @@ def get_company_quick(regcode: int, response: Response):
         return {
             "regcode": res.regcode,
             "name": res.name,
+            "name_in_quotes": res.name_in_quotes if hasattr(res, 'name_in_quotes') else None,
+            "type": res.type if hasattr(res, 'type') else None,
+            "type_text": res.type_text if hasattr(res, 'type_text') else None,
+            "addressid": res.addressid if hasattr(res, 'addressid') else None,
             "address": res.address,
             "registration_date": str(res.registration_date),
             "status": res.status,

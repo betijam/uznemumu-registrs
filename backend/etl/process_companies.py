@@ -18,6 +18,10 @@ def process_companies(register_path: str, equity_path: str):
     df_reg = df_reg.rename(columns={
         'regcode': 'regcode',
         'name': 'name',
+        'name_in_quotes': 'name_in_quotes',  # Short company name
+        'type': 'type',                       # Company type abbreviation (SIA, AS, etc.)
+        'type_text': 'type_text',             # Full company type description
+        'addressid': 'addressid',             # Address identifier
         'address': 'address',
         'registered': 'registration_date',
         'type_text': 'company_size_badge', # Using type as badge placeholder for now, or calculate later
@@ -40,7 +44,8 @@ def process_companies(register_path: str, equity_path: str):
     df_reg = df_reg.dropna(subset=['name'])
 
     # Select columns for DB
-    cols_to_keep = ['regcode', 'name', 'address', 'registration_date', 'status', 'sepa_identifier']
+    cols_to_keep = ['regcode', 'name', 'name_in_quotes', 'type', 'type_text', 'addressid', 
+                    'address', 'registration_date', 'status', 'sepa_identifier']
     # Check if they exist
     for col in cols_to_keep:
         if col not in df_reg.columns:
