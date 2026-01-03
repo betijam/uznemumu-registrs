@@ -41,9 +41,19 @@ def generate_person_url_id(person_code: str, person_name: str) -> str:
     """
     Generate URL-safe person identifier using hash.
     Format: 8-character hex hash (e.g., "a3f2b9c1")
+    
+    Normalizes name by:
+    1. Lowercase
+    2. Split into parts
+    3. Sort parts alphabetically
+    4. Join back
+    This ensures "Pauzere Madara" and "Madara Pauzere" generate the same hash.
     """
+    # Normalize name
+    normalized_name = " ".join(sorted(person_name.lower().split()))
+    
     # Create hash input
-    hash_input = f"{person_code}|{person_name}"
+    hash_input = f"{person_code}|{normalized_name}"
     
     # Simple hash function (matching frontend)
     hash_val = 0
@@ -99,6 +109,47 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[tuple]:
         logger.warning(f"[resolve_person_identifier] No hash match found for: {identifier}")
     
     logger.warning(f"[resolve_person_identifier] No match found for identifier: {identifier}")
+    
+    # Try legacy person_code-slug format (DDMMYY-name-slug)
+    # This is useful if old links exist or if hash lookup fails
+    if '-' in identifier:
+        parts = identifier.split('-')
+        if len(parts) >= 2:
+            fragment = parts[0]
+            # Check if it's DDMMYY format (digits)
+            if len(fragment) == 6 and fragment.isdigit():
+                name_slug = '-'.join(parts[1:])
+                logger.info(f"[resolve_person_identifier] Trying legacy format check: fragment={fragment}, slug={name_slug}")
+                
+                # Find candidates with matching person_code prefix
+                candidates = conn.execute(text("""
+                    SELECT DISTINCT person_code, person_name
+                    FROM persons 
+                    WHERE person_code LIKE :pattern
+                """), {"pattern": f"{fragment}%"}).fetchall()
+                
+                # Check for match with normalized names
+                for cand in candidates:
+                    # Normalize candidate name using same logic as hash generation
+                    # Lowercase -> split -> sort -> join
+                    normalized_cand_name = " ".join(sorted(cand.person_name.lower().split()))
+                    
+                    # Create slug from normalized name
+                    import re
+                    cand_slug = re.sub(r'[^a-z0-9]+', '-', normalized_cand_name).strip('-')
+                    
+                    # Normalize input slug too (just in case)
+                    normalized_input_slug = re.sub(r'[^a-z0-9]+', '-', name_slug.lower()).strip('-')
+                    
+                    # Compare
+                    # Also try comparing sorted parts of the slug
+                    cand_slug_parts = sorted(cand_slug.split('-'))
+                    input_slug_parts = sorted(normalized_input_slug.split('-'))
+                    
+                    if cand_slug == normalized_input_slug or cand_slug_parts == input_slug_parts:
+                        logger.info(f"[resolve_person_identifier] Legacy/Name Match found! {cand.person_code}, {cand.person_name}")
+                        return (cand.person_code, cand.person_name)
+
     return None
 
 
@@ -409,6 +460,7 @@ def search_persons(q: str, limit: int = 20, offset: int = 0):
             person_id = row.person_hash
             
             # If hash is missing (should stick to migration), generate it
+            # generate_person_url_id now includes name normalization
             if not person_id:
                 person_id = generate_person_url_id(row.person_code, row.person_name)
             

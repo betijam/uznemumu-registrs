@@ -63,15 +63,18 @@ export function generatePersonUrlSync(
 
     // Use hash if we have both person_code and name
     if (personCode && personName) {
-        // Create deterministic string for hashing
-        const hashInput = `${personCode}|${personName}`;
+        // Generate hash from personCode + normalized name
+        const fragment = personCode.substring(0, 6); // Use first 6 chars of personCode as fragment
+        // Normalize name: lowercase, split, sort, join
+        const normalizedName = personName.toLowerCase().split(/\s+/).sort().join(' ');
+        const hashInput = `${fragment}|${normalizedName}`;
 
-        // Simple hash function (matching backend Python implementation)
+        // Simple hash function (matching Python backend)
         let hash = 0;
         for (let i = 0; i < hashInput.length; i++) {
             const char = hashInput.charCodeAt(i);
             hash = ((hash << 5) - hash) + char;
-            hash = hash | 0; // Convert to 32bit signed integer
+            hash = hash | 0; // Convert to 32bit integer
         }
 
         // Convert to 8-character hex (use unsigned value)

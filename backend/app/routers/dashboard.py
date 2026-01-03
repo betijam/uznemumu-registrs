@@ -131,7 +131,10 @@ def search_hint(q: str):
             if existing_hash:
                 return existing_hash
             # Compute hash if missing
-            hash_input = f"{code}|{name}"
+            # Normalize name: lowercase -> split -> sort -> join
+            normalized_name = " ".join(sorted(name.lower().split()))
+            hash_input = f"{code}|{normalized_name}"
+            
             hash_val = 0
             for char in hash_input:
                 hash_val = ((hash_val << 5) - hash_val) + ord(char)

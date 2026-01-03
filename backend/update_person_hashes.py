@@ -14,12 +14,24 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-def compute_hash(person_code: str, person_name: str) -> str:
+def generate_person_url_id(person_code: str, person_name: str) -> str:
     """
-    Compute hash for a person (matching frontend/backend logic)
-    """
-    hash_input = f"{person_code}|{person_name}"
+    Generate URL-safe person identifier using hash matchin the new backend logic.
+    Format: 8-character hex hash.
     
+    Normalizes name by:
+    1. Lowercase
+    2. Split into parts
+    3. Sort parts alphabetically
+    4. Join back
+    """
+    # Normalize name
+    normalized_name = " ".join(sorted(person_name.lower().split()))
+    
+    # Create hash input
+    hash_input = f"{person_code}|{normalized_name}"
+    
+    # Simple hash function
     hash_val = 0
     for char in hash_input:
         hash_val = ((hash_val << 5) - hash_val) + ord(char)
@@ -45,15 +57,14 @@ def update_person_hashes():
         print(f"Found {null_count} persons without hash")
         
         if null_count == 0:
-            print("✅ All persons already have hashes!")
-            return
+            print("ℹ️ All persons have hashes, but we will force update to ensure normalization!")
         
         # Get DISTINCT person_code + person_name combinations (to avoid duplicate hash computation)
         print("Fetching unique person combinations...")
+        # REMOVED WHERE clause to force update all
         cursor.execute("""
             SELECT DISTINCT person_code, person_name 
             FROM persons 
-            WHERE person_hash IS NULL
         """)
         
         unique_persons = cursor.fetchall()
@@ -63,7 +74,8 @@ def update_person_hashes():
         print("Computing hashes...")
         hash_map = {}
         for person_code, person_name in unique_persons:
-            hash_val = compute_hash(person_code, person_name)
+            # Use the new generate_person_url_id with normalization
+            hash_val = generate_person_url_id(person_code, person_name)
             hash_map[(person_code, person_name)] = hash_val
         
         print(f"Computed {len(hash_map)} unique hashes")
@@ -91,19 +103,19 @@ def update_person_hashes():
         )
         
         # Batch update using JOIN
+        # REMOVED WHERE p.person_hash IS NULL logic to force update
         cursor.execute("""
             UPDATE persons p
             SET person_hash = t.person_hash
             FROM temp_person_hashes t
             WHERE p.person_code = t.person_code 
               AND p.person_name = t.person_name
-              AND p.person_hash IS NULL
         """)
         
         updated_count = cursor.rowcount
         conn.commit()
         
-        print(f"✅ Successfully updated {updated_count} person records!")
+        print(f"✅ Successfully updated {updated_count} person records with normalized hashes!")
         
         # Verify
         cursor.execute("SELECT COUNT(*) FROM persons WHERE person_hash IS NULL")
