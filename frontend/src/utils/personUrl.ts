@@ -51,7 +51,7 @@ export async function generatePersonUrl(personCode: string | null, personName: s
 
 /**
  * Synchronous version for simpler cases
- * Uses person_code-slug approach: DDMMYY-name-slug
+ * Uses hash-based approach for unique identification
  */
 export function generatePersonUrlSync(
     personCode: string | null | undefined,
@@ -61,7 +61,27 @@ export function generatePersonUrlSync(
     // Debug logging
     console.log('[generatePersonUrlSync]', { personCode, personName, birthDate });
 
-    // Normalize Latvian characters in name
+    // Use hash if we have both person_code and name
+    if (personCode && personName) {
+        // Create deterministic string for hashing
+        const hashInput = `${personCode}|${personName}`;
+
+        // Simple hash function (matching backend Python implementation)
+        let hash = 0;
+        for (let i = 0; i < hashInput.length; i++) {
+            const char = hashInput.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+
+        // Convert to 8-character hex
+        const hashHex = (Math.abs(hash) >>> 0).toString(16).padStart(8, '0').substring(0, 8);
+        const url = `/person/${hashHex}`;
+        console.log('[generatePersonUrlSync] Generated hash URL:', url, 'from', hashInput);
+        return url;
+    }
+
+    // Fallback: normalize name for slug
     const normalizeName = (name: string) => {
         return name.toLowerCase()
             .replace(/ā/g, 'a')
@@ -80,29 +100,8 @@ export function generatePersonUrlSync(
     };
 
     const slug = normalizeName(personName);
-
-    // Priority 1: Use person_code if available (DDMMYY format)
-    if (personCode && personCode.length >= 6) {
-        const fragment = personCode.substring(0, 6); // DDMMYY
-        const url = `/person/${fragment}-${slug}`;
-        console.log('[generatePersonUrlSync] Generated URL with person_code:', url);
-        return url;
-    }
-
-    // Priority 2: Convert birth_date to DDMMYY format if available
-    if (birthDate) {
-        // Convert YYYY-MM-DD to DDMMYY
-        const parts = birthDate.split('-');
-        if (parts.length === 3) {
-            const fragment = `${parts[2]}${parts[1]}${parts[0].substring(2)}`; // DDMMYY
-            const url = `/person/${fragment}-${slug}`;
-            console.log('[generatePersonUrlSync] Generated URL with birth_date (converted to DDMMYY):', url);
-            return url;
-        }
-    }
-
-    // Last resort: just use name slug
     const url = `/person/${slug}`;
-    console.warn('[generatePersonUrlSync] No person_code or birth_date, using fallback URL:', url);
+    console.warn('[generatePersonUrlSync] No person_code, using fallback name URL:', url);
     return url;
 }
+
