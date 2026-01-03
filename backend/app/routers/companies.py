@@ -578,7 +578,7 @@ def get_procurements_endpoint(regcode: int, response: Response, limit: int = 50)
     
     with engine.connect() as conn:
         rows = conn.execute(text("""
-            SELECT authority_name, subject, amount, contract_date
+            SELECT authority_name, subject, amount, contract_date, contract_end_date, termination_date
             FROM procurements WHERE winner_regcode = :r
             ORDER BY contract_date DESC LIMIT :limit
         """), {"r": regcode, "limit": limit}).fetchall()
@@ -587,7 +587,9 @@ def get_procurements_endpoint(regcode: int, response: Response, limit: int = 50)
             "authority": p.authority_name, 
             "subject": p.subject,
             "amount": safe_float(p.amount), 
-            "date": str(p.contract_date)
+            "date": str(p.contract_date),
+            "end_date": str(p.contract_end_date) if p.contract_end_date else None,
+            "termination_date": str(p.termination_date) if p.termination_date else None
         } for p in rows]}
 
 

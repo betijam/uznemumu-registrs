@@ -61,6 +61,8 @@ def process_single_result_file(url: str, year: int, valid_regcodes: set):
     col_map = {
         'Uzvaretaja_registracijas_numurs': 'winner_regcode',
         'Liguma_dok_noslegsanas_datums': 'contract_date',
+        'Liguma_izpilde_lidz': 'contract_end_date',
+        'Izbeigsanas_datums': 'termination_date',
         'Pasutitaja_nosaukums': 'authority_name',
         'Iepirkuma_nosaukums': 'subject',
         'Aktuala_liguma_summa': 'amount',
@@ -84,8 +86,11 @@ def process_single_result_file(url: str, year: int, valid_regcodes: set):
         df['amount'] = 0.0
 
     # Datuma tīrīšana
-    if 'contract_date' in df.columns:
-        df['contract_date'] = pd.to_datetime(df['contract_date'], errors='coerce').dt.date
+    date_cols = ['contract_date', 'contract_end_date', 'termination_date']
+    for dc in date_cols:
+        if dc in df.columns:
+            # Handle potential excel dates or varied formats if needed, but pd.to_datetime is usually robust
+            df[dc] = pd.to_datetime(df[dc], errors='coerce').dt.date
 
     # Reģistrācijas numura tīrīšana
     df['winner_regcode'] = df['winner_regcode'].astype(str).str.strip()
@@ -97,7 +102,7 @@ def process_single_result_file(url: str, year: int, valid_regcodes: set):
 
     # Sagatavojam DB ievadei
     df['year'] = year
-    target_cols = ['winner_regcode', 'contract_date', 'authority_name', 'subject', 'amount', 'year', 'source_link']
+    target_cols = ['winner_regcode', 'contract_date', 'contract_end_date', 'termination_date', 'authority_name', 'subject', 'amount', 'year', 'source_link']
     
     # Pieliekam trūkstošās kolonnas kā nulles
     for c in target_cols:

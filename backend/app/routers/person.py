@@ -194,6 +194,32 @@ def get_person_profile(identifier: str, response: Response):
         
         if not person_info:
             raise HTTPException(status_code=404, detail="Person not found")
+
+        # Get all related companies
+        companies = conn.execute(text("""
+            SELECT 
+                p.company_regcode as regcode,
+                c.name,
+                c.status,
+                p.role,
+                p.position,
+                p.date_from,
+                p.date_to,
+                p.number_of_shares,
+                p.share_percent,
+                fr.turnover,
+                fr.employees,
+                fr.equity as balance,
+                c.type_text
+            FROM persons p
+            JOIN companies c ON p.company_regcode = c.regcode
+            LEFT JOIN financial_reports fr ON c.regcode = fr.company_regcode 
+                AND fr.year = (SELECT MAX(year) FROM financial_reports WHERE company_regcode = c.regcode)
+            WHERE p.person_code = :pc AND p.person_name = :pn
+            ORDER BY 
+                CASE WHEN p.date_to IS NULL THEN 0 ELSE 1 END,
+                fr.turnover DESC NULLS LAST
+        """), {"pc": person_code, "pn": person_name}).fetchall()
         
         # Calculate KPIs in Python to avoid double counting multiple roles
         active_companies_count = 0

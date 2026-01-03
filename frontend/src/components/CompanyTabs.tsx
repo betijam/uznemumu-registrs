@@ -123,6 +123,64 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
     const financialHistory = company.financial_history || [];
     const latest = financialHistory[0] || {};
 
+    // Procurement Helpers
+    const getContractStatus = (p: any) => {
+        if (p.termination_date) return 'ENDED';
+
+        if (!p.end_date) return 'ACTIVE'; // No end date = Active indefinite
+
+        const end = new Date(p.end_date);
+        const now = new Date();
+        const warningDate = new Date();
+        warningDate.setMonth(now.getMonth() + 9);
+
+        if (end < now) return 'ENDED';
+        if (end <= warningDate) return 'EXPIRING';
+        return 'ACTIVE';
+    };
+
+    const calculateProgress = (startStr: string, endStr: string) => {
+        if (!startStr || !endStr) return 0;
+        const start = new Date(startStr).getTime();
+        const end = new Date(endStr).getTime();
+        const now = new Date().getTime();
+
+        if (now >= end) return 100;
+        if (now <= start) return 0;
+
+        const total = end - start;
+        const elapsed = now - start;
+        return Math.min(Math.round((elapsed / total) * 100), 100);
+    };
+
+    const getDaysRemaining = (endStr: string) => {
+        if (!endStr) return null;
+        const end = new Date(endStr).getTime();
+        const now = new Date().getTime();
+        const diff = end - now;
+        if (diff < 0) return 0;
+        return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    };
+
+    // Calculate Procurement KPIs
+    const procurementStats = (() => {
+        const procs = company.procurements || [];
+        const active = procs.filter((p: any) => {
+            const status = getContractStatus(p);
+            return status === 'ACTIVE' || status === 'EXPIRING';
+        });
+        const expiring = active.filter((p: any) => getContractStatus(p) === 'EXPIRING');
+
+        const activeValue = active.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+
+        return {
+            activeCount: active.length,
+            expiringCount: expiring.length,
+            activeValue: activeValue,
+            expiring: expiring
+        };
+    })();
+
     // Format helpers
     const formatPercent = (val: number | null) => {
         if (val === null || val === undefined) return '-';
@@ -1103,156 +1161,185 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                 {/* PROCUREMENTS TAB */}
                 {
                     activeTab === "procurements" && (
-                        <div className="space-y-6">
-                            {/* Header */}
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-900">Valsts Iepirkumi</h3>
-                                    <p className="text-sm text-gray-500 mt-1">Parāda 10 jaunākos uzvarētos iepirkumus (periods: 2018-2025)</p>
+                        <div className="space-y-8">
+                            {/* KPI Dashboard - 3 Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {/* Total Active Contracts */}
+                                <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+                                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                                        Aktīvie Līgumi
+                                    </div>
+                                    <div className="text-3xl font-bold text-gray-900">
+                                        {procurementStats.activeCount}
+                                    </div>
+                                    <div className="text-sm text-gray-500 mt-1">
+                                        Līgumi izpildē
+                                    </div>
+                                </div>
+
+                                {/* Expiring Contracts (Hot Leads) */}
+                                <div className={`border rounded-lg p-5 shadow-sm ${procurementStats.expiringCount > 0
+                                        ? 'bg-orange-50 border-orange-200'
+                                        : 'bg-white border-gray-200'
+                                    }`}>
+                                    <div className={`text-xs uppercase tracking-wide mb-1 ${procurementStats.expiringCount > 0 ? 'text-orange-700' : 'text-gray-500'
+                                        }`}>
+                                        Beidzas (&lt; 9 mēn.)
+                                    </div>
+                                    <div className={`text-3xl font-bold ${procurementStats.expiringCount > 0 ? 'text-orange-800' : 'text-gray-900'
+                                        }`}>
+                                        {procurementStats.expiringCount}
+                                    </div>
+                                    <div className={`text-sm mt-1 ${procurementStats.expiringCount > 0 ? 'text-orange-700 font-medium' : 'text-gray-500'
+                                        }`}>
+                                        Pārdošanas iespēja
+                                    </div>
+                                </div>
+
+                                {/* Active Value */}
+                                <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+                                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                                        Aktīvo Līgumu Vērtība
+                                    </div>
+                                    <div className="text-3xl font-bold text-gray-900">
+                                        {procurementStats.activeValue >= 1000000
+                                            ? `${(procurementStats.activeValue / 1000000).toFixed(1)} M€`
+                                            : `${Math.round(procurementStats.activeValue / 1000)} k€`
+                                        }
+                                    </div>
+                                    <div className="text-sm text-gray-500 mt-1">
+                                        Kopējā summa
+                                    </div>
                                 </div>
                             </div>
 
-                            {company.procurements && company.procurements.length > 0 ? (
-                                <>
-                                    {/* KPI Cards */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        {/* Total Amount Card */}
-                                        <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-green-200 rounded-lg p-5">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm font-medium text-green-700">Uzvarēto iepirkumu summa</span>
-                                                <span className="text-2xl">💰</span>
-                                            </div>
-                                            <p className="text-3xl font-bold text-green-700 mt-2">
-                                                {formatCurrency(company.procurements.reduce((sum: number, p: any) => sum + (p.amount || 0), 0))}
-                                            </p>
-                                        </div>
-
-                                        {/* Contract Count Card */}
-                                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-5">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm font-medium text-blue-700">Līgumu skaits</span>
-                                                <span className="text-2xl">📄</span>
-                                            </div>
-                                            <p className="text-3xl font-bold text-blue-700 mt-2">
-                                                {company.procurements.length}
-                                            </p>
-                                        </div>
-
-                                        {/* Top Buyer Card */}
-                                        <div className="bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-200 rounded-lg p-5">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm font-medium text-purple-700">Lielākais pasūtītājs</span>
-                                                <span className="text-2xl">🏢</span>
-                                            </div>
-                                            <p className="text-lg font-bold text-purple-700 mt-2 line-clamp-2">
-                                                {(() => {
-                                                    const byAuthority = company.procurements.reduce((acc: any, p: any) => {
-                                                        const auth = p.authority || 'Nav norādīts';
-                                                        acc[auth] = (acc[auth] || 0) + (p.amount || 0);
-                                                        return acc;
-                                                    }, {});
-                                                    const topAuth = Object.entries(byAuthority).sort((a: any, b: any) => b[1] - a[1])[0];
-                                                    return topAuth ? topAuth[0] : '-';
-                                                })()}
-                                            </p>
-                                        </div>
+                            {/* HOT LEADS TABLE (Visible only if there are expiring contracts) */}
+                            {procurementStats.expiringCount > 0 && (
+                                <div className="border border-orange-200 rounded-lg overflow-hidden shadow-sm">
+                                    <div className="px-6 py-4 bg-orange-50 border-b border-orange-200 flex items-center gap-2">
+                                        <h3 className="text-lg font-bold text-orange-900">⚠️ Līgumi, kas beidzas (9 mēn.)</h3>
                                     </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-orange-50/50 border-b border-orange-100">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-orange-800 uppercase">Pasūtītājs</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-orange-800 uppercase">Priekšmets</th>
+                                                    <th className="px-6 py-3 text-right text-xs font-medium text-orange-800 uppercase">Summa</th>
+                                                    <th className="px-6 py-3 text-right text-xs font-medium text-orange-800 uppercase">Beigu Datums</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-orange-800 uppercase w-48">Termiņš</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-orange-100 bg-white">
+                                                {procurementStats.expiring.map((p: any, idx: number) => {
+                                                    const progress = calculateProgress(p.date, p.end_date);
+                                                    const daysLeft = getDaysRemaining(p.end_date);
 
-                                    {/* Blurred Analytics Teaser - Upsell */}
-                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                                        <h4 className="text-md font-semibold text-gray-700 mb-4">🔒 Detalizētā Analītika</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div className="relative bg-white border border-gray-200 rounded-lg p-4 overflow-hidden">
-                                                <div className="filter blur-sm pointer-events-none">
-                                                    <span className="text-xs text-gray-500">Uzvaru rādītājs</span>
-                                                    <p className="text-2xl font-bold text-gray-800">67%</p>
-                                                </div>
-                                                <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-                                                    <span className="text-sm font-medium text-gray-600">🔒 Pro</span>
-                                                </div>
-                                            </div>
-                                            <div className="relative bg-white border border-gray-200 rounded-lg p-4 overflow-hidden">
-                                                <div className="filter blur-sm pointer-events-none">
-                                                    <span className="text-xs text-gray-500">Galvenie konkurenti</span>
-                                                    <p className="text-lg font-bold text-gray-800">3 uzņēmumi</p>
-                                                </div>
-                                                <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-                                                    <span className="text-sm font-medium text-gray-600">🔒 Pro</span>
-                                                </div>
-                                            </div>
-                                            <div className="relative bg-white border border-gray-200 rounded-lg p-4 overflow-hidden">
-                                                <div className="filter blur-sm pointer-events-none">
-                                                    <span className="text-xs text-gray-500">Vidējā cenu nobīde</span>
-                                                    <p className="text-2xl font-bold text-gray-800">-12%</p>
-                                                </div>
-                                                <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-                                                    <span className="text-sm font-medium text-gray-600">🔒 Pro</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Recent Contracts Table */}
-                                    <div>
-                                        <h4 className="text-md font-semibold text-gray-700 mb-3">Pēdējie uzvarētie iepirkumi</h4>
-                                        <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                            <table className="w-full">
-                                                <thead className="bg-gray-50 border-b border-gray-200">
-                                                    <tr>
-                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pasūtītājs</th>
-                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priekšmets</th>
-                                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Summa</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-200">
-                                                    {company.procurements.slice(0, 5).map((proc: any, idx: number) => (
-                                                        <tr key={idx} className="hover:bg-gray-50">
-                                                            <td className="px-4 py-3 text-sm text-gray-900">{proc.authority}</td>
-                                                            <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{proc.subject}</td>
-                                                            <td className="px-4 py-3 text-sm text-right font-semibold text-success">{formatCurrency(proc.amount)}</td>
+                                                    return (
+                                                        <tr key={idx} className="hover:bg-orange-50/30">
+                                                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{p.authority}</td>
+                                                            <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={p.subject}>{p.subject}</td>
+                                                            <td className="px-6 py-4 text-sm text-right font-medium">{formatCurrency(p.amount)}</td>
+                                                            <td className="px-6 py-4 text-sm text-right text-gray-600">{p.end_date}</td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex flex-col gap-1">
+                                                                    <div className="flex justify-between text-xs font-medium mb-0.5">
+                                                                        <span className="text-orange-700">Vēl {daysLeft} dienas</span>
+                                                                        <span className="text-gray-500">{progress}%</span>
+                                                                    </div>
+                                                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                                                        <div
+                                                                            className="bg-orange-500 h-2 rounded-full transition-all duration-500"
+                                                                            style={{ width: `${progress}%` }}
+                                                                        ></div>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
                                     </div>
-
-                                    {/* CTA Button */}
-                                    <div className="bg-gradient-to-r from-primary to-accent rounded-lg p-6 text-center">
-                                        <p className="text-white text-lg font-medium mb-3">
-                                            Vēlies redzēt, kuros konkursos {company.name.split('"')[1] || company.name} zaudēja un kas ir viņu sīvākie konkurenti?
-                                        </p>
-                                        <a
-                                            href={`https://www.iepirkumi.animas.lv/${company.regcode}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-primary font-bold rounded-lg hover:bg-gray-100 transition-colors shadow-lg"
-                                        >
-                                            <span>🚀</span>
-                                            Atvērt Pilno Iepirkumu Analītiku
-                                        </a>
-                                        <p className="text-white/80 text-sm mt-3">
-                                            Salīdzini uzņēmumus, atrodi apakšuzņēmēju ķēdes un prognozē nākamos uzvarētājus
-                                        </p>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
-                                    <span className="text-4xl">📋</span>
-                                    <h3 className="mt-4 text-lg font-semibold text-gray-900">Nav iepirkumu datu</h3>
-                                    <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
-                                        Šim uzņēmumam nav reģistrēti valsts iepirkumi vai dati vēl nav pieejami.
-                                    </p>
-                                    <a
-                                        href={`https://www.iepirkumi.animas.lv/${company.regcode}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 mt-4 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors"
-                                    >
-                                        Pārbaudīt Iepirkumu platformā
-                                    </a>
                                 </div>
                             )}
+
+                            {/* Main Procurement List */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                                    <h3 className="text-lg font-semibold text-gray-900">Jaunākie Iepirkumi</h3>
+                                    <span className="text-sm text-gray-500">Pēdējie 10 ieraksti</span>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full">
+                                        <thead className="bg-gray-50 border-b border-gray-200">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statuss</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pasūtītājs</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priekšmets</th>
+                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Summa</th>
+                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Termiņš</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                            {(company.procurements || []).length > 0 ? (
+                                                (company.procurements || []).map((proc: any, idx: number) => {
+                                                    const status = getContractStatus(proc);
+                                                    const badgeColor = status === 'EXPIRING'
+                                                        ? 'bg-orange-100 text-orange-800'
+                                                        : status === 'ACTIVE'
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : 'bg-gray-100 text-gray-800';
+
+                                                    const statusLabel = status === 'EXPIRING'
+                                                        ? 'Beidzas'
+                                                        : status === 'ACTIVE'
+                                                            ? 'Aktīvs'
+                                                            : 'Noslēgts';
+
+                                                    return (
+                                                        <tr key={idx} className="hover:bg-gray-50">
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColor}`}>
+                                                                    {statusLabel}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{proc.authority}</td>
+                                                            <td className="px-6 py-4 text-sm text-gray-600 max-w-md truncate" title={proc.subject}>{proc.subject}</td>
+                                                            <td className="px-6 py-4 text-sm text-right font-medium">{formatCurrency(proc.amount)}</td>
+                                                            <td className="px-6 py-4 text-sm text-right text-gray-500 whitespace-nowrap">
+                                                                {proc.date}
+                                                                {proc.end_date && ` - ${proc.end_date}`}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                                                        Nav datu par iepirkumiem
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* External Link CTA */}
+                            <div className="flex justify-end pt-2">
+                                <a
+                                    href={`https://www.eis.gov.lv/EKEIS/Supplier/Details/${company.regcode}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-medium text-sm transition-colors"
+                                >
+                                    Skatīt detalizētu analītiku EIS sistēmā
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                </a>
+                            </div>
                         </div>
                     )}
             </div>
