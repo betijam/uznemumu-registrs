@@ -206,6 +206,7 @@ def get_person_profile(identifier: str, response: Response):
                 p.date_from,
                 p.date_to,
                 p.number_of_shares,
+                p.share_nominal_value,
                 p.share_percent,
                 fr.turnover,
                 fr.employees,
