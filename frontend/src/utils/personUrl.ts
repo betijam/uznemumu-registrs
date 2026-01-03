@@ -54,6 +54,9 @@ export async function generatePersonUrl(personCode: string | null, personName: s
  * Uses fragment-slug approach: DDMMYY-name-slug
  */
 export function generatePersonUrlSync(personCode: string | null | undefined, personName: string): string {
+    // Debug logging
+    console.log('[generatePersonUrlSync]', { personCode, personName });
+
     // Normalize Latvian characters in name
     const normalizeName = (name: string) => {
         return name.toLowerCase()
@@ -75,12 +78,16 @@ export function generatePersonUrlSync(personCode: string | null | undefined, per
     if (!personCode || personCode.length < 6) {
         // Fallback: just use name slug (not ideal, but better than nothing)
         const slug = normalizeName(personName);
-        return `/person/${slug}`;
+        const url = `/person/${slug}`;
+        console.warn('[generatePersonUrlSync] Missing person_code, using fallback URL:', url);
+        return url;
     }
 
     // Use first 6 chars (DDMMYY) + slugified name
     const fragment = personCode.substring(0, 6);
     const slug = normalizeName(personName);
-    return `/person/${fragment}-${slug}`;
+    const url = `/person/${fragment}-${slug}`;
+    console.log('[generatePersonUrlSync] Generated URL:', url);
+    return url;
 }
 

@@ -72,6 +72,8 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
     
     Returns: person_code or None if not found
     """
+    logger.info(f"[resolve_person_identifier] Received identifier: {identifier}")
+    
     # Try direct person_code first (exact match with masked code)
     result = conn.execute(text("""
         SELECT DISTINCT person_code, person_name
@@ -81,6 +83,7 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
     """), {"id": identifier}).fetchone()
     
     if result:
+        logger.info(f"[resolve_person_identifier] Found exact match: {result.person_code}")
         return result.person_code
     
     # Try fragment-slug format (DDMMYY-name-slug)
@@ -91,6 +94,8 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
             # Reconstruct the name slug (everything after first dash)
             name_slug = '-'.join(parts[1:])
             
+            logger.info(f"[resolve_person_identifier] Trying fragment-slug: fragment={fragment}, name_slug={name_slug}")
+            
             if len(fragment) == 6:
                 # Find persons with matching fragment
                 candidates = conn.execute(text("""
@@ -98,6 +103,8 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
                     FROM persons 
                     WHERE person_code LIKE :pattern
                 """), {"pattern": f"{fragment}%"}).fetchall()
+                
+                logger.info(f"[resolve_person_identifier] Found {len(candidates)} candidates with fragment {fragment}")
                 
                 # Match by name similarity
                 for candidate in candidates:
@@ -114,10 +121,14 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
                     import re
                     candidate_slug = re.sub(r'[^a-z0-9-]', '', candidate_slug)
                     
+                    logger.debug(f"[resolve_person_identifier] Comparing: candidate_slug={candidate_slug}, name_slug={name_slug}")
+                    
                     # Check if slugs match
                     if candidate_slug == name_slug or candidate_slug.startswith(name_slug):
+                        logger.info(f"[resolve_person_identifier] Matched! person_code={candidate.person_code}, name={candidate.person_name}")
                         return candidate.person_code
     
+    logger.warning(f"[resolve_person_identifier] No match found for identifier: {identifier}")
     return None
 
 
