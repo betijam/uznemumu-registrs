@@ -39,26 +39,21 @@ def mask_person_code(person_code: str) -> str:
 
 def generate_person_url_id(person_code: str, person_name: str) -> str:
     """
-    Generate URL-safe person identifier in person_code-slug format.
-    Format: DDMMYY-name-slug (e.g., "290800-muizniece-betija-deina")
+    Generate URL-safe person identifier using hash.
+    Format: 8-character hex hash (e.g., "a3f2b9c1")
     """
-    import re
+    # Create hash input
+    hash_input = f"{person_code}|{person_name}"
     
-    # Create slug from name
-    name_slug = person_name.lower()\
-        .replace(' ', '-')\
-        .replace(',', '')\
-        .replace('ā', 'a').replace('č', 'c').replace('ē', 'e')\
-        .replace('ģ', 'g').replace('ī', 'i').replace('ķ', 'k')\
-        .replace('ļ', 'l').replace('ņ', 'n').replace('š', 's')\
-        .replace('ū', 'u').replace('ž', 'z')
+    # Simple hash function (matching frontend)
+    hash_val = 0
+    for char in hash_input:
+        hash_val = ((hash_val << 5) - hash_val) + ord(char)
+        hash_val = hash_val & 0xFFFFFFFF  # 32-bit integer
     
-    # Remove any non-alphanumeric characters except dashes
-    name_slug = re.sub(r'[^a-z0-9-]', '', name_slug)
-    
-    # Use first 6 chars of person_code (DDMMYY)
-    fragment = person_code[:6] if len(person_code) >= 6 else person_code
-    return f"{fragment}-{name_slug}"
+    # Convert to hex (8 characters)
+    hash_hex = format(abs(hash_val) & 0xFFFFFFFF, '08x')[:8]
+    return hash_hex
 
 
 def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
@@ -66,7 +61,7 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
     Resolve person identifier to actual person_code.
     
     Identifier can be:
-    - Person code-slug format: DDMMYY-name-slug (e.g., "290800-muizniece-betija-deina")
+    - Hash format: 8-character hex hash of person_code|person_name (e.g., "a3f2b9c1")
     - Direct masked person code: DDMMYY-***** (e.g., "290800-*****")
     
     Returns: person_code or None if not found
@@ -85,60 +80,23 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
         logger.info(f"[resolve_person_identifier] Found exact match: {result.person_code}")
         return result.person_code
     
-    # Try person_code-slug format (DDMMYY-name-slug)
-    if '-' in identifier:
-        parts = identifier.split('-')
-        if len(parts) >= 2:
-            fragment = parts[0]
-            # Reconstruct the name slug (everything after first dash)
-            name_slug = '-'.join(parts[1:])
-            
-            logger.info(f"[resolve_person_identifier] Trying person_code-slug: fragment={fragment}, name_slug={name_slug}")
-            
-            # Check if it's DDMMYY format (6 digits)
-            if len(fragment) == 6 and fragment.isdigit():
-                # Find persons with matching person_code prefix
-                candidates = conn.execute(text("""
-                    SELECT DISTINCT person_code, person_name
-                    FROM persons 
-                    WHERE person_code LIKE :pattern
-                """), {"pattern": f"{fragment}%"}).fetchall()
-                
-                logger.info(f"[resolve_person_identifier] Found {len(candidates)} candidates with person_code starting with {fragment}")
-                
-                # Match by name similarity - MUST be exact match
-                import re
-                for candidate in candidates:
-                    # Create slug from candidate name
-                    candidate_slug = candidate.person_name.lower()\
-                        .replace(' ', '-')\
-                        .replace(',', '')\
-                        .replace('ā', 'a').replace('č', 'c').replace('ē', 'e')\
-                        .replace('ģ', 'g').replace('ī', 'i').replace('ķ', 'k')\
-                        .replace('ļ', 'l').replace('ņ', 'n').replace('š', 's')\
-                        .replace('ū', 'u').replace('ž', 'z')
-                    
-                    # Remove any non-alphanumeric characters except dashes
-                    candidate_slug = re.sub(r'[^a-z0-9-]', '', candidate_slug)
-                    
-                    logger.debug(f"[resolve_person_identifier] Comparing: candidate_slug='{candidate_slug}', name_slug='{name_slug}'")
-                    
-                    # EXACT match required - person_code fragment + name must match exactly
-                    if candidate_slug == name_slug:
-                        logger.info(f"[resolve_person_identifier] EXACT MATCH! person_code={candidate.person_code}, name={candidate.person_name}")
-                        return candidate.person_code
-                
-                # If no exact match, log all candidates for debugging
-                logger.warning(f"[resolve_person_identifier] No exact name match found. Candidates were:")
-                for candidate in candidates:
-                    candidate_slug = re.sub(r'[^a-z0-9-]', '', 
-                        candidate.person_name.lower()
-                        .replace(' ', '-').replace(',', '')
-                        .replace('ā', 'a').replace('č', 'c').replace('ē', 'e')
-                        .replace('ģ', 'g').replace('ī', 'i').replace('ķ', 'k')
-                        .replace('ļ', 'l').replace('ņ', 'n').replace('š', 's')
-                        .replace('ū', 'u').replace('ž', 'z'))
-                    logger.warning(f"  - {candidate.person_name} (slug: {candidate_slug})")
+    # Try hash format (8 hex characters)
+    if len(identifier) == 8 and all(c in '0123456789abcdef' for c in identifier.lower()):
+        logger.info(f"[resolve_person_identifier] Trying hash format: {identifier}")
+        
+        # Use indexed person_hash column for fast lookup
+        result = conn.execute(text("""
+            SELECT person_code, person_name
+            FROM persons 
+            WHERE person_hash = :hash
+            LIMIT 1
+        """), {"hash": identifier.lower()}).fetchone()
+        
+        if result:
+            logger.info(f"[resolve_person_identifier] HASH MATCH! person_code={result.person_code}, name={result.person_name}")
+            return result.person_code
+        
+        logger.warning(f"[resolve_person_identifier] No hash match found for: {identifier}")
     
     logger.warning(f"[resolve_person_identifier] No match found for identifier: {identifier}")
     return None
