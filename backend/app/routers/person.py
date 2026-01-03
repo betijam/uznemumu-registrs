@@ -117,7 +117,8 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
                 
                 logger.info(f"[resolve_person_identifier] Found {len(candidates)} candidates with birth_date {birth_date_formatted}")
                 
-                # Match by name similarity
+                # Match by name similarity - MUST be exact match
+                import re
                 for candidate in candidates:
                     # Create slug from candidate name
                     candidate_slug = candidate.person_name.lower()\
@@ -129,15 +130,26 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
                         .replace('ū', 'u').replace('ž', 'z')
                     
                     # Remove any non-alphanumeric characters except dashes
-                    import re
                     candidate_slug = re.sub(r'[^a-z0-9-]', '', candidate_slug)
                     
-                    logger.debug(f"[resolve_person_identifier] Comparing: candidate_slug={candidate_slug}, name_slug={name_slug}")
+                    logger.debug(f"[resolve_person_identifier] Comparing: candidate_slug='{candidate_slug}', name_slug='{name_slug}'")
                     
-                    # Check if slugs match
-                    if candidate_slug == name_slug or candidate_slug.startswith(name_slug) or name_slug.startswith(candidate_slug):
-                        logger.info(f"[resolve_person_identifier] Matched! person_code={candidate.person_code}, name={candidate.person_name}")
+                    # EXACT match required - birth_date + name must match exactly
+                    if candidate_slug == name_slug:
+                        logger.info(f"[resolve_person_identifier] EXACT MATCH! person_code={candidate.person_code}, name={candidate.person_name}")
                         return candidate.person_code
+                
+                # If no exact match, log all candidates for debugging
+                logger.warning(f"[resolve_person_identifier] No exact name match found. Candidates were:")
+                for candidate in candidates:
+                    candidate_slug = re.sub(r'[^a-z0-9-]', '', 
+                        candidate.person_name.lower()
+                        .replace(' ', '-').replace(',', '')
+                        .replace('ā', 'a').replace('č', 'c').replace('ē', 'e')
+                        .replace('ģ', 'g').replace('ī', 'i').replace('ķ', 'k')
+                        .replace('ļ', 'l').replace('ņ', 'n').replace('š', 's')
+                        .replace('ū', 'u').replace('ž', 'z'))
+                    logger.warning(f"  - {candidate.person_name} (slug: {candidate_slug})")
     
     logger.warning(f"[resolve_person_identifier] No match found for identifier: {identifier}")
     return None
