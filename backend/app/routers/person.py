@@ -56,15 +56,15 @@ def generate_person_url_id(person_code: str, person_name: str) -> str:
     return hash_hex
 
 
-def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
+def resolve_person_identifier(conn, identifier: str) -> Optional[tuple]:
     """
-    Resolve person identifier to actual person_code.
+    Resolve person identifier to actual person_code and person_name.
     
     Identifier can be:
     - Hash format: 8-character hex hash of person_code|person_name (e.g., "a3f2b9c1")
     - Direct masked person code: DDMMYY-***** (e.g., "290800-*****")
     
-    Returns: person_code or None if not found
+    Returns: (person_code, person_name) tuple or None if not found
     """
     logger.info(f"[resolve_person_identifier] Received identifier: {identifier}")
     
@@ -77,8 +77,8 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
     """), {"id": identifier}).fetchone()
     
     if result:
-        logger.info(f"[resolve_person_identifier] Found exact match: {result.person_code}")
-        return result.person_code
+        logger.info(f"[resolve_person_identifier] Found exact match: {result.person_code}, {result.person_name}")
+        return (result.person_code, result.person_name)
     
     # Try hash format (8 hex characters)
     if len(identifier) == 8 and all(c in '0123456789abcdef' for c in identifier.lower()):
@@ -94,7 +94,7 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
         
         if result:
             logger.info(f"[resolve_person_identifier] HASH MATCH! person_code={result.person_code}, name={result.person_name}")
-            return result.person_code
+            return (result.person_code, result.person_name)
         
         logger.warning(f"[resolve_person_identifier] No hash match found for: {identifier}")
     
@@ -114,11 +114,14 @@ def get_person_profile(identifier: str, response: Response):
     response.headers["Cache-Control"] = "public, max-age=1800"  # 30 min cache
     
     with engine.connect() as conn:
-        # Resolve identifier to actual person_code
-        person_code = resolve_person_identifier(conn, identifier)
+        # Resolve identifier to actual person_code and person_name
+        resolved = resolve_person_identifier(conn, identifier)
         
-        if not person_code:
+        if not resolved:
             raise HTTPException(status_code=404, detail="Person not found")
+        
+        person_code, person_name = resolved
+        logger.info(f"[get_person_profile] Resolved {identifier} to person_code={person_code}, person_name={person_name}")
         
         # Get basic person info from first available record
         person_info = conn.execute(text("""
@@ -129,9 +132,9 @@ def get_person_profile(identifier: str, response: Response):
                 nationality,
                 residence
             FROM persons
-            WHERE person_code = :pc
+            WHERE person_code = :pc AND person_name = :pn
             LIMIT 1
-        """), {"pc": person_code}).fetchone()
+        """), {"pc": person_code, "pn": person_name}).fetchone()
         
         if not person_info:
             raise HTTPException(status_code=404, detail="Person not found")
@@ -171,8 +174,8 @@ def get_person_profile(identifier: str, response: Response):
                 WHERE company_regcode = c.regcode
                 ORDER BY year DESC LIMIT 1
             ) f ON true
-            WHERE p.person_code = :pc
-        """), {"pc": person_code}).fetchone()
+            WHERE p.person_code = :pc AND p.person_name = :pn AND p.date_to IS NULL
+        """), {"pc": person_code, "pn": person_name}).fetchone()
         
         # Get risk indicators
         risk_data = conn.execute(text("""
@@ -186,8 +189,8 @@ def get_person_profile(identifier: str, response: Response):
             FROM persons p
             JOIN companies c ON c.regcode = p.company_regcode
             LEFT JOIN risks r ON r.company_regcode = c.regcode AND r.active = true
-            WHERE p.person_code = :pc AND p.date_to IS NULL
-        """), {"pc": person_code}).fetchone()
+            WHERE p.person_code = :pc AND p.person_name = :pn AND p.date_to IS NULL
+        """), {"pc": person_code, "pn": person_name}).fetchone()
         
         # Get all related companies with details
         companies = conn.execute(text("""
@@ -217,11 +220,11 @@ def get_person_profile(identifier: str, response: Response):
                 WHERE company_regcode = c.regcode
                 ORDER BY year DESC LIMIT 1
             ) f ON true
-            WHERE p.person_code = :pc
+            WHERE p.person_code = :pc AND p.person_name = :pn
             ORDER BY 
                 CASE WHEN p.date_to IS NULL THEN 0 ELSE 1 END,
                 p.date_from DESC NULLS LAST
-        """), {"pc": person_code}).fetchall()
+        """), {"pc": person_code, "pn": person_name}).fetchall()
         
         # Calculate share percentages
         companies_list = []
