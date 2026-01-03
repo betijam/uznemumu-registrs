@@ -232,7 +232,7 @@ def get_person_profile(identifier: str, response: Response):
         
         # Get all related companies with details
         companies = conn.execute(text("""
-            SELECT DISTINCT
+            SELECT
                 c.regcode,
                 c.name,
                 c.status,
