@@ -133,7 +133,10 @@ def search_hint(q: str):
             # Compute hash if missing
             # Normalize name: lowercase -> split -> sort -> join
             normalized_name = " ".join(sorted(name.lower().split()))
-            hash_input = f"{code}|{normalized_name}"
+            
+            # Use only first 6 chars of person_code (DDMMYY)
+            code_fragment = code[:6] if code else ""
+            hash_input = f"{code_fragment}|{normalized_name}"
             
             hash_val = 0
             for char in hash_input:

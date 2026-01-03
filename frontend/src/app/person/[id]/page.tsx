@@ -32,6 +32,7 @@ function formatCurrency(value: number | null | undefined): string {
     return `${sign}${Math.round(absValue)} €`;
 }
 
+
 // Role badge helper
 function getRoleBadge(role: string, position?: string) {
     switch (role) {
@@ -45,6 +46,17 @@ function getRoleBadge(role: string, position?: string) {
             return { text: 'Cits', color: 'bg-gray-100 text-gray-700' };
     }
 }
+
+// Initials helper
+function getInitials(name: string): string {
+    return name
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .substring(0, 2);
+}
+
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -246,20 +258,39 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                                 {person.collaboration_network.length === 0 ? (
                                     <p className="text-sm text-gray-500 text-center py-4">Nav konstatēti sadarbības partneri</p>
                                 ) : (
-                                    <div className="space-y-3">
+                                    <div className="space-y-4">
                                         {person.collaboration_network.map((collab: any) => (
-                                            <Link
-                                                key={collab.person_id}
-                                                href={`/person/${collab.person_id}`}
-                                                className="block p-3 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors"
-                                            >
-                                                <div className="font-medium text-sm text-primary hover:underline">
-                                                    {collab.name}
+                                            <div key={collab.person_id} className="group relative">
+                                                <Link
+                                                    href={`/person/${collab.person_id}`}
+                                                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                                                >
+                                                    {/* Avatar */}
+                                                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
+                                                        {getInitials(collab.name)}
+                                                    </div>
+
+                                                    {/* Content */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="font-medium text-sm text-primary truncate">
+                                                            {collab.name}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            Kopā {collab.companies_together} uzņēmumos
+                                                        </div>
+                                                    </div>
+                                                </Link>
+
+                                                {/* Tooltip - Popups on hover */}
+                                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-gray-900 text-white text-xs rounded shadow-lg z-10 pointer-events-none">
+                                                    <div className="font-semibold mb-1 border-b border-gray-700 pb-1">Kopīgie uzņēmumi:</div>
+                                                    <div className="leading-relaxed">
+                                                        {collab.company_names || 'Nav datu'}
+                                                    </div>
+                                                    {/* Arrow */}
+                                                    <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900"></div>
                                                 </div>
-                                                <div className="text-xs text-gray-500 mt-1">
-                                                    Kopā {collab.companies_together} uzņēmum{collab.companies_together === 1 ? 'ā' : 'os'}
-                                                </div>
-                                            </Link>
+                                            </div>
                                         ))}
                                     </div>
                                 )}

@@ -47,13 +47,18 @@ def generate_person_url_id(person_code: str, person_name: str) -> str:
     2. Split into parts
     3. Sort parts alphabetically
     4. Join back
-    This ensures "Pauzere Madara" and "Madara Pauzere" generate the same hash.
+    
+    Uses ONLY first 6 chars of person_code (DDMMYY) to match frontend logic
+    and support masked data.
     """
     # Normalize name
     normalized_name = " ".join(sorted(person_name.lower().split()))
     
+    # Use only first 6 chars of person_code (DDMMYY)
+    code_fragment = person_code[:6] if person_code else ""
+    
     # Create hash input
-    hash_input = f"{person_code}|{normalized_name}"
+    hash_input = f"{code_fragment}|{normalized_name}"
     
     # Simple hash function (matching frontend)
     hash_val = 0
@@ -190,43 +195,88 @@ def get_person_profile(identifier: str, response: Response):
         if not person_info:
             raise HTTPException(status_code=404, detail="Person not found")
         
-        # Calculate KPIs
-        kpi_data = conn.execute(text("""
-            SELECT 
-                COUNT(DISTINCT CASE 
-                    WHEN c.status = 'active' AND p.date_to IS NULL 
-                    THEN c.regcode 
-                END) as active_companies,
-                COUNT(DISTINCT CASE 
-                    WHEN c.status != 'active' OR p.date_to IS NOT NULL 
-                    THEN c.regcode 
-                END) as historical_companies,
-                COALESCE(SUM(CASE 
-                    WHEN p.role IN ('officer', 'member') 
-                        AND p.date_to IS NULL 
-                        AND c.status = 'active'
-                    THEN f.turnover 
-                END), 0) as total_turnover,
-                COALESCE(SUM(CASE 
-                    WHEN p.role IN ('officer', 'member') 
-                        AND p.date_to IS NULL 
-                        AND c.status = 'active'
-                    THEN f.employees 
-                END), 0) as total_employees,
-                COALESCE(SUM(CASE 
-                    WHEN p.role = 'member' AND p.date_to IS NULL 
-                    THEN p.number_of_shares * p.share_nominal_value 
-                END), 0) as capital_value
-            FROM persons p
-            JOIN companies c ON c.regcode = p.company_regcode
-            LEFT JOIN LATERAL (
-                SELECT turnover, employees
-                FROM financial_reports
-                WHERE company_regcode = c.regcode
-                ORDER BY year DESC LIMIT 1
-            ) f ON true
-            WHERE p.person_code = :pc AND p.person_name = :pn AND p.date_to IS NULL
-        """), {"pc": person_code, "pn": person_name}).fetchone()
+        # Calculate KPIs in Python to avoid double counting multiple roles
+        active_companies_count = 0
+        historical_companies_count = 0
+        total_turnover = 0.0
+        total_employees = 0
+        capital_value = 0.0
+        
+        # Track processed regcodes to avoid double counting financials
+        processed_financial_regcodes = set()
+        
+        for comp in companies:
+            # Status counts (Active/Historical)
+            # A company is "active for person" if company is active AND person's role is active (date_to is None)
+            is_active_relationship = comp.status == 'active' and comp.date_to is None
+            
+            if is_active_relationship:
+                active_companies_count += 1
+            elif comp.status != 'active' or comp.date_to is not None:
+                # If relationship ended OR company is not active, it's historical
+                # Note: This simple logic might count a company as both if they have multiple roles (one active, one historical)
+                # But typically we want distinct companies. 
+                # Let's refine: We'll count distinct companies later if strictly needed, 
+                # but for "Active Companies" vs "Historical Companies" usually we mean current state of affiliation.
+                # If I am active in Company A, it's an active company for me.
+                # If I was distinct board member in Company A (ended) but am now Member (active), it is Active.
+                pass
+
+        # Re-iterate or use sets for distinct counts to be precise
+        unique_active_regcodes = set()
+        unique_historical_regcodes = set()
+        
+        for comp in companies:
+            is_active_role = comp.date_to is None
+            is_active_company = comp.status == 'active'
+            
+            if is_active_role and is_active_company:
+                unique_active_regcodes.add(comp.regcode)
+            else:
+                # Only add to historical if NOT in active (e.g. if I have one active role and one old role, I am effectively Active)
+                pass
+                
+        # Fill historical: any company where I have a record but NO active role/company status
+        # This requires checking if regcode is in unique_active_regcodes
+        current_companies_set = set(c.regcode for c in companies)
+        for rc in current_companies_set:
+            if rc not in unique_active_regcodes:
+                unique_historical_regcodes.add(rc)
+                
+        active_companies_count = len(unique_active_regcodes)
+        historical_companies_count = len(unique_historical_regcodes)
+
+        # Financials (Turnover/Employees) - Only for Active Companies where I am Officer or Member
+        # And only count ONCE per company
+        for comp in companies:
+            if comp.regcode in unique_active_regcodes and comp.regcode not in processed_financial_regcodes:
+                # Check if role is relevant for "Management" stats (Officer/Member)
+                # Actually user wants "Kopējais apgrozījums" for companies they are involved in.
+                # Usually we include all active roles.
+                if comp.role in ('officer', 'member'):
+                    if comp.turnover:
+                        try:
+                            total_turnover += float(comp.turnover)
+                        except (ValueError, TypeError):
+                            pass
+                    if comp.employees:
+                        total_employees += comp.employees
+                    
+                    processed_financial_regcodes.add(comp.regcode)
+        
+        # Capital Value - Sum of (shares * nominal) for all ACTIVE member roles
+        # Note: A person can be a member multiple times? Usually once per company.
+        # But if they have multiple member entries (rare), we sum them.
+        for comp in companies:
+            is_active_role = comp.date_to is None
+            if comp.role == 'member' and is_active_role:
+                 if comp.number_of_shares and comp.share_nominal_value:
+                     try:
+                         val = float(comp.number_of_shares) * float(comp.share_nominal_value)
+                         capital_value += val
+                     except:
+                         pass
+
         
         # Get risk indicators
         risk_data = conn.execute(text("""
@@ -243,41 +293,8 @@ def get_person_profile(identifier: str, response: Response):
             WHERE p.person_code = :pc AND p.person_name = :pn AND p.date_to IS NULL
         """), {"pc": person_code, "pn": person_name}).fetchone()
         
-        # Get all related companies with details
-        companies = conn.execute(text("""
-            SELECT
-                c.regcode,
-                c.name,
-                c.status,
-                c.nace_text,
-                c.nace_section_text,
-                p.role,
-                p.position,
-                p.number_of_shares,
-                p.share_nominal_value,
-                p.share_currency,
-                p.date_from,
-                p.date_to,
-                p.rights_of_representation,
-                f.turnover,
-                f.profit,
-                f.employees,
-                f.year as financial_year
-            FROM persons p
-            JOIN companies c ON c.regcode = p.company_regcode
-            LEFT JOIN LATERAL (
-                SELECT turnover, profit, employees, year
-                FROM financial_reports
-                WHERE company_regcode = c.regcode
-                ORDER BY year DESC LIMIT 1
-            ) f ON true
-            WHERE p.person_code = :pc AND p.person_name = :pn
-            ORDER BY 
-                CASE WHEN p.date_to IS NULL THEN 0 ELSE 1 END,
-                p.date_from DESC NULLS LAST
-        """), {"pc": person_code, "pn": person_name}).fetchall()
         
-        # Calculate share percentages
+        # Calculate share percentages and format company list
         companies_list = []
         for comp in companies:
             # Calculate ownership percentage for members
@@ -294,7 +311,7 @@ def get_person_profile(identifier: str, response: Response):
                     my_value = float(comp.number_of_shares) * float(comp.share_nominal_value)
                     share_percent = round((my_value / float(total_capital_result.total)) * 100, 2)
             
-            # Determine if active
+            # Determine if active relationship
             is_active = comp.status == 'active' and comp.date_to is None
             
             companies_list.append({
@@ -320,16 +337,19 @@ def get_person_profile(identifier: str, response: Response):
             })
         
         # Get collaboration network (co-occurring persons)
+        # Added STRING_AGG for company names
         network = conn.execute(text("""
             SELECT 
                 p2.person_name,
                 p2.person_code,
                 p2.birth_date,
-                COUNT(DISTINCT p2.company_regcode) as companies_together
+                COUNT(DISTINCT p2.company_regcode) as companies_together,
+                STRING_AGG(DISTINCT c.name, ', ' ORDER BY c.name) as company_names
             FROM persons p1
             JOIN persons p2 ON p1.company_regcode = p2.company_regcode 
                 AND (p2.person_code != p1.person_code OR p2.person_name != p1.person_name)
                 AND p2.person_code IS NOT NULL
+            JOIN companies c ON c.regcode = p2.company_regcode
             WHERE p1.person_code = :pc AND p1.person_name = :pn
             GROUP BY p2.person_name, p2.person_code, p2.birth_date
             HAVING COUNT(DISTINCT p2.company_regcode) >= 1
@@ -342,7 +362,8 @@ def get_person_profile(identifier: str, response: Response):
             collaboration_network.append({
                 "name": net.person_name,
                 "person_id": generate_person_url_id(net.person_code, net.person_name),
-                "companies_together": net.companies_together
+                "companies_together": net.companies_together,
+                "company_names": net.company_names # Included for tooltip
             })
         
         # Build response
@@ -354,16 +375,16 @@ def get_person_profile(identifier: str, response: Response):
             "nationality": person_info.nationality or "LV",
             "residence": person_info.residence,
             "risk_badges": {
-                "tax_debt": False,  # Would require additional data source
+                "tax_debt": False,
                 "insolvency": bool(risk_data.has_insolvency) if risk_data else False,
                 "sanctions": bool(risk_data.has_sanctions) if risk_data else False
             },
             "kpi": {
-                "active_companies_count": int(kpi_data.active_companies) if kpi_data else 0,
-                "historical_companies_count": int(kpi_data.historical_companies) if kpi_data else 0,
-                "total_turnover_managed": safe_float(kpi_data.total_turnover) if kpi_data else 0,
-                "total_employees_managed": int(kpi_data.total_employees) if kpi_data else 0,
-                "capital_share_value": safe_float(kpi_data.capital_value) if kpi_data else 0
+                "active_companies_count": active_companies_count,
+                "historical_companies_count": historical_companies_count,
+                "total_turnover_managed": total_turnover,
+                "total_employees_managed": total_employees,
+                "capital_share_value": capital_value
             },
             "companies": companies_list,
             "collaboration_network": collaboration_network

@@ -28,8 +28,11 @@ def generate_person_url_id(person_code: str, person_name: str) -> str:
     # Normalize name
     normalized_name = " ".join(sorted(person_name.lower().split()))
     
+    # Use only first 6 chars of person_code (DDMMYY)
+    code_fragment = person_code[:6] if person_code else ""
+    
     # Create hash input
-    hash_input = f"{person_code}|{normalized_name}"
+    hash_input = f"{code_fragment}|{normalized_name}"
     
     # Simple hash function
     hash_val = 0
