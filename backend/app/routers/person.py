@@ -37,15 +37,12 @@ def mask_person_code(person_code: str) -> str:
     return f"{person_code[:6]}-*****"
 
 
-def generate_person_url_id(person_code: str, person_name: str) -> str:
+def generate_person_url_id(person_code: str, person_name: str, birth_date: str = None) -> str:
     """
-    Generate URL-safe person identifier in fragment-slug format.
-    Format: DDMMYY-name-slug (e.g., "021183-aigars-kesenfelds")
+    Generate URL-safe person identifier in birth_date-slug format.
+    Format: YYYYMMDD-name-slug (e.g., "19920612-madara-pauzere")
     """
     import re
-    
-    # Extract fragment (first 6 chars - birth date)
-    fragment = person_code[:6] if len(person_code) >= 6 else person_code
     
     # Create slug from name
     name_slug = person_name.lower()\
@@ -59,6 +56,14 @@ def generate_person_url_id(person_code: str, person_name: str) -> str:
     # Remove any non-alphanumeric characters except dashes
     name_slug = re.sub(r'[^a-z0-9-]', '', name_slug)
     
+    # Try to use birth_date if available
+    if birth_date:
+        # Convert YYYY-MM-DD to YYYYMMDD
+        date_fragment = birth_date.replace('-', '')
+        return f"{date_fragment}-{name_slug}"
+    
+    # Fallback: use first 6 chars of person_code
+    fragment = person_code[:6] if len(person_code) >= 6 else person_code
     return f"{fragment}-{name_slug}"
 
 
@@ -67,8 +72,8 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
     Resolve person identifier to actual person_code.
     
     Identifier can be:
-    - Fragment-slug format: DDMMYY-name-slug (e.g., "021183-aigars-kesenfelds")
-    - Direct masked person code: DDMMYY-***** (e.g., "021183-*****")
+    - Birth date-slug format: YYYYMMDD-name-slug (e.g., "19920612-madara-pauzere")
+    - Direct masked person code: DDMMYY-***** (e.g., "120692-*****")
     
     Returns: person_code or None if not found
     """
@@ -86,25 +91,31 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
         logger.info(f"[resolve_person_identifier] Found exact match: {result.person_code}")
         return result.person_code
     
-    # Try fragment-slug format (DDMMYY-name-slug)
+    # Try birth_date-slug format (YYYYMMDD-name-slug)
     if '-' in identifier:
         parts = identifier.split('-')
         if len(parts) >= 2:
-            fragment = parts[0]
+            date_fragment = parts[0]
             # Reconstruct the name slug (everything after first dash)
             name_slug = '-'.join(parts[1:])
             
-            logger.info(f"[resolve_person_identifier] Trying fragment-slug: fragment={fragment}, name_slug={name_slug}")
+            logger.info(f"[resolve_person_identifier] Trying birth_date-slug: date_fragment={date_fragment}, name_slug={name_slug}")
             
-            if len(fragment) == 6:
-                # Find persons with matching fragment
-                candidates = conn.execute(text("""
-                    SELECT DISTINCT person_code, person_name
-                    FROM persons 
-                    WHERE person_code LIKE :pattern
-                """), {"pattern": f"{fragment}%"}).fetchall()
+            # Check if it's YYYYMMDD format (8 digits)
+            if len(date_fragment) == 8 and date_fragment.isdigit():
+                # Convert YYYYMMDD to YYYY-MM-DD for database query
+                birth_date_formatted = f"{date_fragment[0:4]}-{date_fragment[4:6]}-{date_fragment[6:8]}"
                 
-                logger.info(f"[resolve_person_identifier] Found {len(candidates)} candidates with fragment {fragment}")
+                logger.info(f"[resolve_person_identifier] Searching for birth_date: {birth_date_formatted}")
+                
+                # Find persons with matching birth_date
+                candidates = conn.execute(text("""
+                    SELECT DISTINCT person_code, person_name, birth_date
+                    FROM persons 
+                    WHERE birth_date = :birth_date
+                """), {"birth_date": birth_date_formatted}).fetchall()
+                
+                logger.info(f"[resolve_person_identifier] Found {len(candidates)} candidates with birth_date {birth_date_formatted}")
                 
                 # Match by name similarity
                 for candidate in candidates:
@@ -124,7 +135,7 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
                     logger.debug(f"[resolve_person_identifier] Comparing: candidate_slug={candidate_slug}, name_slug={name_slug}")
                     
                     # Check if slugs match
-                    if candidate_slug == name_slug or candidate_slug.startswith(name_slug):
+                    if candidate_slug == name_slug or candidate_slug.startswith(name_slug) or name_slug.startswith(candidate_slug):
                         logger.info(f"[resolve_person_identifier] Matched! person_code={candidate.person_code}, name={candidate.person_name}")
                         return candidate.person_code
     
@@ -300,13 +311,14 @@ def get_person_profile(identifier: str, response: Response):
             SELECT 
                 p2.person_name,
                 p2.person_code,
+                p2.birth_date,
                 COUNT(DISTINCT p2.company_regcode) as companies_together
             FROM persons p1
             JOIN persons p2 ON p1.company_regcode = p2.company_regcode 
                 AND p2.person_code != p1.person_code
                 AND p2.person_code IS NOT NULL
             WHERE p1.person_code = :pc
-            GROUP BY p2.person_name, p2.person_code
+            GROUP BY p2.person_name, p2.person_code, p2.birth_date
             HAVING COUNT(DISTINCT p2.company_regcode) >= 1
             ORDER BY companies_together DESC
             LIMIT 15
@@ -316,7 +328,7 @@ def get_person_profile(identifier: str, response: Response):
         for net in network:
             collaboration_network.append({
                 "name": net.person_name,
-                "person_id": generate_person_url_id(net.person_code, net.person_name),
+                "person_id": generate_person_url_id(net.person_code, net.person_name, str(net.birth_date) if net.birth_date else None),
                 "companies_together": net.companies_together
             })
         
@@ -405,6 +417,7 @@ def get_person_network(identifier: str, response: Response):
             SELECT 
                 p2.person_name,
                 p2.person_code,
+                p2.birth_date,
                 COUNT(DISTINCT p2.company_regcode) as companies_together,
                 STRING_AGG(DISTINCT c.name, ', ' ORDER BY c.name) as company_names
             FROM persons p1
@@ -413,7 +426,7 @@ def get_person_network(identifier: str, response: Response):
                 AND p2.person_code IS NOT NULL
             JOIN companies c ON c.regcode = p2.company_regcode
             WHERE p1.person_code = :pc
-            GROUP BY p2.person_name, p2.person_code
+            GROUP BY p2.person_name, p2.person_code, p2.birth_date
             ORDER BY companies_together DESC
             LIMIT 20
         """), {"pc": person_code}).fetchall()
@@ -423,7 +436,7 @@ def get_person_network(identifier: str, response: Response):
         for n in network:
             network_list.append({
                 "name": n.person_name,
-                "person_id": generate_person_url_id(n.person_code, n.person_name),
+                "person_id": generate_person_url_id(n.person_code, n.person_name, str(n.birth_date) if n.birth_date else None),
                 "companies_together": n.companies_together,
                 "company_names": n.company_names
             })

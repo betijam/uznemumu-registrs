@@ -51,11 +51,15 @@ export async function generatePersonUrl(personCode: string | null, personName: s
 
 /**
  * Synchronous version for simpler cases
- * Uses fragment-slug approach: DDMMYY-name-slug
+ * Uses birth_date-slug approach: YYYYMMDD-name-slug
  */
-export function generatePersonUrlSync(personCode: string | null | undefined, personName: string): string {
+export function generatePersonUrlSync(
+    personCode: string | null | undefined,
+    personName: string,
+    birthDate?: string | null
+): string {
     // Debug logging
-    console.log('[generatePersonUrlSync]', { personCode, personName });
+    console.log('[generatePersonUrlSync]', { personCode, personName, birthDate });
 
     // Normalize Latvian characters in name
     const normalizeName = (name: string) => {
@@ -75,19 +79,27 @@ export function generatePersonUrlSync(personCode: string | null | undefined, per
             .replace(/(^-|-$)/g, '');
     };
 
-    if (!personCode || personCode.length < 6) {
-        // Fallback: just use name slug (not ideal, but better than nothing)
-        const slug = normalizeName(personName);
-        const url = `/person/${slug}`;
-        console.warn('[generatePersonUrlSync] Missing person_code, using fallback URL:', url);
+    const slug = normalizeName(personName);
+
+    // Try to use birth_date if available
+    if (birthDate) {
+        // Convert YYYY-MM-DD to YYYYMMDD
+        const fragment = birthDate.replace(/-/g, '');
+        const url = `/person/${fragment}-${slug}`;
+        console.log('[generatePersonUrlSync] Generated URL with birth_date:', url);
         return url;
     }
 
-    // Use first 6 chars (DDMMYY) + slugified name
-    const fragment = personCode.substring(0, 6);
-    const slug = normalizeName(personName);
-    const url = `/person/${fragment}-${slug}`;
-    console.log('[generatePersonUrlSync] Generated URL:', url);
+    // Fallback: try to extract from person_code if it starts with DDMMYY
+    if (personCode && personCode.length >= 6) {
+        const fragment = personCode.substring(0, 6);
+        const url = `/person/${fragment}-${slug}`;
+        console.log('[generatePersonUrlSync] Generated URL with person_code fragment:', url);
+        return url;
+    }
+
+    // Last resort: just use name slug
+    const url = `/person/${slug}`;
+    console.warn('[generatePersonUrlSync] No birth_date or person_code, using fallback URL:', url);
     return url;
 }
-

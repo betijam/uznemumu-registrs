@@ -298,23 +298,32 @@ def get_company_details(regcode: int, response: Response):
                 
                 if p.role == 'ubo':
                     ubos.append({
-                        "name": p.person_name, "nationality": p.nationality,
-                        "residence": p.residence, "registered_on": str(p.date_from) if p.date_from else None,
+                        "name": p.person_name,
+                        "person_code": p.person_code,
+                        "nationality": p.nationality,
+                        "residence": p.residence,
+                        "registered_on": str(p.date_from) if p.date_from else None,
                         "birth_date": birth_date
                     })
                 elif p.role == 'member':
                     share_value = float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)
                     percent = (share_value / total_capital * 100) if total_capital > 0 else 0
                     members.append({
-                        "name": p.person_name, "legal_entity_regcode": int(p.legal_entity_regcode) if p.legal_entity_regcode else None,
+                        "name": p.person_name,
+                        "person_code": p.person_code,
+                        "legal_entity_regcode": int(p.legal_entity_regcode) if p.legal_entity_regcode else None,
                         "number_of_shares": int(p.number_of_shares) if p.number_of_shares else None,
-                        "share_value": share_value, "share_currency": p.share_currency or "EUR",
-                        "percent": round(percent, 2), "date_from": str(p.date_from) if p.date_from else None,
+                        "share_value": share_value,
+                        "share_currency": p.share_currency or "EUR",
+                        "percent": round(percent, 2),
+                        "date_from": str(p.date_from) if p.date_from else None,
                         "birth_date": birth_date
                     })
                 elif p.role == 'officer':
                     officers.append({
-                        "name": p.person_name, "position": p.position,
+                        "name": p.person_name,
+                        "person_code": p.person_code,
+                        "position": p.position,
                         "rights_of_representation": p.rights_of_representation,
                         "representation_with_at_least": int(p.representation_with_at_least) if p.representation_with_at_least else None,
                         "registered_on": str(p.date_from) if p.date_from else None,

@@ -445,7 +445,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                             <tr key={`officer-${idx}`} className="hover:bg-gray-50">
                                                 <td className="py-3 text-sm font-medium">
                                                     <Link
-                                                        href={generatePersonUrlSync(officer.person_code, officer.name)}
+                                                        href={generatePersonUrlSync(officer.person_code, officer.name, officer.birth_date)}
                                                         className="text-primary hover:underline"
                                                     >
                                                         {officer.name}
@@ -475,7 +475,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                     ) : (
                                                         // If it's a person, link to person profile
                                                         <Link
-                                                            href={generatePersonUrlSync(member.person_code, member.name)}
+                                                            href={generatePersonUrlSync(member.person_code, member.name, member.birth_date)}
                                                             className="text-primary hover:underline"
                                                         >
                                                             {member.name}
@@ -740,7 +740,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                             <div key={idx} className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-white">
                                                 <div className="flex items-start justify-between">
                                                     <Link
-                                                        href={generatePersonUrlSync(ubo.person_code, ubo.name)}
+                                                        href={generatePersonUrlSync(ubo.person_code, ubo.name, ubo.birth_date)}
                                                         className="font-semibold text-primary hover:underline"
                                                     >
                                                         {ubo.name}
@@ -806,7 +806,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                                 </Link>
                                                             ) : (
                                                                 <Link
-                                                                    href={generatePersonUrlSync(member.person_code, member.name)}
+                                                                    href={generatePersonUrlSync(member.person_code, member.name, member.birth_date)}
                                                                     className="text-primary hover:underline font-medium"
                                                                 >
                                                                     {member.name}
@@ -891,7 +891,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                             <td className="px-4 py-3 text-sm font-medium text-gray-900">{positionLabels[officer.position] || officer.position || '-'}</td>
                                                             <td className="px-4 py-3 text-sm">
                                                                 <Link
-                                                                    href={generatePersonUrlSync(officer.person_code, officer.name)}
+                                                                    href={generatePersonUrlSync(officer.person_code, officer.name, officer.birth_date)}
                                                                     className="text-primary hover:underline font-medium"
                                                                 >
                                                                     {officer.name}
