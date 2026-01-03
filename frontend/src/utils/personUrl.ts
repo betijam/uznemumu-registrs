@@ -51,20 +51,36 @@ export async function generatePersonUrl(personCode: string | null, personName: s
 
 /**
  * Synchronous version for simpler cases
- * Uses fragment-slug approach
+ * Uses fragment-slug approach: DDMMYY-name-slug
  */
-export function generatePersonUrlSync(personCode: string | null, personName: string): string {
-    if (!personCode || personCode.length < 6) {
-        const slug = personName.toLowerCase()
-            .replace(/[^a-z0-9ā  ē-ģīķļņšūž]+/g, '-')
+export function generatePersonUrlSync(personCode: string | null | undefined, personName: string): string {
+    // Normalize Latvian characters in name
+    const normalizeName = (name: string) => {
+        return name.toLowerCase()
+            .replace(/ā/g, 'a')
+            .replace(/č/g, 'c')
+            .replace(/ē/g, 'e')
+            .replace(/ģ/g, 'g')
+            .replace(/ī/g, 'i')
+            .replace(/ķ/g, 'k')
+            .replace(/ļ/g, 'l')
+            .replace(/ņ/g, 'n')
+            .replace(/š/g, 's')
+            .replace(/ū/g, 'u')
+            .replace(/ž/g, 'z')
+            .replace(/[^a-z0-9]+/g, '-')
             .replace(/(^-|-$)/g, '');
+    };
+
+    if (!personCode || personCode.length < 6) {
+        // Fallback: just use name slug (not ideal, but better than nothing)
+        const slug = normalizeName(personName);
         return `/person/${slug}`;
     }
 
     // Use first 6 chars (DDMMYY) + slugified name
     const fragment = personCode.substring(0, 6);
-    const slug = personName.toLowerCase()
-        .replace(/[^a-z0-9āēģīķļņšūž]+/g, '-')
-        .replace(/(^-|-$)/g, '');
+    const slug = normalizeName(personName);
     return `/person/${fragment}-${slug}`;
 }
+
