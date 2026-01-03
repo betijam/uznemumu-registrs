@@ -277,14 +277,14 @@ def get_person_profile(identifier: str, response: Response):
                 COUNT(DISTINCT p2.company_regcode) as companies_together
             FROM persons p1
             JOIN persons p2 ON p1.company_regcode = p2.company_regcode 
-                AND p2.person_code != p1.person_code
+                AND (p2.person_code != p1.person_code OR p2.person_name != p1.person_name)
                 AND p2.person_code IS NOT NULL
-            WHERE p1.person_code = :pc
+            WHERE p1.person_code = :pc AND p1.person_name = :pn
             GROUP BY p2.person_name, p2.person_code, p2.birth_date
             HAVING COUNT(DISTINCT p2.company_regcode) >= 1
             ORDER BY companies_together DESC
             LIMIT 15
-        """), {"pc": person_code}).fetchall()
+        """), {"pc": person_code, "pn": person_name}).fetchall()
         
         collaboration_network = []
         for net in network:
@@ -370,10 +370,12 @@ def get_person_network(identifier: str, response: Response):
     response.headers["Cache-Control"] = "public, max-age=1800"
     
     with engine.connect() as conn:
-        person_code = resolve_person_identifier(conn, identifier)
+        resolved = resolve_person_identifier(conn, identifier)
         
-        if not person_code:
+        if not resolved:
             raise HTTPException(status_code=404, detail="Person not found")
+        
+        person_code, person_name = resolved
         
         network = conn.execute(text("""
             SELECT 
@@ -384,14 +386,14 @@ def get_person_network(identifier: str, response: Response):
                 STRING_AGG(DISTINCT c.name, ', ' ORDER BY c.name) as company_names
             FROM persons p1
             JOIN persons p2 ON p1.company_regcode = p2.company_regcode 
-                AND p2.person_code != p1.person_code
+                AND (p2.person_code != p1.person_code OR p2.person_name != p1.person_name)
                 AND p2.person_code IS NOT NULL
             JOIN companies c ON c.regcode = p2.company_regcode
-            WHERE p1.person_code = :pc
+            WHERE p1.person_code = :pc AND p1.person_name = :pn
             GROUP BY p2.person_name, p2.person_code, p2.birth_date
             ORDER BY companies_together DESC
             LIMIT 20
-        """), {"pc": person_code}).fetchall()
+        """), {"pc": person_code, "pn": person_name}).fetchall()
         
         
         network_list = []
