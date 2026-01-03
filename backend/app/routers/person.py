@@ -370,33 +370,68 @@ def get_person_profile(identifier: str, response: Response):
         
         # Get collaboration network (co-occurring persons)
         # Added STRING_AGG for company names
-        network = conn.execute(text("""
-            SELECT 
+        # Get collaboration network (co-occurring persons)
+        # Fetch raw data and aggregate in Python to handle name normalization (e.g. "Janis Berzins" vs "Berzins Janis")
+        network_raw = conn.execute(text("""
+            SELECT DISTINCT
                 p2.person_name,
                 p2.person_code,
-                p2.birth_date,
-                COUNT(DISTINCT p2.company_regcode) as companies_together,
-                STRING_AGG(DISTINCT c.name, ', ' ORDER BY c.name) as company_names
+                c.name as company_name,
+                c.regcode as company_regcode
             FROM persons p1
             JOIN persons p2 ON p1.company_regcode = p2.company_regcode 
                 AND (p2.person_code != p1.person_code OR p2.person_name != p1.person_name)
                 AND p2.person_code IS NOT NULL
             JOIN companies c ON c.regcode = p2.company_regcode
             WHERE p1.person_code = :pc AND p1.person_name = :pn
-            GROUP BY p2.person_name, p2.person_code, p2.birth_date
-            HAVING COUNT(DISTINCT p2.company_regcode) >= 1
-            ORDER BY companies_together DESC
-            LIMIT 15
         """), {"pc": person_code, "pn": person_name}).fetchall()
         
+        # Aggregate in Python with normalization
+        network_map = {}
+        
+        for row in network_raw:
+            # Normalize name for grouping: lowercase, split, sort parts
+            # This merges "Oļegs Smirnovs" and "Smirnovs Oļegs"
+            name_parts = row.person_name.lower().split()
+            name_parts.sort()
+            # Use person_code if available for even better grouping, but name normalization is key request
+            # We'll use a composite key: person_code (if consistent) or normalized name
+            # Actually, sometimes person_code might differ slightly or be same. 
+            # Let's rely on the normalized name similarity primarily if codes are close, but here robust way is:
+            # Group by Normalized Name AND Person Code (if we assume code is unique). 
+            # BUT the user report implies same person has variations. 
+            # Often legacy data has valid code but shuffled name.
+            # Let's group by Normalized Name. If person codes differ significantly, it's risky, but for this feature ("Collaboration") it's acceptable.
+            
+            norm_key = "-".join(name_parts)
+            
+            if norm_key not in network_map:
+                network_map[norm_key] = {
+                    "name": row.person_name, # Keep one display name (first encountered)
+                    "person_code": row.person_code,
+                    "companies": set(),
+                    "company_names": set()
+                }
+            
+            network_map[norm_key]["companies"].add(row.company_regcode)
+            network_map[norm_key]["company_names"].add(row.company_name)
+            
+        # Convert to list and sort
         collaboration_network = []
-        for net in network:
+        for key, data in network_map.items():
+            count = len(data["companies"])
+            company_names_str = ", ".join(sorted(list(data["company_names"])))
+            
             collaboration_network.append({
-                "name": net.person_name,
-                "person_id": generate_person_url_id(net.person_code, net.person_name),
-                "companies_together": net.companies_together,
-                "company_names": net.company_names # Included for tooltip
+                "name": data["name"],
+                "person_id": generate_person_url_id(data["person_code"], data["name"]),
+                "companies_together": count,
+                "company_names": company_names_str
             })
+            
+        # Sort by count desc
+        collaboration_network.sort(key=lambda x: x["companies_together"], reverse=True)
+        collaboration_network = collaboration_network[:15]
         
         # Build response
         return {
