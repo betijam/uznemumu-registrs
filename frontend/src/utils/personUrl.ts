@@ -71,13 +71,13 @@ export function generatePersonUrlSync(
         for (let i = 0; i < hashInput.length; i++) {
             const char = hashInput.charCodeAt(i);
             hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32bit integer
+            hash = hash | 0; // Convert to 32bit signed integer
         }
 
-        // Convert to 8-character hex
-        const hashHex = (Math.abs(hash) >>> 0).toString(16).padStart(8, '0').substring(0, 8);
+        // Convert to 8-character hex (use unsigned value)
+        const hashHex = (hash >>> 0).toString(16).padStart(8, '0').substring(0, 8);
         const url = `/person/${hashHex}`;
-        console.log('[generatePersonUrlSync] Generated hash URL:', url, 'from', hashInput);
+        console.log('[generatePersonUrlSync] Generated hash URL:', url, 'from', hashInput, 'hash:', hash, 'hex:', hashHex);
         return url;
     }
 
