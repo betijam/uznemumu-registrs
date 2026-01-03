@@ -96,21 +96,60 @@ def get_home_dashboard():
 def search_hint(q: str):
     """
     Fast autocomplete/hint endpoint.
+    Returns companies and persons separately.
     """
     if not q or len(q) < 2:
-        return []
+        return {"companies": [], "persons": []}
         
     conn = engine.connect()
     try:
-        # Optimized ILIKE with limit
-        # In real prod: ElasticSearch or tsvector
-        rows = conn.execute(text("""
+        # 1. Search Companies
+        companies = conn.execute(text("""
             SELECT name, regcode, 'company' as type 
             FROM companies 
             WHERE name ILIKE :q 
             LIMIT 5
         """), {"q": f"%{q}%"}).fetchall()
         
-        return [{"name": r.name, "regcode": r.regcode, "type": r.type} for r in rows]
+        # 2. Search Persons
+        persons = conn.execute(text("""
+            SELECT 
+                p.person_name,
+                p.person_code,
+                p.person_hash,
+                COUNT(DISTINCT p.company_regcode) as company_count
+            FROM persons p
+            WHERE p.person_name ILIKE :q
+                AND p.person_code IS NOT NULL
+            GROUP BY p.person_code, p.person_name, p.person_hash
+            ORDER BY company_count DESC, p.person_name
+            LIMIT 5
+        """), {"q": f"%{q}%"}).fetchall()
+        
+        # Helper for person hash
+        def get_person_hash(code, name, existing_hash):
+            if existing_hash:
+                return existing_hash
+            # Compute hash if missing
+            hash_input = f"{code}|{name}"
+            hash_val = 0
+            for char in hash_input:
+                hash_val = ((hash_val << 5) - hash_val) + ord(char)
+                hash_val = hash_val & 0xFFFFFFFF
+            return format(abs(hash_val) & 0xFFFFFFFF, '08x')[:8]
+
+        return {
+            "companies": [{"name": r.name, "regcode": r.regcode, "type": "company"} for r in companies],
+            "persons": [
+                {
+                    "name": p.person_name,
+                    "person_id": get_person_hash(p.person_code, p.person_name, p.person_hash),
+                    "company_count": p.company_count,
+                    "type": "person"
+                } 
+                for p in persons
+            ]
+        }
     finally:
         conn.close()
+

@@ -361,7 +361,73 @@ def get_person_companies(identifier: str, status: Optional[str] = None, response
             ORDER BY p.date_from DESC NULLS LAST
         """), {"pc": person_code}).fetchall()
         
-        return {"companies": [dict(c._mapping) for c in companies]}
+@router.get("/search/persons")
+def search_persons(q: str, limit: int = 20, offset: int = 0):
+    """
+    Search for persons by name with fuzzy matching.
+    Returns distinct person_code + person_name combinations with company counts.
+    """
+    if not q or len(q) < 2:
+        return {"persons": [], "total": 0}
+    
+    with engine.connect() as conn:
+        # Search with fuzzy matching (ILIKE for case-insensitive partial match)
+        search_pattern = f"%{q}%"
+        
+        # Get distinct persons with company counts
+        # We group by person_code, person_name, person_hash to ensure unique persons
+        results = conn.execute(text("""
+            SELECT 
+                p.person_code,
+                p.person_name,
+                p.person_hash,
+                COUNT(DISTINCT p.company_regcode) as company_count,
+                STRING_AGG(DISTINCT p.role, ', ' ORDER BY p.role) as roles,
+                MAX(p.birth_date) as birth_date
+            FROM persons p
+            WHERE p.person_name ILIKE :pattern
+                AND p.person_code IS NOT NULL
+            GROUP BY p.person_code, p.person_name, p.person_hash
+            ORDER BY company_count DESC, p.person_name
+            LIMIT :limit OFFSET :offset
+        """), {"pattern": search_pattern, "limit": limit, "offset": offset}).fetchall()
+        
+        # Get total count for pagination
+        total_result = conn.execute(text("""
+            SELECT COUNT(DISTINCT (p.person_code, p.person_name))
+            FROM persons p
+            WHERE p.person_name ILIKE :pattern
+                AND p.person_code IS NOT NULL
+        """), {"pattern": search_pattern}).fetchone()
+        
+        total = total_result[0] if total_result else 0
+        
+        # Format results
+        persons = []
+        for row in results:
+            # Use hash for person_id
+            person_id = row.person_hash
+            
+            # If hash is missing (should stick to migration), generate it
+            if not person_id:
+                person_id = generate_person_url_id(row.person_code, row.person_name)
+            
+            persons.append({
+                "person_id": person_id,
+                "name": row.person_name,
+                "person_code": f"{row.person_code[:6]}-*****" if len(row.person_code) >= 6 else row.person_code,
+                "company_count": row.company_count,
+                "roles": row.roles.split(", ") if row.roles else [],
+                "birth_date": str(row.birth_date) if row.birth_date else None
+            })
+        
+        return {
+            "persons": persons,
+            "total": total,
+            "limit": limit,
+            "offset": offset
+        }
+
 
 
 @router.get("/person/{identifier}/network")
