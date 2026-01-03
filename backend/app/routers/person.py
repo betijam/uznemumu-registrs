@@ -207,11 +207,16 @@ def get_person_profile(identifier: str, response: Response):
                 p.date_to,
                 p.number_of_shares,
                 p.share_nominal_value,
-                p.share_percent,
+                p.share_currency,
+                p.rights_of_representation,
                 fr.turnover,
+                fr.profit,
                 fr.employees,
                 fr.equity as balance,
-                c.type_text
+                fr.year as financial_year,
+                c.type_text,
+                c.nace_text,
+                c.nace_section_text
             FROM persons p
             JOIN companies c ON p.company_regcode = c.regcode
             LEFT JOIN financial_reports fr ON c.regcode = fr.company_regcode 
