@@ -6,6 +6,7 @@ import GaugeChart from './GaugeChart';
 import RisksTab from './RisksTab';
 import CompanySizeBadge from './CompanySizeBadge';
 import { parseBirthDateFromPersonCode } from '../utils/parseBirthDate';
+import { generatePersonUrlSync } from '../utils/personUrl';
 
 // Helper function for formatting currency
 const formatCurrency = (value: number | null | undefined, decimals = 0) => {
@@ -72,8 +73,15 @@ const Sparkline = ({ data }: { data: number[] }) => {
 };
 
 export default function CompanyTabs({ company, related, competitors = [], benchmark = null }: { company: any, related: any, competitors?: any[], benchmark?: any }) {
+    const signatories = (company.officers || []).filter((o: any) =>
+        o.rights_of_representation === 'INDIVIDUALLY' ||
+        o.position === 'CHAIR_OF_BOARD' ||
+        o.position === 'PROCURATOR'
+    );
     const [activeTab, setActiveTab] = useState("overview");
-    const [selectedSignatory, setSelectedSignatory] = useState<string>("");
+    const [selectedSignatory, setSelectedSignatory] = useState<string>(
+        signatories.length > 0 ? signatories[0].name : ""
+    );
     const [copied, setCopied] = useState(false);
     const [chartMode, setChartMode] = useState<'turnover' | 'profit'>('turnover');
 
@@ -89,11 +97,6 @@ export default function CompanyTabs({ company, related, competitors = [], benchm
         'AUTHORISED_REPRESENTATIVE': 'Pilnvarotais pārstāvis'
     };
 
-    const signatories = (company.officers || []).filter((o: any) =>
-        o.rights_of_representation === 'INDIVIDUALLY' ||
-        o.position === 'CHAIR_OF_BOARD' ||
-        o.position === 'PROCURATOR'
-    );
 
     // Copy requisites to clipboard
     const copyRequisites = () => {
@@ -102,7 +105,7 @@ export default function CompanyTabs({ company, related, competitors = [], benchm
         const text = `${company.name}
 Juridiskā adrese: ${company.address || '-'}
 Reģistrācijas numurs: ${company.regcode}
-${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''}`;
+${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : ''}`;
 
         navigator.clipboard.writeText(text);
         setCopied(true);
@@ -196,7 +199,6 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                                         onChange={(e) => setSelectedSignatory(e.target.value)}
                                         className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary bg-white"
                                     >
-                                        <option value="">-- Izvēlieties --</option>
                                         {signatories.map((s: any, idx: number) => (
                                             <option key={idx} value={s.name}>
                                                 {s.name} ({positionLabels[s.position] || s.position})
@@ -441,7 +443,14 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                                         {/* Officers first */}
                                         {(company.officers || []).slice(0, 5).map((officer: any, idx: number) => (
                                             <tr key={`officer-${idx}`} className="hover:bg-gray-50">
-                                                <td className="py-3 text-sm font-medium text-gray-900">{officer.name}</td>
+                                                <td className="py-3 text-sm font-medium">
+                                                    <Link
+                                                        href={generatePersonUrlSync(officer.person_code, officer.name)}
+                                                        className="text-primary hover:underline"
+                                                    >
+                                                        {officer.name}
+                                                    </Link>
+                                                </td>
                                                 <td className="py-3 text-sm text-gray-600">
                                                     {positionLabels[officer.position] || officer.position}
                                                     {officer.rights_of_representation === 'INDIVIDUALLY' && (
@@ -456,10 +465,21 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                                         {/* Members/Shareholders */}
                                         {(company.members || []).slice(0, 3).map((member: any, idx: number) => (
                                             <tr key={`member-${idx}`} className="hover:bg-gray-50">
-                                                <td className="py-3 text-sm font-medium text-gray-900">
-                                                    {member.name}
-                                                    {member.legal_entity_regcode && (
-                                                        <span className="ml-1 text-gray-400 text-xs">(EE)</span>
+                                                <td className="py-3 text-sm font-medium">
+                                                    {member.legal_entity_regcode ? (
+                                                        // If it's a legal entity, link to company
+                                                        <a href={`/company/${member.legal_entity_regcode}`} className="text-primary hover:underline flex items-center gap-1">
+                                                            {member.name}
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                        </a>
+                                                    ) : (
+                                                        // If it's a person, link to person profile
+                                                        <Link
+                                                            href={generatePersonUrlSync(member.person_code, member.name)}
+                                                            className="text-primary hover:underline"
+                                                        >
+                                                            {member.name}
+                                                        </Link>
                                                     )}
                                                 </td>
                                                 <td className="py-3 text-sm text-gray-600">
@@ -719,7 +739,12 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                                         {company.ubos.map((ubo: any, idx: number) => (
                                             <div key={idx} className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-white">
                                                 <div className="flex items-start justify-between">
-                                                    <div className="font-semibold text-gray-900">{ubo.name}</div>
+                                                    <Link
+                                                        href={generatePersonUrlSync(ubo.person_code, ubo.name)}
+                                                        className="font-semibold text-primary hover:underline"
+                                                    >
+                                                        {ubo.name}
+                                                    </Link>
                                                     {ubo.nationality && (
                                                         <span className="text-xs px-2 py-0.5 bg-gray-100 rounded font-medium">
                                                             {ubo.nationality === 'LV' ? '🇱🇻' : ubo.nationality === 'EE' ? '🇪🇪' : ubo.nationality === 'LT' ? '🇱🇹' : ubo.nationality}
@@ -859,7 +884,14 @@ ${signatory ? `Parakstiesīgā persona: ${signatory.name}, ${positionText}` : ''
                                                     return (
                                                         <tr key={idx} className="hover:bg-gray-50">
                                                             <td className="px-4 py-3 text-sm font-medium text-gray-900">{positionLabels[officer.position] || officer.position || '-'}</td>
-                                                            <td className="px-4 py-3 text-sm text-gray-900">{officer.name}</td>
+                                                            <td className="px-4 py-3 text-sm">
+                                                                <Link
+                                                                    href={generatePersonUrlSync(officer.person_code, officer.name)}
+                                                                    className="text-primary hover:underline font-medium"
+                                                                >
+                                                                    {officer.name}
+                                                                </Link>
+                                                            </td>
                                                             <td className="px-4 py-3 text-sm text-gray-600">{displayBirthDate(officer.birth_date, officer.person_code) || '-'}</td>
                                                             <td className="px-4 py-3 text-sm">
                                                                 <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${repr.color}`}>

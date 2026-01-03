@@ -27,7 +27,6 @@ const CACHE_CONFIG = { next: { revalidate: 60 } };
 async function getCompany(id: string) {
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
     try {
-        // Note: Using full endpoint for now - /quick has different data structure
         const res = await fetch(`${API_BASE_URL}/companies/${id}`, CACHE_CONFIG);
         if (!res.ok) return null;
         return res.json();
@@ -97,8 +96,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function CompanyPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
 
-    // Parallel data fetching - all requests run simultaneously
-    // This reduces total wait time from sum of all requests to max of all requests
     const [company, graph, benchmark, competitors] = await Promise.all([
         getCompany(id),
         getGraph(id),
@@ -124,6 +121,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
 
                     <div className="md:flex md:items-start md:justify-between">
                         <div className="flex-1 min-w-0">
+                            {/* Badges Row */}
                             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3">
                                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${company.status === 'active' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
                                     }`}>
@@ -135,7 +133,6 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                                     </span>
                                 )}
                                 <CompanySizeBadge size={company.company_size} />
-                                {/* PVN Taxpayer Badge */}
                                 {company.is_pvn_payer ? (
                                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-300">
                                         ✓ PVN MAKSĀTĀJS
@@ -151,20 +148,24 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                                     </span>
                                 )}
                             </div>
+
+                            {/* Main Title */}
                             <h1 className="text-3xl font-bold text-primary mb-2">
                                 {company.name_in_quotes && company.type
                                     ? `${company.name_in_quotes}, ${company.type}`
                                     : company.name}
                             </h1>
-                            <div className="flex items-center gap-4 text-sm text-gray-600">
+
+                            {/* Reg No & Address Row */}
+                            <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
                                 <span className="flex items-center gap-1">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                     Reģ. Nr. {company.regcode}
                                 </span>
                                 <span className="flex items-center gap-1">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
@@ -172,36 +173,41 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                                 </span>
                             </div>
 
-                            {/* NACE Industry Classification */}
-                            {company.nace_code && company.nace_code !== '0000' && (
-                                <div className="mt-3 flex items-center gap-2 text-sm">
-                                    <span className="text-gray-500">Nozare:</span>
-                                    <span className="font-semibold text-primary">
-                                        🏭 {company.nace_code} · {company.nace_text}
-                                    </span>
-                                </div>
-                            )}
-
-                            {/* PVN Number */}
-                            <div className="space-y-1">
-                                <div className="text-sm text-gray-600">
-                                    <span className="font-bold text-gray-900">{company.name_in_quotes && company.type ? `${company.name_in_quotes}, ${company.type}` : company.name}</span>, Reģ. Nr. <span className="font-semibold">{company.regcode}</span>
-                                </div>
-                                {company.name_in_quotes && company.type && (
-                                    <div className="text-xs text-gray-500">
-                                        Pilns nosaukums: {company.name}
+                            {/* Unified Details Block - Fonts Unified Here */}
+                            <div className="space-y-1.5">
+                                {/* NACE Industry */}
+                                {company.nace_code && company.nace_code !== '0000' && (
+                                    <div className="flex items-start gap-2 text-sm">
+                                        <span className="text-gray-500 min-w-[120px]">Nozare:</span>
+                                        <span className="font-medium text-gray-900">
+                                            {company.nace_code} · {company.nace_text}
+                                        </span>
                                     </div>
                                 )}
+
+                                {/* Full Name */}
+                                {company.name_in_quotes && company.type && (
+                                    <div className="flex items-start gap-2 text-sm">
+                                        <span className="text-gray-500 min-w-[120px]">Pilns nosaukums:</span>
+                                        <span className="font-medium text-gray-900">
+                                            {company.name}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* PVN Number */}
                                 {company.pvn_number && (
-                                    <div className="mt-2 flex items-center gap-2 text-sm">
-                                        <span className="text-gray-500">PVN:</span>
-                                        <span className="font-mono text-sm text-primary">
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <span className="text-gray-500 min-w-[120px]">PVN numurs:</span>
+                                        <span className="font-mono font-medium text-gray-900 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
                                             {company.pvn_number}
                                         </span>
                                     </div>
                                 )}
                             </div>
                         </div>
+
+                        {/* Actions */}
                         <div className="mt-4 flex gap-3 md:mt-0 md:ml-4">
                             <AddToComparisonButton company={{ regcode: company.regcode, name: company.name }} />
                             <button className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm">

@@ -1,0 +1,12 @@
+# Robots.txt for Uzņēmumu Reģistrs
+# GDPR Compliance: Block person profiles from search engine indexing
+
+User-agent: *
+Disallow: /person/*
+Allow: /
+
+# Allow all other pages
+Allow: /company/
+Allow: /search/
+Allow: /explore/
+Allow: /api/
