@@ -1324,6 +1324,21 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                 <tbody className="divide-y divide-gray-200">
                                                     {company.procurements.slice(0, 10).map((proc: any, idx: number) => {
                                                         const status = getContractStatus(proc);
+                                                        let dateClass = "text-gray-500";
+
+                                                        if (proc.end_date) {
+                                                            const end = new Date(proc.end_date);
+                                                            const now = new Date();
+                                                            const sixMonths = new Date();
+                                                            sixMonths.setMonth(now.getMonth() + 6);
+
+                                                            if (end < now) {
+                                                                dateClass = "text-red-600 font-bold";
+                                                            } else if (end <= sixMonths) {
+                                                                dateClass = "text-yellow-600 font-bold";
+                                                            }
+                                                        }
+
                                                         return (
                                                             <tr key={idx} className="hover:bg-gray-50">
                                                                 <td className="px-4 py-3 text-sm text-gray-900">{proc.authority}</td>
@@ -1337,8 +1352,8 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                                         {status === 'EXPIRING' ? 'Beidzas' : status === 'ACTIVE' ? 'Aktīvs' : 'Noslēgts'}
                                                                     </span>
                                                                 </td>
-                                                                <td className="px-4 py-3 text-sm text-right text-gray-500 whitespace-nowrap">
-                                                                    {proc.end_date || 'None'}
+                                                                <td className={`px-4 py-3 text-sm text-right whitespace-nowrap ${dateClass}`}>
+                                                                    {proc.end_date || '-'}
                                                                 </td>
                                                             </tr>
                                                         );
