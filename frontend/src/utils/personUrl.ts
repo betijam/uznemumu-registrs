@@ -51,7 +51,7 @@ export async function generatePersonUrl(personCode: string | null, personName: s
 
 /**
  * Synchronous version for simpler cases
- * Uses birth_date-slug approach: YYYYMMDD-name-slug
+ * Uses person_code-slug approach: DDMMYY-name-slug
  */
 export function generatePersonUrlSync(
     personCode: string | null | undefined,
@@ -81,25 +81,28 @@ export function generatePersonUrlSync(
 
     const slug = normalizeName(personName);
 
-    // Try to use birth_date if available
-    if (birthDate) {
-        // Convert YYYY-MM-DD to YYYYMMDD
-        const fragment = birthDate.replace(/-/g, '');
+    // Priority 1: Use person_code if available (DDMMYY format)
+    if (personCode && personCode.length >= 6) {
+        const fragment = personCode.substring(0, 6); // DDMMYY
         const url = `/person/${fragment}-${slug}`;
-        console.log('[generatePersonUrlSync] Generated URL with birth_date:', url);
+        console.log('[generatePersonUrlSync] Generated URL with person_code:', url);
         return url;
     }
 
-    // Fallback: try to extract from person_code if it starts with DDMMYY
-    if (personCode && personCode.length >= 6) {
-        const fragment = personCode.substring(0, 6);
-        const url = `/person/${fragment}-${slug}`;
-        console.log('[generatePersonUrlSync] Generated URL with person_code fragment:', url);
-        return url;
+    // Priority 2: Convert birth_date to DDMMYY format if available
+    if (birthDate) {
+        // Convert YYYY-MM-DD to DDMMYY
+        const parts = birthDate.split('-');
+        if (parts.length === 3) {
+            const fragment = `${parts[2]}${parts[1]}${parts[0].substring(2)}`; // DDMMYY
+            const url = `/person/${fragment}-${slug}`;
+            console.log('[generatePersonUrlSync] Generated URL with birth_date (converted to DDMMYY):', url);
+            return url;
+        }
     }
 
     // Last resort: just use name slug
     const url = `/person/${slug}`;
-    console.warn('[generatePersonUrlSync] No birth_date or person_code, using fallback URL:', url);
+    console.warn('[generatePersonUrlSync] No person_code or birth_date, using fallback URL:', url);
     return url;
 }

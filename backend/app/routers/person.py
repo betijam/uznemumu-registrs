@@ -37,10 +37,10 @@ def mask_person_code(person_code: str) -> str:
     return f"{person_code[:6]}-*****"
 
 
-def generate_person_url_id(person_code: str, person_name: str, birth_date: str = None) -> str:
+def generate_person_url_id(person_code: str, person_name: str) -> str:
     """
-    Generate URL-safe person identifier in birth_date-slug format.
-    Format: YYYYMMDD-name-slug (e.g., "19920612-madara-pauzere")
+    Generate URL-safe person identifier in person_code-slug format.
+    Format: DDMMYY-name-slug (e.g., "290800-muizniece-betija-deina")
     """
     import re
     
@@ -56,13 +56,7 @@ def generate_person_url_id(person_code: str, person_name: str, birth_date: str =
     # Remove any non-alphanumeric characters except dashes
     name_slug = re.sub(r'[^a-z0-9-]', '', name_slug)
     
-    # Try to use birth_date if available
-    if birth_date:
-        # Convert YYYY-MM-DD to YYYYMMDD
-        date_fragment = birth_date.replace('-', '')
-        return f"{date_fragment}-{name_slug}"
-    
-    # Fallback: use first 6 chars of person_code
+    # Use first 6 chars of person_code (DDMMYY)
     fragment = person_code[:6] if len(person_code) >= 6 else person_code
     return f"{fragment}-{name_slug}"
 
@@ -72,8 +66,8 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
     Resolve person identifier to actual person_code.
     
     Identifier can be:
-    - Birth date-slug format: YYYYMMDD-name-slug (e.g., "19920612-madara-pauzere")
-    - Direct masked person code: DDMMYY-***** (e.g., "120692-*****")
+    - Person code-slug format: DDMMYY-name-slug (e.g., "290800-muizniece-betija-deina")
+    - Direct masked person code: DDMMYY-***** (e.g., "290800-*****")
     
     Returns: person_code or None if not found
     """
@@ -91,31 +85,26 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
         logger.info(f"[resolve_person_identifier] Found exact match: {result.person_code}")
         return result.person_code
     
-    # Try birth_date-slug format (YYYYMMDD-name-slug)
+    # Try person_code-slug format (DDMMYY-name-slug)
     if '-' in identifier:
         parts = identifier.split('-')
         if len(parts) >= 2:
-            date_fragment = parts[0]
+            fragment = parts[0]
             # Reconstruct the name slug (everything after first dash)
             name_slug = '-'.join(parts[1:])
             
-            logger.info(f"[resolve_person_identifier] Trying birth_date-slug: date_fragment={date_fragment}, name_slug={name_slug}")
+            logger.info(f"[resolve_person_identifier] Trying person_code-slug: fragment={fragment}, name_slug={name_slug}")
             
-            # Check if it's YYYYMMDD format (8 digits)
-            if len(date_fragment) == 8 and date_fragment.isdigit():
-                # Convert YYYYMMDD to YYYY-MM-DD for database query
-                birth_date_formatted = f"{date_fragment[0:4]}-{date_fragment[4:6]}-{date_fragment[6:8]}"
-                
-                logger.info(f"[resolve_person_identifier] Searching for birth_date: {birth_date_formatted}")
-                
-                # Find persons with matching birth_date
+            # Check if it's DDMMYY format (6 digits)
+            if len(fragment) == 6 and fragment.isdigit():
+                # Find persons with matching person_code prefix
                 candidates = conn.execute(text("""
-                    SELECT DISTINCT person_code, person_name, birth_date
+                    SELECT DISTINCT person_code, person_name
                     FROM persons 
-                    WHERE birth_date = :birth_date
-                """), {"birth_date": birth_date_formatted}).fetchall()
+                    WHERE person_code LIKE :pattern
+                """), {"pattern": f"{fragment}%"}).fetchall()
                 
-                logger.info(f"[resolve_person_identifier] Found {len(candidates)} candidates with birth_date {birth_date_formatted}")
+                logger.info(f"[resolve_person_identifier] Found {len(candidates)} candidates with person_code starting with {fragment}")
                 
                 # Match by name similarity - MUST be exact match
                 import re
@@ -134,7 +123,7 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[str]:
                     
                     logger.debug(f"[resolve_person_identifier] Comparing: candidate_slug='{candidate_slug}', name_slug='{name_slug}'")
                     
-                    # EXACT match required - birth_date + name must match exactly
+                    # EXACT match required - person_code fragment + name must match exactly
                     if candidate_slug == name_slug:
                         logger.info(f"[resolve_person_identifier] EXACT MATCH! person_code={candidate.person_code}, name={candidate.person_name}")
                         return candidate.person_code
@@ -340,7 +329,7 @@ def get_person_profile(identifier: str, response: Response):
         for net in network:
             collaboration_network.append({
                 "name": net.person_name,
-                "person_id": generate_person_url_id(net.person_code, net.person_name, str(net.birth_date) if net.birth_date else None),
+                "person_id": generate_person_url_id(net.person_code, net.person_name),
                 "companies_together": net.companies_together
             })
         
@@ -448,7 +437,7 @@ def get_person_network(identifier: str, response: Response):
         for n in network:
             network_list.append({
                 "name": n.person_name,
-                "person_id": generate_person_url_id(n.person_code, n.person_name, str(n.birth_date) if n.birth_date else None),
+                "person_id": generate_person_url_id(n.person_code, n.person_name),
                 "companies_together": n.companies_together,
                 "company_names": n.company_names
             })
