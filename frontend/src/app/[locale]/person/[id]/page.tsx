@@ -1,10 +1,9 @@
 import Navbar from "@/components/Navbar";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/routing";
-import CompanySearchBar from "@/components/dashboard/CompanySearchBar";
+import CompanySearchBar from "@/components/CompanySearchBar";
 import CareerTimeline from "@/components/CareerTimeline";
 import { getTranslations } from "next-intl/server";
-import { getPersonProfile } from '@/lib/api';
 import { formatCurrency } from "@/lib/utils";
 import PersonCompaniesTable from "@/components/person/PersonCompaniesTable";
 
@@ -22,19 +21,6 @@ async function getPersonProfile(id: string) {
         console.error('Error fetching person profile:', e);
         return null;
     }
-}
-
-// Currency formatting
-function formatCurrency(value: number | null | undefined): string {
-    if (value === null || value === undefined || value === 0) return '-';
-    const absValue = Math.abs(value);
-    const sign = value < 0 ? '-' : '';
-    if (absValue >= 1000000) {
-        return `${sign}${(absValue / 1000000).toFixed(1)} M€`;
-    } else if (absValue >= 1000) {
-        return `${sign}${Math.round(absValue / 1000)} k€`;
-    }
-    return `${sign}${Math.round(absValue)} €`;
 }
 
 
