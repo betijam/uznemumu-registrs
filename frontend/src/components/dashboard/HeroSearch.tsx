@@ -102,7 +102,7 @@ export default function HeroSearch() {
 
             {/* Autocomplete Dropdown */}
             {showHints && hasResults && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden animate-fade-in-down max-h-[80vh] overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden animate-fade-in-down max-h-[80vh] overflow-y-auto z-[100]">
 
                     {/* Companies Section */}
                     {hints.companies.length > 0 && (
