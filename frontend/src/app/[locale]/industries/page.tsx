@@ -53,7 +53,12 @@ interface SearchResult {
     level: number;
 }
 
+import { useTranslations } from 'next-intl';
+
+// ... imports remain the same
+
 export default function IndustriesPage() {
+    const t = useTranslations('IndustriesPage');
     const [data, setData] = useState<OverviewData | null>(null);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -148,10 +153,10 @@ export default function IndustriesPage() {
             <div className="bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 text-white py-12 px-4 shadow-xl">
                 <div className="max-w-6xl mx-auto text-center">
                     <h1 className="text-3xl md:text-4xl font-bold mb-3">
-                        Latvijas Ekonomikas Analītika
+                        {t('title')}
                     </h1>
                     <p className="text-base text-gray-300 mb-6">
-                        Tirgus tendences, algas un līderi 88 nozarēs
+                        {t('subtitle')}
                     </p>
 
                     {/* Search Box */}
@@ -160,7 +165,7 @@ export default function IndustriesPage() {
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Meklēt nozari..."
+                            placeholder={t('search_placeholder')}
                             className="w-full px-5 py-3 rounded-lg text-gray-800 bg-white shadow-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
 
@@ -199,7 +204,7 @@ export default function IndustriesPage() {
                         {/* Total Turnover */}
                         <div className="bg-white rounded-xl shadow-lg p-5 border-t-4 border-blue-500 hover:-translate-y-1 transition-transform duration-200">
                             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                                Kopējais Apgrozījums ({data.macro.data_year})
+                                {t('total_turnover', { year: data.macro.data_year || '' })}
                             </p>
                             <div className="flex items-baseline gap-2">
                                 <p className="text-2xl font-bold text-gray-900">
@@ -211,7 +216,7 @@ export default function IndustriesPage() {
 
                         {/* Employment */}
                         <div className="bg-white rounded-xl shadow-lg p-5 border-t-4 border-green-500 hover:-translate-y-1 transition-transform duration-200">
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Nodarbinātie</p>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{t('employees')}</p>
                             <div className="flex items-baseline gap-2">
                                 <p className="text-2xl font-bold text-gray-900">
                                     {data.macro.total_employees?.toLocaleString() || '-'}
@@ -222,20 +227,20 @@ export default function IndustriesPage() {
 
                         {/* Average Salary */}
                         <div className="bg-white rounded-xl shadow-lg p-5 border-t-4 border-purple-500 hover:-translate-y-1 transition-transform duration-200">
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Vid. Bruto Alga</p>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{t('avg_salary')}</p>
                             <p className="text-2xl font-bold text-gray-900">
                                 {data.macro.avg_salary ? `${data.macro.avg_salary.toLocaleString()} €` : '-'}
                             </p>
-                            <span className="text-xs text-gray-400 mt-1 block">mēnesī</span>
+                            <span className="text-xs text-gray-400 mt-1 block">{t('per_month')}</span>
                         </div>
 
                         {/* Total Profit */}
                         <div className="bg-white rounded-xl shadow-lg p-5 border-t-4 border-amber-500 hover:-translate-y-1 transition-transform duration-200">
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Kopējā Peļņa</p>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{t('total_profit')}</p>
                             <p className="text-2xl font-bold text-gray-900">
                                 {data.macro.total_profit_formatted || '-'}
                             </p>
-                            <span className="text-xs text-gray-400 mt-1 block">rentabilitāte</span>
+                            <span className="text-xs text-gray-400 mt-1 block">{t('profitability')}</span>
                         </div>
                     </div>
 
@@ -246,7 +251,7 @@ export default function IndustriesPage() {
                             <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
                                 <div className="flex items-center mb-4 pb-2 border-b border-gray-100">
                                     <span className="text-2xl mr-2">🚀</span>
-                                    <h3 className="font-semibold text-gray-800">Straujākā Izaugsme</h3>
+                                    <h3 className="font-semibold text-gray-800">{t('fastest_growth')}</h3>
                                 </div>
                                 <div className="space-y-3">
                                     {data.top_growth.map((item, idx) => (
@@ -269,7 +274,7 @@ export default function IndustriesPage() {
                             <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
                                 <div className="flex items-center mb-4 pb-2 border-b border-gray-100">
                                     <span className="text-2xl mr-2">💰</span>
-                                    <h3 className="font-semibold text-gray-800">Lielākās Algas</h3>
+                                    <h3 className="font-semibold text-gray-800">{t('highest_salaries')}</h3>
                                 </div>
                                 <div className="space-y-3">
                                     {data.top_salary.map((item, idx) => (
@@ -294,7 +299,7 @@ export default function IndustriesPage() {
                             <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
                                 <div className="flex items-center mb-4 pb-2 border-b border-gray-100">
                                     <span className="text-2xl mr-2">📊</span>
-                                    <h3 className="font-semibold text-gray-800">Lielākais Apgrozījums</h3>
+                                    <h3 className="font-semibold text-gray-800">{t('highest_turnover')}</h3>
                                 </div>
                                 <div className="space-y-3">
                                     {data.top_turnover.map((item, idx) => (
@@ -318,9 +323,9 @@ export default function IndustriesPage() {
                     {/* Industries Table View */}
                     <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
                         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                            <h2 className="text-lg font-bold text-gray-900">Visas Nozares (NACE Klasifikators)</h2>
+                            <h2 className="text-lg font-bold text-gray-900">{t('all_industries_title')}</h2>
                             <span className="text-xs text-gray-500 font-medium bg-gray-200 px-2 py-1 rounded">
-                                {data.sections.length} sekcijas
+                                {t('sections_count', { count: data.sections.length })}
                             </span>
                         </div>
 
@@ -333,35 +338,35 @@ export default function IndustriesPage() {
                                             className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 group"
                                             onClick={() => handleSort('nace_code')}
                                         >
-                                            Kods {sortConfig.key === 'nace_code' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                            {t('table_code')} {sortConfig.key === 'nace_code' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                         </th>
                                         <th
                                             scope="col"
                                             className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 group"
                                             onClick={() => handleSort('name')}
                                         >
-                                            Nosaukums {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                            {t('table_name')} {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                         </th>
                                         <th
                                             scope="col"
                                             className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 group"
                                             onClick={() => handleSort('turnover')}
                                         >
-                                            Apgrozījums {sortConfig.key === 'turnover' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                            {t('table_turnover')} {sortConfig.key === 'turnover' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                         </th>
                                         <th
                                             scope="col"
                                             className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 group"
                                             onClick={() => handleSort('avg_salary')}
                                         >
-                                            Vid. Alga {sortConfig.key === 'avg_salary' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                            {t('table_salary')} {sortConfig.key === 'avg_salary' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                         </th>
                                         <th
                                             scope="col"
                                             className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 group"
                                             onClick={() => handleSort('turnover_growth')}
                                         >
-                                            Izaugsme {sortConfig.key === 'turnover_growth' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                            {t('table_growth')} {sortConfig.key === 'turnover_growth' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                         </th>
                                         <th scope="col" className="relative px-6 py-3">
                                             <span className="sr-only">Skatīt</span>
@@ -405,7 +410,7 @@ export default function IndustriesPage() {
                 </div>
             ) : (
                 <div className="text-center py-32 text-gray-500">
-                    Neizdevās ielādēt datus
+                    {t('error_loading')}
                 </div>
             )}
         </div>

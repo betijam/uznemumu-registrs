@@ -8,9 +8,15 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from 'react';
 import { useComparison } from "@/contexts/ComparisonContext";
 import { formatCompanyName } from "@/utils/formatCompanyName";
+import { useTranslations } from 'next-intl';
 
 // Wrapped component for Suspense
 function ExploreContent() {
+    const t = useTranslations('Analytics');
+    const tStats = useTranslations('Analytics.stats');
+    const tTable = useTranslations('Analytics.table');
+    const tPagination = useTranslations('Analytics.pagination');
+
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -184,14 +190,14 @@ function ExploreContent() {
                                 }
                             }}
                             className="w-4 h-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                            title={disabled ? 'Maksimālais skaits sasniegts (5)' : 'Pievienot salīdzināšanai'}
+                            title={disabled ? tTable('max_compare') : tTable('add_compare')}
                         />
                     );
                 }
             },
             {
                 key: 'name',
-                label: 'Uzņēmums',
+                label: tTable('company'),
                 render: (val: any, row: any) => (
                     <div className="max-w-[150px] md:max-w-[240px]">
                         <a href={`/company/${row.regcode}`} className="font-semibold text-gray-900 hover:text-purple-600 block truncate" title={row.name}>
@@ -208,21 +214,21 @@ function ExploreContent() {
         baseColumns.push(
             {
                 key: 'turnover',
-                label: 'Apgrozījums',
+                label: tTable('turnover'),
                 align: 'right',
                 sortable: true,
                 render: (val: any) => formatMoney(val)
             },
             {
                 key: 'profit',
-                label: 'Peļņa',
+                label: tTable('profit'),
                 align: 'right',
                 sortable: true,
                 render: (val: any, row: any) => formatProfit(val, row.profit_margin)
             },
             {
                 key: 'employees',
-                label: 'Darbinieki',
+                label: tTable('employees'),
                 align: 'center',
                 sortable: true,
                 render: (val: any) => <span className="text-gray-900">{val ?? '-'}</span>
@@ -233,7 +239,7 @@ function ExploreContent() {
         if (filters.sort_by === 'salary') {
             baseColumns.push({
                 key: 'salary',
-                label: 'Vid. Alga (Bruto)',
+                label: tTable('avg_salary'),
                 align: 'right',
                 sortable: true,
                 render: (val: any) => val ? <span className="font-bold text-green-700">{val.toFixed(0)} €</span> : <span className="text-gray-300">-</span>
@@ -243,7 +249,7 @@ function ExploreContent() {
         if (filters.sort_by === 'tax') {
             baseColumns.push({
                 key: 'tax_paid',
-                label: 'Nodokļi',
+                label: tTable('tax_paid'),
                 align: 'right',
                 sortable: true,
                 render: (val: any) => val ? <span className="text-gray-900">{(val / 1e3).toFixed(1)} K€</span> : <span className="text-gray-300">-</span>
@@ -266,23 +272,23 @@ function ExploreContent() {
                 {stats && (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                            <div className="text-xs text-gray-500 uppercase font-semibold">Uzņēmumi</div>
+                            <div className="text-xs text-gray-500 uppercase font-semibold">{tStats('companies')}</div>
                             <div className="text-xl font-bold text-gray-900">{stats.count.toLocaleString()}</div>
                         </div>
                         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                            <div className="text-xs text-gray-500 uppercase font-semibold">Kop. Apgrozījums</div>
+                            <div className="text-xs text-gray-500 uppercase font-semibold">{tStats('total_turnover')}</div>
                             <div className="text-xl font-bold text-blue-600">
                                 {(stats.total_turnover / 1e6).toFixed(1)} M€
                             </div>
                         </div>
                         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                            <div className="text-xs text-gray-500 uppercase font-semibold">Kop. Peļņa</div>
+                            <div className="text-xs text-gray-500 uppercase font-semibold">{tStats('total_profit')}</div>
                             <div className={`text-xl font-bold ${stats.total_profit >= 0 ? "text-green-600" : "text-red-600"}`}>
                                 {(stats.total_profit / 1e6).toFixed(1)} M€
                             </div>
                         </div>
                         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                            <div className="text-xs text-gray-500 uppercase font-semibold">Darbinieki</div>
+                            <div className="text-xs text-gray-500 uppercase font-semibold">{tStats('employees')}</div>
                             <div className="text-xl font-bold text-purple-600">
                                 {stats.total_employees?.toLocaleString() || '-'}
                             </div>
@@ -291,9 +297,9 @@ function ExploreContent() {
                 )}
 
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900 hidden md:block">Uzņēmumu Saraksts</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 hidden md:block">{t('title')}</h1>
                     <div className="text-sm text-gray-500 ml-auto">
-                        {meta ? `Dati par ${meta.financial_year}. gadu` : 'Lādē...'}
+                        {meta ? t('data_year', { year: meta.financial_year }) : t('loading')}
                     </div>
                 </div>
 
@@ -312,15 +318,15 @@ function ExploreContent() {
                         onClick={() => setFilters(p => ({ ...p, page: p.page - 1 }))}
                         className="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50"
                     >
-                        Iepriekšējā
+                        {tPagination('prev')}
                     </button>
-                    <span className="px-4 py-2 text-gray-700 flex items-center">Lapa {filters.page}</span>
+                    <span className="px-4 py-2 text-gray-700 flex items-center">{tPagination('page', { page: filters.page })}</span>
                     <button
                         disabled={!data.length || (data.length < filters.limit) || loading}
                         onClick={() => setFilters(p => ({ ...p, page: p.page + 1 }))}
                         className="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50"
                     >
-                        Nākamā
+                        {tPagination('next')}
                     </button>
                 </div>
             </div>

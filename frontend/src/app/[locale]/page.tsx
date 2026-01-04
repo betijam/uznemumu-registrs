@@ -6,7 +6,8 @@ import Footer from "@/components/Footer"; // Assuming we have a footer, or I sho
 import HeroSearch from "@/components/dashboard/HeroSearch";
 import MarketPulse from "@/components/dashboard/MarketPulse";
 import BentoGrid from "@/components/dashboard/BentoGrid";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
+import { useTranslations } from "next-intl";
 
 interface DashboardData {
   pulse: {
@@ -26,6 +27,7 @@ interface DashboardData {
 }
 
 export default function Home() {
+  const t = useTranslations('HomePage');
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -62,20 +64,22 @@ export default function Home() {
 
         <div className="container mx-auto px-4 text-center relative z-10">
           <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 mb-6 tracking-tight">
-            Latvijas Uzņēmumu <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-500">Reģistrs 2.0</span>
+            {t.rich('title', {
+              gradient: (chunks) => <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-500">{chunks}</span>
+            })}
           </h1>
           <p className="text-lg md:text-xl text-gray-600 mb-10 max-w-2xl mx-auto">
-            Gudrāka meklēšana. Dziļāka analītika. Visi dati vienuviet.
+            {t('subtitle')}
           </p>
 
           <HeroSearch />
 
           <div className="mt-8 flex justify-center gap-4 text-sm text-gray-500 flex-wrap">
-            <span>Populāri:</span>
-            <Link href="/explore?sort_by=turnover&order=desc" className="hover:text-purple-600 hover:underline">TOP 100</Link>
-            <Link href="/industries/47" className="hover:text-purple-600 hover:underline">Mazumtirdzniecība</Link>
-            <Link href="/industries/41" className="hover:text-purple-600 hover:underline">Būvniecība</Link>
-            <Link href="/industries/62" className="hover:text-purple-600 hover:underline">IT pakalpojumi</Link>
+            <span>{t('popular')}</span>
+            <Link href="/explore?sort_by=turnover&order=desc" className="hover:text-purple-600 hover:underline">{t('top100')}</Link>
+            <Link href="/industries/47" className="hover:text-purple-600 hover:underline">{t('retail')}</Link>
+            <Link href="/industries/41" className="hover:text-purple-600 hover:underline">{t('construction')}</Link>
+            <Link href="/industries/62" className="hover:text-purple-600 hover:underline">{t('it_services')}</Link>
           </div>
         </div>
       </div>
@@ -95,7 +99,7 @@ export default function Home() {
           />
         ) : (
           <div className="text-center py-20 text-gray-500">
-            Neizdevās ielādēt datus. Lūdzu mēģiniet vēlāk.
+            {t('error_loading')}
           </div>
         )}
       </div>

@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
+import { useTranslations } from "next-intl";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Navbar() {
+    const t = useTranslations('Navigation');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     return (
@@ -28,39 +31,41 @@ export default function Navbar() {
                             href="/"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium"
                         >
-                            Sākums
+                            {t('home')}
                         </Link>
                         <Link
                             href="/industries"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
                         >
-                            📊 Nozares
+                            📊 {t('industries')}
                         </Link>
                         <Link
                             href="/regions"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
                         >
-                            🗺️ Reģioni
+                            🗺️ {t('regions')}
                         </Link>
                         <Link
                             href="/explore"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
                         >
-                            📈 Uzņēmuma analītika
+                            📈 {t('analytics')}
                         </Link>
                         <Link
                             href="/mvk-declaration"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
                         >
-                            MVK Deklarācija
+                            {t('mvk')}
                         </Link>
+                        <LanguageSwitcher />
                         <button className="inline-flex items-center gap-2 px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-primary hover:bg-secondary transition-colors shadow-sm">
-                            Pieslēgties
+                            {t('login')}
                         </button>
                     </div>
 
                     {/* Mobile Menu Button */}
-                    <div className="flex sm:hidden items-center">
+                    <div className="flex sm:hidden items-center gap-4">
+                        <LanguageSwitcher />
                         <button
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
                             className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
@@ -89,38 +94,38 @@ export default function Navbar() {
                             onClick={() => setIsMenuOpen(false)}
                             className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
                         >
-                            Sākums
+                            {t('home')}
                         </Link>
                         <Link
                             href="/industries"
                             onClick={() => setIsMenuOpen(false)}
                             className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
                         >
-                            📊 Nozares
+                            📊 {t('industries')}
                         </Link>
                         <Link
                             href="/explore"
                             onClick={() => setIsMenuOpen(false)}
                             className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
                         >
-                            📈 Uzņēmuma analītika
+                            📈 {t('analytics')}
                         </Link>
                         <Link
                             href="/regions"
                             onClick={() => setIsMenuOpen(false)}
                             className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
                         >
-                            🗺️ Reģioni
+                            🗺️ {t('regions')}
                         </Link>
                         <Link
                             href="/mvk-declaration"
                             onClick={() => setIsMenuOpen(false)}
                             className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
                         >
-                            MVK Deklarācija
+                            {t('mvk')}
                         </Link>
                         <button className="w-full mt-2 px-4 py-2.5 border border-transparent rounded-lg text-sm font-medium text-white bg-primary hover:bg-secondary transition-colors shadow-sm">
-                            Pieslēgties
+                            {t('login')}
                         </button>
                     </div>
                 </div>

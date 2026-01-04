@@ -20,9 +20,10 @@ interface TopListCardProps {
     valueFormatter: (val: number) => string;
     linkTo?: string;
     colorClass?: string;
+    viewAllLabel?: string;
 }
 
-export default function TopListCard({ title, subtitle, icon, items, valueFormatter, linkTo, colorClass = "text-blue-600" }: TopListCardProps) {
+export default function TopListCard({ title, subtitle, icon, items, valueFormatter, linkTo, colorClass = "text-blue-600", viewAllLabel = "View all" }: TopListCardProps) {
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
             <div className="flex items-center gap-3 mb-4">
@@ -59,7 +60,7 @@ export default function TopListCard({ title, subtitle, icon, items, valueFormatt
             {linkTo && (
                 <div className="mt-6 pt-4 border-t border-gray-50 text-center">
                     <Link href={linkTo} className="text-sm font-medium text-purple-600 hover:text-purple-700 transition-colors">
-                        Skatīt visus →
+                        {viewAllLabel} →
                     </Link>
                 </div>
             )}

@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from 'next-intl';
+
 import RiskLevelBadge from './RiskLevelBadge';
 
 interface RisksTabProps {
@@ -7,6 +9,8 @@ interface RisksTabProps {
 }
 
 export default function RisksTab({ company }: RisksTabProps) {
+    const t = useTranslations('RisksTab');
+
     const risks = company.risks || {
         sanctions: [],
         liquidations: [],
@@ -27,9 +31,9 @@ export default function RisksTab({ company }: RisksTabProps) {
             {/* Header with Risk Level */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Riski un Tiesvedības</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">{t('title')}</h2>
                     <p className="text-sm text-gray-600 mt-1">
-                        Sankcijas, likvidācijas, aizliegumi un nodrošinājumi
+                        {t('subtitle')}
                     </p>
                 </div>
                 <RiskLevelBadge level={riskLevel} score={totalRiskScore} size="lg" />
@@ -43,10 +47,10 @@ export default function RisksTab({ company }: RisksTabProps) {
                             <span className="text-3xl">🔴</span>
                             <div>
                                 <h3 className="text-xl font-bold text-white">
-                                    UZMANĪBU: SUBJEKTS ATRODAS SANKCIJU SARAKSTOS
+                                    {t('sanctions_alert_title')}
                                 </h3>
                                 <p className="text-red-100 text-sm mt-1">
-                                    Ar šo uzņēmumu nedrīkst veikt darījumus
+                                    {t('sanctions_alert_desc')}
                                 </p>
                             </div>
                         </div>
@@ -56,19 +60,19 @@ export default function RisksTab({ company }: RisksTabProps) {
                             <div key={idx} className="bg-white border border-red-200 rounded-lg p-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <div className="text-xs text-gray-500 uppercase">Programma</div>
+                                        <div className="text-xs text-gray-500 uppercase">{t('program')}</div>
                                         <div className="text-sm font-semibold text-gray-900 mt-1">
-                                            {sanction.program || 'Nav norādīts'}
+                                            {sanction.program || t('not_specified')}
                                         </div>
                                     </div>
                                     <div>
-                                        <div className="text-xs text-gray-500 uppercase">Datums</div>
+                                        <div className="text-xs text-gray-500 uppercase">{t('date')}</div>
                                         <div className="text-sm font-semibold text-gray-900 mt-1">
                                             {formatDate(sanction.date)}
                                         </div>
                                     </div>
                                     <div className="col-span-2">
-                                        <div className="text-xs text-gray-500 uppercase">Saraksts</div>
+                                        <div className="text-xs text-gray-500 uppercase">{t('list')}</div>
                                         <div className="text-sm text-gray-900 mt-1">
                                             {sanction.list_text || '-'}
                                         </div>
@@ -81,7 +85,7 @@ export default function RisksTab({ company }: RisksTabProps) {
                                                 rel="noopener noreferrer"
                                                 className="text-sm text-blue-600 hover:underline"
                                             >
-                                                📄 Skatīt oficiālo dokumentu →
+                                                📄 {t('view_official_doc')}
                                             </a>
                                         </div>
                                     )}
@@ -95,8 +99,8 @@ export default function RisksTab({ company }: RisksTabProps) {
                     <div className="flex items-center gap-3">
                         <span className="text-2xl">✅</span>
                         <div>
-                            <div className="font-semibold text-success">Sankcijas: Nav atrasts</div>
-                            <div className="text-sm text-gray-600">Uzņēmums neatrodas sankciju sarakstos</div>
+                            <div className="font-semibold text-success">{t('sanctions_none_title')}</div>
+                            <div className="text-sm text-gray-600">{t('sanctions_none_desc')}</div>
                         </div>
                     </div>
                 </div>
@@ -109,7 +113,7 @@ export default function RisksTab({ company }: RisksTabProps) {
                         <div className="flex items-center gap-3">
                             <span className="text-2xl">⚫</span>
                             <h3 className="text-lg font-bold text-white">
-                                LIKVIDĀCIJAS PROCESS
+                                {t('liquidation_title')}
                             </h3>
                         </div>
                     </div>
@@ -118,19 +122,19 @@ export default function RisksTab({ company }: RisksTabProps) {
                             <div key={idx} className="bg-white border border-gray-300 rounded-lg p-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <div className="text-xs text-gray-500 uppercase">Veids</div>
+                                        <div className="text-xs text-gray-500 uppercase">{t('type')}</div>
                                         <div className="text-sm font-semibold text-gray-900 mt-1">
-                                            {liq.liquidation_type || 'Nav norādīts'}
+                                            {liq.liquidation_type || t('not_specified')}
                                         </div>
                                     </div>
                                     <div>
-                                        <div className="text-xs text-gray-500 uppercase">Sākuma datums</div>
+                                        <div className="text-xs text-gray-500 uppercase">{t('start_date')}</div>
                                         <div className="text-sm font-semibold text-gray-900 mt-1">
                                             {formatDate(liq.date)}
                                         </div>
                                     </div>
                                     <div className="col-span-2">
-                                        <div className="text-xs text-gray-500 uppercase">Pamatojums</div>
+                                        <div className="text-xs text-gray-500 uppercase">{t('grounds')}</div>
                                         <div className="text-sm text-gray-900 mt-1">
                                             {liq.grounds || '-'}
                                         </div>
@@ -149,7 +153,7 @@ export default function RisksTab({ company }: RisksTabProps) {
                         <div className="flex items-center gap-3">
                             <span className="text-2xl">🟡</span>
                             <h3 className="text-lg font-bold text-white">
-                                AKTĪVIE AIZLIEGUMI
+                                {t('prohibitions_title')}
                             </h3>
                         </div>
                     </div>
@@ -158,19 +162,19 @@ export default function RisksTab({ company }: RisksTabProps) {
                             <div key={idx} className="bg-white border border-yellow-300 rounded-lg p-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <div className="text-xs text-gray-500 uppercase">Aizlieguma veids</div>
+                                        <div className="text-xs text-gray-500 uppercase">{t('prohibition_type')}</div>
                                         <div className="text-sm font-semibold text-gray-900 mt-1">
-                                            {susp.suspension_code || 'Nav norādīts'}
+                                            {susp.suspension_code || t('not_specified')}
                                         </div>
                                     </div>
                                     <div>
-                                        <div className="text-xs text-gray-500 uppercase">Reģistrēts</div>
+                                        <div className="text-xs text-gray-500 uppercase">{t('registered')}</div>
                                         <div className="text-sm font-semibold text-gray-900 mt-1">
                                             {formatDate(susp.date)}
                                         </div>
                                     </div>
                                     <div className="col-span-2">
-                                        <div className="text-xs text-gray-500 uppercase">Iemesls</div>
+                                        <div className="text-xs text-gray-500 uppercase">{t('reason')}</div>
                                         <div className="text-sm text-gray-900 mt-1">
                                             {susp.grounds || '-'}
                                         </div>
@@ -190,11 +194,11 @@ export default function RisksTab({ company }: RisksTabProps) {
                             <div className="flex items-center gap-3">
                                 <span className="text-2xl">🟠</span>
                                 <h3 className="text-lg font-bold text-gray-900">
-                                    Nodrošinājuma Līdzekļi
+                                    {t('security_measures_title')}
                                 </h3>
                             </div>
                             <div className="text-sm font-semibold text-orange-600">
-                                Aktīvie: {risks.securing_measures.length}
+                                {t('active_count', { count: risks.securing_measures.length })}
                             </div>
                         </div>
                     </div>
@@ -203,16 +207,16 @@ export default function RisksTab({ company }: RisksTabProps) {
                             <thead className="bg-gray-50 border-b border-gray-200">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                        Datums
+                                        {t('date')}
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                        Veids
+                                        {t('type')}
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                        Iniciators (Iestāde)
+                                        {t('initiator')}
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                        Lietas numurs
+                                        {t('case_number')}
                                     </th>
                                 </tr>
                             </thead>
@@ -244,10 +248,10 @@ export default function RisksTab({ company }: RisksTabProps) {
                 <div className="border border-success rounded-lg p-8 bg-success/5 text-center">
                     <div className="text-6xl mb-4">✅</div>
                     <h3 className="text-xl font-bold text-success mb-2">
-                        Nav Identificētu Risku
+                        {t('no_risks_title')}
                     </h3>
                     <p className="text-gray-600">
-                        Uzņēmumam nav aktīvu sankciju, likvidācijas procesu, aizliegumu vai nodrošinājumu
+                        {t('no_risks_desc')}
                     </p>
                 </div>
             )}
@@ -258,12 +262,10 @@ export default function RisksTab({ company }: RisksTabProps) {
                     <div className="text-blue-600 text-xl">ℹ️</div>
                     <div className="flex-1">
                         <h4 className="text-sm font-semibold text-blue-900 mb-1">
-                            Par Riska Vērtējumu
+                            {t('risk_assessment_title')}
                         </h4>
                         <p className="text-xs text-blue-800">
-                            Riska līmenis tiek aprēķināts automātiski: Sankcijas (+100), Likvidācija (+50),
-                            Aizliegumi (+30), Nodrošinājumi (+10). Kopējais rādītājs norāda uz uzņēmuma
-                            tiesisko un finansiālo stabilitāti.
+                            {t('risk_assessment_desc')}
                         </p>
                     </div>
                 </div>

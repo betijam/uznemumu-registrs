@@ -1,31 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslations } from 'next-intl';
 
 interface FilterSidebarProps {
     filters: any;
     onFilterChange: (newFilters: any) => void;
 }
 
-const REGIONS = [
-    { label: "Visa Latvija", value: "" },
-    { label: "Rīga", value: "Rīga" },
-    { label: "Pierīga", value: "Pierīga" },
-    { label: "Vidzeme", value: "Vidzeme" },
-    { label: "Kurzeme", value: "Kurzeme" },
-    { label: "Zemgale", value: "Zemgale" },
-    { label: "Latgale", value: "Latgale" },
-    { label: "Jūrmala", value: "Jūrmala" },
-    { label: "Liepāja", value: "Liepāja" },
-    { label: "Daugavpils", value: "Daugavpils" },
-    { label: "Jelgava", value: "Jelgava" },
-    { label: "Valmiera", value: "Valmiera" },
-    { label: "Ventspils", value: "Ventspils" },
-    { label: "Rēzekne", value: "Rēzekne" }
-];
-
 // NACE Multi-Selector Component
 function NaceSelector({ value, onChange }: { value: string[], onChange: (val: string[]) => void }) {
+    const t = useTranslations('Analytics.filters');
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<any[]>([]);
     const [isOpen, setIsOpen] = useState(false);
@@ -102,7 +87,7 @@ function NaceSelector({ value, onChange }: { value: string[], onChange: (val: st
 
             <input
                 type="text"
-                placeholder="Meklēt nozari..."
+                placeholder={t('industry_placeholder')}
                 className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-purple-500 focus:ring-purple-500"
                 value={query}
                 onChange={(e) => handleSearch(e.target.value)}
@@ -111,7 +96,7 @@ function NaceSelector({ value, onChange }: { value: string[], onChange: (val: st
 
             {isOpen && (results.length > 0 || loading) && (
                 <div className="absolute z-50 w-full bg-white mt-1 border border-gray-100 rounded-md shadow-lg max-h-60 overflow-auto">
-                    {loading && <div className="p-2 text-xs text-gray-400">Meklē...</div>}
+                    {loading && <div className="p-2 text-xs text-gray-400">{t('searching')}</div>}
                     {!loading && results.map((item) => (
                         <div
                             key={item.code}
@@ -123,7 +108,7 @@ function NaceSelector({ value, onChange }: { value: string[], onChange: (val: st
                         </div>
                     ))}
                     {!loading && results.length === 0 && query.length > 1 && (
-                        <div className="p-2 text-xs text-gray-400">Netika atrasts</div>
+                        <div className="p-2 text-xs text-gray-400">{t('not_found')}</div>
                     )}
                 </div>
             )}
@@ -132,7 +117,26 @@ function NaceSelector({ value, onChange }: { value: string[], onChange: (val: st
 }
 
 export default function FilterSidebar({ filters, onFilterChange }: FilterSidebarProps) {
+    const t = useTranslations('Analytics.filters');
+    const tRegions = useTranslations('Analytics.regions');
     const [localFilters, setLocalFilters] = useState(filters);
+
+    const REGIONS = [
+        { label: tRegions('all'), value: "" },
+        { label: tRegions('riga'), value: "Rīga" },
+        { label: tRegions('pieriga'), value: "Pierīga" },
+        { label: tRegions('vidzeme'), value: "Vidzeme" },
+        { label: tRegions('kurzeme'), value: "Kurzeme" },
+        { label: tRegions('zemgale'), value: "Zemgale" },
+        { label: tRegions('latgale'), value: "Latgale" },
+        { label: tRegions('jurmala'), value: "Jūrmala" },
+        { label: tRegions('liepaja'), value: "Liepāja" },
+        { label: tRegions('daugavpils'), value: "Daugavpils" },
+        { label: tRegions('jelgava'), value: "Jelgava" },
+        { label: tRegions('valmiera'), value: "Valmiera" },
+        { label: tRegions('ventspils'), value: "Ventspils" },
+        { label: tRegions('rezekne'), value: "Rēzekne" }
+    ];
 
     useEffect(() => {
         setLocalFilters(filters);
@@ -155,7 +159,7 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-8 sticky top-24">
             <div>
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Statuss</h3>
+                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">{t('status_label')}</h3>
                 <div className="space-y-2">
                     <label className="flex items-center cursor-pointer group">
                         <input
@@ -165,7 +169,7 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
                             checked={localFilters.status === 'active'}
                             onChange={() => handleChange('status', 'active')}
                         />
-                        <span className="ml-2 text-sm text-gray-700 group-hover:text-purple-600">Aktīvs</span>
+                        <span className="ml-2 text-sm text-gray-700 group-hover:text-purple-600">{t('status_active')}</span>
                     </label>
                     <label className="flex items-center cursor-pointer group">
                         <input
@@ -175,7 +179,7 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
                             checked={localFilters.status === 'liquidated'}
                             onChange={() => handleChange('status', 'liquidated')}
                         />
-                        <span className="ml-2 text-sm text-gray-700 group-hover:text-purple-600">Likvidēts</span>
+                        <span className="ml-2 text-sm text-gray-700 group-hover:text-purple-600">{t('status_liquidated')}</span>
                     </label>
                     <label className="flex items-center cursor-pointer group">
                         <input
@@ -185,13 +189,13 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
                             checked={localFilters.status === 'all'}
                             onChange={() => handleChange('status', 'all')}
                         />
-                        <span className="ml-2 text-sm text-gray-700 group-hover:text-purple-600">Visi</span>
+                        <span className="ml-2 text-sm text-gray-700 group-hover:text-purple-600">{t('status_all')}</span>
                     </label>
                 </div>
             </div>
 
             <div>
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Reģions</h3>
+                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">{t('region_label')}</h3>
                 <div className="relative">
                     <select
                         className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-purple-500 focus:ring-purple-500 appearance-none bg-white py-2 pl-3 pr-10"
@@ -209,19 +213,19 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
             </div>
 
             <div>
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Nozare (NACE)</h3>
+                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">{t('industry_label')}</h3>
                 <NaceSelector
                     value={localFilters.nace}
                     onChange={(val) => handleChange("nace", val)}
                 />
-                <p className="text-xs text-gray-400 mt-1">Var izvēlēties vairākas</p>
+                <p className="text-xs text-gray-400 mt-1">{t('industry_hint')}</p>
             </div>
 
             <div className="pt-4 border-t border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Finanšu Filtri</h3>
+                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">{t('finance_label')}</h3>
 
                 <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Min. Apgrozījums (€)</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">{t('min_turnover')}</label>
                     <div className="flex gap-2">
                         <input
                             type="number"
@@ -239,7 +243,7 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
                 </div>
 
                 <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Min. Darbinieki</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">{t('min_employees')}</label>
                     <input
                         type="number"
                         className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-purple-500 focus:ring-purple-500"
@@ -263,7 +267,7 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
                         checked={localFilters.has_pvn || false}
                         onChange={(e) => handleChange('has_pvn', e.target.checked)}
                     />
-                    <span className="ml-2 text-sm text-gray-700">PVN maksātājs</span>
+                    <span className="ml-2 text-sm text-gray-700">{t('pvn_payer')}</span>
                 </label>
                 <label className="flex items-center cursor-pointer">
                     <input
@@ -272,7 +276,7 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
                         checked={localFilters.has_sanctions || false}
                         onChange={(e) => handleChange('has_sanctions', e.target.checked)}
                     />
-                    <span className="ml-2 text-sm text-gray-700">Ir sankcijas</span>
+                    <span className="ml-2 text-sm text-gray-700">{t('has_sanctions')}</span>
                 </label>
             </div>
 
@@ -280,7 +284,7 @@ export default function FilterSidebar({ filters, onFilterChange }: FilterSidebar
                 className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
                 onClick={() => onFilterChange({ status: 'active', page: 1, nace: [], region: '', min_turnover: '', min_employees: '', has_pvn: false, has_sanctions: false })}
             >
-                Notīrīt filtrus
+                {t('clear_filters')}
             </button>
         </div>
     );

@@ -7,6 +7,7 @@ import RisksTab from './RisksTab';
 import CompanySizeBadge from './CompanySizeBadge';
 import { parseBirthDateFromPersonCode } from '../utils/parseBirthDate';
 import { generatePersonUrlSync } from '../utils/personUrl';
+import { useTranslations } from "next-intl";
 
 // Helper function for formatting currency
 const formatCurrency = (value: number | null | undefined, decimals = 0) => {
@@ -30,6 +31,7 @@ const GrowthIndicator = ({ value }: { value: number | null }) => {
 
 // Rating badge component
 const RatingBadge = ({ grade }: { grade: string | null }) => {
+    const t = useTranslations('CompanyTabs');
     if (!grade) return null;
     const colors: Record<string, string> = {
         'A': 'bg-success/10 text-success border-success/20',
@@ -39,7 +41,7 @@ const RatingBadge = ({ grade }: { grade: string | null }) => {
     };
     return (
         <span className={`inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold border ${colors[grade] || colors['N']}`}>
-            VID Reitings: {grade}
+            {t('vid_rating')}: {grade}
         </span>
     );
 };
@@ -73,6 +75,7 @@ const Sparkline = ({ data }: { data: number[] }) => {
 };
 
 export default function CompanyTabs({ company, related, competitors = [], benchmark = null }: { company: any, related: any, competitors?: any[], benchmark?: any }) {
+    const t = useTranslations('CompanyTabs');
     const signatories = (company.officers || []).filter((o: any) =>
         o.rights_of_representation === 'INDIVIDUALLY' ||
         o.position === 'CHAIR_OF_BOARD' ||
@@ -103,21 +106,21 @@ export default function CompanyTabs({ company, related, competitors = [], benchm
         const signatory = signatories.find((s: any) => s.name === selectedSignatory);
         const positionText = signatory ? (positionLabels[signatory.position] || signatory.position) : '';
         const text = `${company.name}
-Juridiskā adrese: ${company.address || '-'}
-Reģistrācijas numurs: ${company.regcode}
-${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : ''}`;
+${t('legal_address')}: ${company.address || '-'}
+${t('reg_no_short', { defaultMessage: 'Reģ. Nr.' })}: ${company.regcode}
+${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}`;
 
         navigator.clipboard.writeText(text);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
     const tabs = [
-        { id: "overview", label: "Pārskats" },
-        { id: "finances", label: "Finanses", badge: company.rating?.grade },
-        { id: "risks", label: "Riski", badge: company.risk_level !== 'NONE' ? company.risk_level : null },
-        { id: "management", label: "Amatpersonas & Īpašnieki" },
-        { id: "related", label: "Saistītie Subjekti" },
-        { id: "procurements", label: "Valsts Iepirkumi" },
+        { id: "overview", label: t('overview') },
+        { id: "finances", label: t('finances'), badge: company.rating?.grade },
+        { id: "risks", label: t('risks'), badge: company.risk_level !== 'NONE' ? company.risk_level : null },
+        { id: "management", label: t('management') },
+        { id: "related", label: t('related') },
+        { id: "procurements", label: t('procurements') },
     ];
 
     const financialHistory = company.financial_history || [];
@@ -223,15 +226,15 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                     <div className="text-sm text-gray-600">
                                         <span className="font-bold text-gray-900">
                                             {company.name_in_quotes && company.type ? `${company.name_in_quotes}, ${company.type}` : company.name}
-                                        </span>, Reģ. Nr. <span className="font-semibold">{company.regcode}</span>
+                                        </span>, {t('reg_no_short', { defaultMessage: 'Reģ. Nr.' })} <span className="font-semibold">{company.regcode}</span>
                                     </div>
                                     {company.name_in_quotes && company.type && (
                                         <div className="text-xs text-gray-500">
-                                            Pilns nosaukums: {company.name}
+                                            {t('full_name')}: {company.name}
                                         </div>
                                     )}
                                     <div className="text-sm text-gray-500">
-                                        Juridiskā adrese: {company.address || '-'}, LV-{company.address?.match(/LV-(\d+)/)?.[1] || '1001'}
+                                        {t('legal_address')}: {company.address || '-'}, LV-{company.address?.match(/LV-(\d+)/)?.[1] || '1001'}
                                     </div>
                                 </div>
                                 <button
@@ -244,14 +247,14 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                     </svg>
-                                    {copied ? 'Nokopēts!' : 'Kopēt rekvizītus'}
+                                    {copied ? t('copied') : t('copy_details')}
                                 </button>
                             </div>
 
                             {/* Signatory Dropdown - Hidden but included for copy function */}
                             {signatories.length > 0 && (
                                 <div className="flex items-center gap-2 text-sm">
-                                    <span className="text-gray-600">Parakstiesīgā persona:</span>
+                                    <span className="text-gray-600">{t('signing_person')}:</span>
                                     <select
                                         value={selectedSignatory}
                                         onChange={(e) => setSelectedSignatory(e.target.value)}
@@ -272,7 +275,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                             {/* Apgrozījums */}
                             <div className="border border-gray-200 rounded-lg p-4 bg-white">
                                 <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                                    Apgrozījums '{String(company.finances?.year || 23).slice(-2)}
+                                    {t('turnover')} '{String(company.finances?.year || 23).slice(-2)}
                                 </div>
                                 <div className="text-2xl font-bold text-gray-900">
                                     {company.finances?.turnover
@@ -291,7 +294,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                             {/* Peļņa */}
                             <div className="border border-gray-200 rounded-lg p-4 bg-white">
                                 <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                                    Peļņa '{String(company.finances?.year || 23).slice(-2)}
+                                    {t('profit')} '{String(company.finances?.year || 23).slice(-2)}
                                 </div>
                                 <div className={`text-2xl font-bold ${(company.finances?.profit || 0) >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
                                     {company.finances?.profit
@@ -310,7 +313,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                             {/* Darbinieki */}
                             <div className="border border-gray-200 rounded-lg p-4 bg-white">
                                 <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                                    Darbinieki
+                                    {t('employees')}
                                 </div>
                                 <div className="text-2xl font-bold text-gray-900">
                                     {company.finances?.employees || company.employee_count || 'N/A'}
@@ -330,7 +333,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                             {/* Vid. Bruto Alga */}
                             <div className="border border-gray-200 rounded-lg p-4 bg-white">
                                 <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                                    Vid. Bruto Alga
+                                    {t('avg_salary')}
                                 </div>
                                 <div className="text-2xl font-bold text-gray-900">
                                     {company.tax_history?.[0]?.avg_gross_salary
@@ -339,7 +342,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                 </div>
                                 <div className="text-xs text-gray-500">
                                     {company.tax_history?.[0]?.avg_gross_salary && company.nace_text
-                                        ? `pret nozari`
+                                        ? t('vs_industry')
                                         : ''}
                                 </div>
                             </div>
@@ -352,16 +355,18 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                             'bg-gray-100 text-gray-700'
                                 }`}>
                                 <div className="text-xs uppercase tracking-wide mb-1 opacity-80">
-                                    VID Reitings
+                                    {t('vid_rating')}
                                 </div>
                                 <div className="text-2xl font-bold">
-                                    {company.rating?.grade ? `${company.rating.grade} Klase` : 'Nav datu'}
-                                </div>
-                                <div className="text-sm opacity-80">
-                                    {company.rating?.grade === 'A' ? 'Zems risks' :
-                                        company.rating?.grade === 'B' ? 'Vidējs risks' :
-                                            company.rating?.grade === 'C' ? 'Augsts risks' :
-                                                company.rating?.grade === 'D' ? 'Ļoti augsts risks' : ''}
+                                    <div className="text-2xl font-bold">
+                                        {company.rating?.grade ? `${company.rating.grade} ${t('class')}` : t('no_data')}
+                                    </div>
+                                    <div className="text-sm opacity-80">
+                                        {company.rating?.grade === 'A' ? t('low_risk') :
+                                            company.rating?.grade === 'B' ? t('medium_risk') :
+                                                company.rating?.grade === 'C' ? t('high_risk') :
+                                                    company.rating?.grade === 'D' ? t('very_high_risk') : ''}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -371,7 +376,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                             {/* Finanšu Dinamika Chart - 2 columns */}
                             <div className="lg:col-span-2 border border-gray-200 rounded-lg p-5 bg-white">
                                 <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-semibold text-gray-900">Finanšu Dinamika</h3>
+                                    <h3 className="text-lg font-semibold text-gray-900">{t('financial_dynamic')}</h3>
                                     <div className="flex gap-1">
                                         <button
                                             onClick={() => setChartMode('turnover')}
@@ -380,7 +385,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                 : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                                                 }`}
                                         >
-                                            Apgrozījums
+                                            {t('turnover')}
                                         </button>
                                         <button
                                             onClick={() => setChartMode('profit')}
@@ -389,7 +394,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                 : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                                                 }`}
                                         >
-                                            Peļņa
+                                            {t('profit')}
                                         </button>
                                     </div>
                                 </div>
@@ -427,28 +432,28 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                     </div>
                                 ) : (
                                     <div className="h-64 flex items-center justify-center text-gray-500">
-                                        Nav finanšu datu
+                                        {t('no_data')}
                                     </div>
                                 )}
                             </div>
 
                             {/* Tirgus Pozīcija - 1 column */}
                             <div className="border border-gray-200 rounded-lg p-5 bg-white">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Tirgus Pozīcija</h3>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('market_position')}</h3>
 
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-sm text-gray-500">Nozare</span>
-                                        <span className="text-sm font-medium text-gray-900 text-right max-w-[180px] truncate">{company.nace_text || company.nace_section_text || 'Nav datu'}</span>
+                                        <span className="text-sm text-gray-500">{t('industry')}</span>
+                                        <span className="text-sm font-medium text-gray-900 text-right max-w-[180px] truncate">{company.nace_text || company.nace_section_text || t('no_data')}</span>
                                     </div>
 
                                     <div className="flex justify-between items-center">
-                                        <span className="text-sm text-gray-500">Lielums</span>
+                                        <span className="text-sm text-gray-500">{t('size')}</span>
                                         <CompanySizeBadge size={company.company_size} />
                                     </div>
 
                                     <div className="flex justify-between items-center">
-                                        <span className="text-sm text-gray-500">Vieta Topā</span>
+                                        <span className="text-sm text-gray-500">{t('top_rank')}</span>
                                         <span className="text-sm font-bold text-emerald-600">
                                             {benchmark?.percentiles?.turnover ? `TOP ${benchmark.percentiles.turnover}%` :
                                                 company.finances?.turnover && company.finances.turnover > 10000000 ? 'TOP 5%' :
@@ -458,7 +463,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                     </div>
 
                                     <div className="pt-3 border-t border-gray-100">
-                                        <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">Tuvākie Konkurenti</div>
+                                        <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">{t('closest_competitors')}</div>
                                         {competitors && competitors.length > 0 ? (
                                             <div className="space-y-2">
                                                 {competitors.slice(0, 3).map((comp: any, idx: number) => (
@@ -477,7 +482,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                 ))}
                                             </div>
                                         ) : (
-                                            <div className="text-sm text-gray-500 italic">Nav datu</div>
+                                            <div className="text-sm text-gray-500 italic">{t('no_data')}</div>
                                         )}
                                     </div>
                                 </div>
@@ -486,15 +491,15 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
 
                         {/* Amatpersonas & Īpašnieki Table */}
                         <div className="border border-gray-200 rounded-lg p-5 bg-white">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Amatpersonas & Īpašnieki</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('officers_owners')}</h3>
 
                             <div className="overflow-x-auto">
                                 <table className="min-w-full">
                                     <thead>
                                         <tr className="border-b border-gray-100">
-                                            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-3">Vārds, Uzvārds</th>
-                                            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-3">Amats</th>
-                                            <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wide pb-3">Kopš</th>
+                                            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-3">{t('name_surname')}</th>
+                                            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide pb-3">{t('position')}</th>
+                                            <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wide pb-3">{t('since')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
@@ -513,7 +518,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                     {positionLabels[officer.position] || officer.position}
                                                     {officer.rights_of_representation === 'INDIVIDUALLY' && (
                                                         <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
-                                                            Paraksta tiesības
+                                                            {t('signing_rights')}
                                                         </span>
                                                     )}
                                                 </td>
@@ -541,14 +546,14 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                     )}
                                                 </td>
                                                 <td className="py-3 text-sm text-gray-600">
-                                                    Dalībnieks ({member.percent || 0}%)
+                                                    {t('member')} ({member.percent || 0}%)
                                                 </td>
                                                 <td className="py-3 text-sm text-gray-500 text-right">{member.date_from || '-'}</td>
                                             </tr>
                                         ))}
                                         {(company.officers?.length === 0 && company.members?.length === 0) && (
                                             <tr>
-                                                <td colSpan={3} className="py-4 text-center text-sm text-gray-500 italic">Nav datu</td>
+                                                <td colSpan={3} className="py-4 text-center text-sm text-gray-500 italic">{t('no_data')}</td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -571,7 +576,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                             <span className="text-sm text-gray-600">{company.rating.explanation}</span>
                                         </div>
                                         <div className="text-xs text-gray-500 mt-1">
-                                            Atjaunots: {company.rating.date}
+                                            {t('updated')}: {company.rating.date}
                                         </div>
                                     </div>
                                 </div>
@@ -580,14 +585,14 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
 
                         {/* Key Gauges */}
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Finanšu Veselības Rādītāji</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('financial_health')}</h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <GaugeChart
                                     value={latest.current_ratio}
                                     min={0}
                                     max={3}
                                     thresholds={{ good: 1.2, warning: 1.0 }}
-                                    label="Likviditāte"
+                                    label={t('liquidity')}
                                     subtitle="Current Ratio"
                                     format={(v) => v.toFixed(2)}
                                 />
@@ -598,7 +603,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                     max={30}
                                     thresholds={{ good: 10, warning: 5 }}
                                     label="ROE"
-                                    subtitle="Pašu kapitāla atdeve"
+                                    subtitle={t('return_on_equity')}
                                     format={(v) => `${v.toFixed(1)}%`}
                                 />
 
@@ -607,7 +612,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                     min={0}
                                     max={3}
                                     thresholds={{ good: 1.0, warning: 2.0 }}
-                                    label="Parāda Slodze"
+                                    label={t('debt_load')}
                                     subtitle="Debt-to-Equity"
                                     format={(v) => v.toFixed(2)}
                                     invertColors={true}
@@ -618,21 +623,21 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                         {/* Detailed Metrics Table */}
                         <div className="border border-gray-200 rounded-lg overflow-hidden">
                             <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                                <h3 className="text-lg font-semibold text-gray-900">Detalizēti Finanšu Rādītāji</h3>
+                                <h3 className="text-lg font-semibold text-gray-900">{t('detailed_metrics')}</h3>
                             </div>
                             <div className="overflow-x-auto -mx-4 sm:mx-0">
                                 <table className="w-full min-w-[500px]">
                                     <thead className="bg-gray-50 border-b border-gray-200">
                                         <tr>
-                                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rādītājs</th>
-                                            <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vērtība</th>
-                                            <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tendence</th>
-                                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Norma</th>
+                                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('metric')}</th>
+                                            <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('value')}</th>
+                                            <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('trend')}</th>
+                                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('norm')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
                                         <tr className="bg-blue-50/30">
-                                            <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">💧 Likviditāte</td>
+                                            <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">💧 {t('liquidity')}</td>
                                         </tr>
                                         <tr>
                                             <td className="px-6 py-3 text-sm text-gray-900">Current Ratio</td>
@@ -648,13 +653,13 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                         </tr>
 
                                         <tr className="bg-green-50/30">
-                                            <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">💰 Rentabilitāte</td>
+                                            <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">💰 {t('profitability')}</td>
                                         </tr>
                                         <tr>
                                             <td className="px-6 py-3 text-sm text-gray-900">Net Profit Margin</td>
                                             <td className="px-6 py-3 text-sm text-right font-semibold">{formatPercent(latest.net_profit_margin)}</td>
                                             <td className="px-6 py-3 text-center"><Sparkline data={financialHistory.slice(0, 5).map((f: any) => f.net_profit_margin)} /></td>
-                                            <td className="px-6 py-3 text-sm text-gray-600">Atkarīgs no nozares</td>
+                                            <td className="px-6 py-3 text-sm text-gray-600">{t('depends_on_industry')}</td>
                                         </tr>
                                         <tr>
                                             <td className="px-6 py-3 text-sm text-gray-900">ROE</td>
@@ -670,7 +675,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                         </tr>
 
                                         <tr className="bg-orange-50/30">
-                                            <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">📈 Maksātspēja</td>
+                                            <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">📈 {t('solvency')}</td>
                                         </tr>
                                         <tr>
                                             <td className="px-6 py-3 text-sm text-gray-900">Debt-to-Equity</td>
@@ -680,13 +685,13 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                         </tr>
 
                                         <tr className="bg-purple-50/30">
-                                            <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">🚀 Naudas Plūsma</td>
+                                            <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">🚀 {t('cash_flow')}</td>
                                         </tr>
                                         <tr>
                                             <td className="px-6 py-3 text-sm text-gray-900">EBITDA</td>
                                             <td className="px-6 py-3 text-sm text-right font-semibold">{formatCurrency(latest.ebitda)}</td>
                                             <td className="px-6 py-3 text-center"><Sparkline data={financialHistory.slice(0, 5).map((f: any) => f.ebitda)} /></td>
-                                            <td className="px-6 py-3 text-sm text-gray-600">Pozitīvs</td>
+                                            <td className="px-6 py-3 text-sm text-gray-600">{t('positive')}</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -696,17 +701,17 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                         {/* Financial History Table */}
                         <div className="border border-gray-200 rounded-lg overflow-hidden">
                             <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                                <h3 className="text-lg font-semibold text-gray-900">Finanšu Vēsture</h3>
+                                <h3 className="text-lg font-semibold text-gray-900">{t('financial_history')}</h3>
                             </div>
                             {financialHistory.length > 0 ? (
                                 <div className="overflow-x-auto -mx-4 sm:mx-0">
                                     <table className="w-full min-w-[400px]">
                                         <thead className="bg-gray-50 border-b border-gray-200">
                                             <tr>
-                                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gads</th>
-                                                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Apgrozījums</th>
-                                                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Peļņa</th>
-                                                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Darbinieki</th>
+                                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('year')}</th>
+                                                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('turnover')}</th>
+                                                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('profit')}</th>
+                                                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('employees')}</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200">
@@ -734,7 +739,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                     </table>
                                 </div>
                             ) : (
-                                <div className="p-6 text-center text-gray-500">Nav pieejami finanšu dati</div>
+                                <div className="p-6 text-center text-gray-500">{t('no_data')}</div>
                             )}
                         </div>
 
@@ -742,17 +747,17 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                         {company.tax_history && company.tax_history.length > 0 && (
                             <div className="border border-gray-200 rounded-lg overflow-hidden">
                                 <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                                    <h3 className="text-lg font-semibold text-gray-900">VID Samaksātie Nodokļi</h3>
+                                    <h3 className="text-lg font-semibold text-gray-900">{t('taxes_paid')}</h3>
                                 </div>
                                 <div className="overflow-x-auto -mx-4 sm:mx-0">
                                     <table className="w-full min-w-[500px]">
                                         <thead className="bg-gray-50 border-b border-gray-200">
                                             <tr>
-                                                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gads</th>
+                                                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('year')}</th>
                                                 <th className="px-2 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">IIN</th>
                                                 <th className="px-2 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">VSAOI</th>
-                                                <th className="px-2 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Vid. Darb.</th>
-                                                <th className="px-2 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Vid. Alga</th>
+                                                <th className="px-2 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">{t('avg_employees')}</th>
+                                                <th className="px-2 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">{t('avg_salary')}</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200">
@@ -790,7 +795,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                             <div>
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                                     <span className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">👤</span>
-                                    Patiesie Labuma Guvēji (PLG)
+                                    {t('ubo')}
                                 </h3>
                                 {company.ubos && company.ubos.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -809,20 +814,20 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="text-sm text-purple-600 font-medium mt-1">Patiesais labuma guvējs</div>
+                                                <div className="text-sm text-purple-600 font-medium mt-1">{t('ubo_label')}</div>
                                                 <div className="text-sm text-gray-600 mt-2">
                                                     {(ubo.birth_date || parseBirthDateFromPersonCode(ubo.person_code)) && (
-                                                        <div>Dzimšanas datums: {ubo.birth_date ? ubo.birth_date.split('-').reverse().join('.') : parseBirthDateFromPersonCode(ubo.person_code)}</div>
+                                                        <div>{t('birth_date')}: {ubo.birth_date ? ubo.birth_date.split('-').reverse().join('.') : parseBirthDateFromPersonCode(ubo.person_code)}</div>
                                                     )}
-                                                    {ubo.residence && <div>Dzīvesvieta: {ubo.residence}</div>}
-                                                    {ubo.registered_on && <div>Reģistrēts: {ubo.registered_on}</div>}
+                                                    {ubo.residence && <div>{t('residence')}: {ubo.residence}</div>}
+                                                    {ubo.registered_on && <div>{t('registered')}: {ubo.registered_on}</div>}
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
                                     <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                                        <p className="text-gray-500">Nav reģistrētu patieso labuma guvēju</p>
+                                        <p className="text-gray-500">{t('no_ubos')}</p>
                                     </div>
                                 )}
                             </div>
@@ -832,11 +837,11 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                                         <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">💼</span>
-                                        Dalībnieki (Īpašnieki)
+                                        {t('members_owners_title')}
                                     </h3>
                                     {company.total_capital > 0 && (
                                         <div className="text-sm text-gray-600">
-                                            Pamatkapitāls: <span className="font-semibold">{company.total_capital.toLocaleString('lv-LV')} EUR</span>
+                                            {t('share_capital')}: <span className="font-semibold">{company.total_capital.toLocaleString('lv-LV')} EUR</span>
                                         </div>
                                     )}
                                 </div>
@@ -845,12 +850,12 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                         <table className="w-full">
                                             <thead className="bg-gray-50 border-b border-gray-200">
                                                 <tr>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dalībnieks</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dzimšanas datums</th>
-                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Daļas</th>
-                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vērtība</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('shareholder')}</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('birth_date')}</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('shares')}</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('value')}</th>
                                                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">%</th>
-                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Reģ.</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('reg_short')}</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-200">
@@ -887,7 +892,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                     </div>
                                 ) : (
                                     <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                                        <p className="text-gray-500">Nav reģistrētu dalībnieku</p>
+                                        <p className="text-gray-500">{t('no_members')}</p>
                                     </div>
                                 )}
                             </div>
@@ -896,18 +901,18 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                             <div>
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                                     <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">✍️</span>
-                                    Amatpersonas
+                                    {t('officers_title')}
                                 </h3>
                                 {company.officers && company.officers.length > 0 ? (
                                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                                         <table className="w-full">
                                             <thead className="bg-gray-50 border-b border-gray-200">
                                                 <tr>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amats</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vārds, Uzvārds</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dzimšanas datums</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pārstāvības tiesības</th>
-                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Iecelts</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('position_label')}</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('name_surname')}</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('birth_date')}</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('representation_rights')}</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('appointed')}</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-200">
@@ -927,9 +932,9 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                     // Representation rights
                                                     const getRepresentation = () => {
                                                         switch (officer.rights_of_representation) {
-                                                            case 'INDIVIDUALLY': return { text: 'Atsevišķi', icon: '✅', color: 'text-green-600 bg-green-50' };
-                                                            case 'WITH_ALL': return { text: 'Kopā ar visiem', icon: '👥', color: 'text-orange-600 bg-orange-50' };
-                                                            case 'WITH_AT_LEAST': return { text: `Kopā ar vismaz ${officer.representation_with_at_least}`, icon: '👥', color: 'text-yellow-600 bg-yellow-50' };
+                                                            case 'INDIVIDUALLY': return { text: t('rights.individually'), icon: '✅', color: 'text-green-600 bg-green-50' };
+                                                            case 'WITH_ALL': return { text: t('rights.with_all'), icon: '👥', color: 'text-orange-600 bg-orange-50' };
+                                                            case 'WITH_AT_LEAST': return { text: t('rights.with_at_least', { count: officer.representation_with_at_least }), icon: '👥', color: 'text-yellow-600 bg-yellow-50' };
                                                             default: return { text: '-', icon: '', color: 'text-gray-500' };
                                                         }
                                                     };
@@ -970,7 +975,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                     </div>
                                 ) : (
                                     <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                                        <p className="text-gray-500">Nav reģistrētu amatpersonu</p>
+                                        <p className="text-gray-500">{t('no_officers')}</p>
                                     </div>
                                 )}
                             </div>
@@ -985,14 +990,14 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                         <div className="space-y-6">
                             {/* Status Header */}
                             <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-semibold text-gray-900">Saistītie Subjekti (ES MVU / De Minimis)</h3>
+                                <h3 className="text-lg font-semibold text-gray-900">{t('related_entities_title')}</h3>
                                 <div className={`px-4 py-2 rounded-lg text-sm font-bold ${(related?.status === 'AUTONOMOUS' || !related?.status || related?.status === 'NOT_FOUND') ? 'bg-green-100 text-green-700' :
                                     related?.status === 'PARTNER' ? 'bg-yellow-100 text-yellow-700' :
                                         related?.status === 'LINKED' ? 'bg-red-100 text-red-700' :
                                             'bg-green-100 text-green-700'
                                     }`}>
-                                    {related?.status === 'PARTNER' ? '🤝 PARTNERI' :
-                                        related?.status === 'LINKED' ? '🔗 SAISTĪTA' : '✅ AUTONOMA'}
+                                    {related?.status === 'PARTNER' ? t('status.partners') :
+                                        related?.status === 'LINKED' ? t('status.linked') : t('status.autonomous')}
                                 </div>
                             </div>
                             {/* AUTONOMOUS Status - Big Display */}
@@ -1000,15 +1005,14 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                 <div className="text-center py-12 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-lg">
                                     <span className="text-5xl">✅</span>
                                     <h3 className="text-2xl font-bold text-green-700 mt-4">
-                                        AUTONOMA KOMERCSABIEDRĪBA
+                                        {t('autonomous_company')}
                                     </h3>
                                     <p className="text-green-600 mt-2 max-w-md mx-auto">
-                                        Šim uzņēmumam nav identificētas partnerkomercsabiedrības (25-50% daļu)
-                                        vai saistītās komercsabiedrības (&gt;50% daļu).
+                                        {t('autonomous_desc')}
                                     </p>
                                     {related?.total_capital > 0 && (
                                         <p className="text-sm text-green-500 mt-4">
-                                            Pamatkapitāls: {related.total_capital.toLocaleString('lv-LV')} EUR
+                                            {t('share_capital')}: {related.total_capital.toLocaleString('lv-LV')} EUR
                                         </p>
                                     )}
                                 </div>
@@ -1019,18 +1023,18 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                 <div>
                                     <h4 className="text-md font-semibold text-gray-700 mb-3 flex items-center gap-2">
                                         <span className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-sm">🔗</span>
-                                        Saistītās Komercsabiedrības (&gt;50% kapitāldaļu)
+                                        {t('linked_companies_title')}
                                     </h4>
                                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                                         <table className="w-full">
                                             <thead className="bg-red-50 border-b border-gray-200">
                                                 <tr>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uzņēmums</th>
-                                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tips</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('company')}</th>
+                                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('type')}</th>
                                                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">%</th>
-                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Darbinieki</th>
-                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Apgrozījums</th>
-                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Bilance</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('employees')}</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('turnover')}</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('balance')}</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-200">
@@ -1059,8 +1063,8 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                                     : 'bg-blue-100 text-blue-700'
                                                                 }`}>
                                                                 {item.entity_type === 'physical_person'
-                                                                    ? 'Fiziska persona'
-                                                                    : item.relation === 'owner' ? 'Mātes' : 'Meitas'}
+                                                                    ? t('physical_person')
+                                                                    : item.relation === 'owner' ? t('parent') : t('daughter')}
                                                             </span>
                                                         </td>
                                                         <td className="px-4 py-3 text-sm text-right font-bold text-red-600">{item.ownership_percent}%</td>
@@ -1092,12 +1096,12 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                         <table className="w-full">
                                             <thead className="bg-yellow-50 border-b border-gray-200">
                                                 <tr>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uzņēmums</th>
-                                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tips</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('company')}</th>
+                                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('type')}</th>
                                                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">%</th>
-                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Darbinieki</th>
-                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Apgrozījums</th>
-                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Bilance</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('employees')}</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('turnover')}</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('balance')}</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-200">
@@ -1126,8 +1130,8 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                                     : 'bg-blue-100 text-blue-700'
                                                                 }`}>
                                                                 {item.entity_type === 'physical_person'
-                                                                    ? 'Fiziska persona'
-                                                                    : item.relation === 'owner' ? 'Dalībnieks' : 'Meitas'}
+                                                                    ? t('physical_person')
+                                                                    : item.relation === 'owner' ? t('shareholder') : t('daughter')}
                                                             </span>
                                                         </td>
                                                         <td className="px-4 py-3 text-sm text-right font-semibold text-yellow-600">{item.ownership_percent}%</td>
@@ -1151,7 +1155,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                             {/* Capital Info */}
                             {(related?.status === 'PARTNER' || related?.status === 'LINKED') && related?.total_capital > 0 && (
                                 <div className="text-center text-sm text-gray-500 pt-4 border-t border-gray-200">
-                                    Pamatkapitāls: <span className="font-semibold">{related.total_capital.toLocaleString('lv-LV')} EUR</span>
+                                    {t('share_capital')}: <span className="font-semibold">{related.total_capital.toLocaleString('lv-LV')} EUR</span>
                                 </div>
                             )}
                         </div>
@@ -1165,8 +1169,8 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                             {/* Header */}
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-lg font-semibold text-gray-900">Valsts Iepirkumi</h3>
-                                    <p className="text-sm text-gray-500 mt-1">Parāda 10 jaunākos uzvarētos iepirkumus (periods: 2018-2025)</p>
+                                    <h3 className="text-lg font-semibold text-gray-900">{t('procurements_title')}</h3>
+                                    <p className="text-sm text-gray-500 mt-1">{t('procurements_desc')}</p>
                                 </div>
                             </div>
 
@@ -1177,7 +1181,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                         {/* Total Amount Card */}
                                         <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-green-200 rounded-lg p-5">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-sm font-medium text-green-700">Uzvarēto iepirkumu summa</span>
+                                                <span className="text-sm font-medium text-green-700">{t('won_amount')}</span>
                                                 <span className="text-2xl">💰</span>
                                             </div>
                                             <p className="text-3xl font-bold text-green-700 mt-2">
@@ -1188,7 +1192,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                         {/* Contract Count Card */}
                                         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-5">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-sm font-medium text-blue-700">Līgumu skaits</span>
+                                                <span className="text-sm font-medium text-blue-700">{t('contract_count')}</span>
                                                 <span className="text-2xl">📄</span>
                                             </div>
                                             <p className="text-3xl font-bold text-blue-700 mt-2">
@@ -1199,7 +1203,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                         {/* Top Buyer Card */}
                                         <div className="bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-200 rounded-lg p-5">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-sm font-medium text-purple-700">Lielākais pasūtītājs</span>
+                                                <span className="text-sm font-medium text-purple-700">{t('top_authority')}</span>
                                                 <span className="text-2xl">🏢</span>
                                             </div>
                                             <p className="text-lg font-bold text-purple-700 mt-2 line-clamp-2">
@@ -1223,22 +1227,22 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xl">⚠️</span>
                                                     <div>
-                                                        <h3 className="text-lg font-bold text-orange-900">Tuvojas Līgumu Termiņi</h3>
-                                                        <p className="text-sm text-orange-700">Uzmanību: {procurementStats.expiringCount} līgumi beidzas tuvāko 9 mēnešu laikā</p>
+                                                        <h3 className="text-lg font-bold text-orange-900">{t('expiring_contracts')}</h3>
+                                                        <p className="text-sm text-orange-700">{t('expiring_warning', { count: procurementStats.expiringCount })}</p>
                                                     </div>
                                                 </div>
                                                 <span className="bg-orange-100 text-orange-800 text-xs font-semibold px-2.5 py-0.5 rounded border border-orange-200">
-                                                    Hot Leads
+                                                    {t('hot_leads')}
                                                 </span>
                                             </div>
                                             <div className="overflow-x-auto">
                                                 <table className="w-full">
                                                     <thead className="bg-orange-100/50 border-b border-orange-200">
                                                         <tr>
-                                                            <th className="px-6 py-3 text-left text-xs font-medium text-orange-800 uppercase">Pasūtītājs</th>
-                                                            <th className="px-6 py-3 text-left text-xs font-medium text-orange-800 uppercase">Priekšmets</th>
-                                                            <th className="px-6 py-3 text-right text-xs font-medium text-orange-800 uppercase">Beigu Datums</th>
-                                                            <th className="px-6 py-3 text-left text-xs font-medium text-orange-800 uppercase w-40">Atlicis</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-orange-800 uppercase">{t('authority')}</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-orange-800 uppercase">{t('subject')}</th>
+                                                            <th className="px-6 py-3 text-right text-xs font-medium text-orange-800 uppercase">{t('end_date')}</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-orange-800 uppercase w-40">{t('remaining')}</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-orange-200/50 bg-white">
@@ -1253,7 +1257,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                                     <td className="px-6 py-3">
                                                                         <div className="flex flex-col gap-1">
                                                                             <div className="flex justify-between text-xs font-medium">
-                                                                                <span className="text-orange-700">{daysLeft} dienas</span>
+                                                                                <span className="text-orange-700">{daysLeft} {t('days')}</span>
                                                                                 <span className="text-gray-500">{progress}%</span>
                                                                             </div>
                                                                             <div className="w-full bg-gray-200 rounded-full h-1.5">
@@ -1275,11 +1279,11 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
 
                                     {/* Blurred Analytics Teaser - Upsell (Restored) */}
                                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                                        <h4 className="text-md font-semibold text-gray-700 mb-4">🔒 Detalizētā Analītika</h4>
+                                        <h4 className="text-md font-semibold text-gray-700 mb-4">🔒 {t('detailed_analytics')}</h4>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div className="relative bg-white border border-gray-200 rounded-lg p-4 overflow-hidden">
                                                 <div className="filter blur-sm pointer-events-none">
-                                                    <span className="text-xs text-gray-500">Uzvaru rādītājs</span>
+                                                    <span className="text-xs text-gray-500">{t('win_rate')}</span>
                                                     <p className="text-2xl font-bold text-gray-800">67%</p>
                                                 </div>
                                                 <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
@@ -1288,8 +1292,8 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                             </div>
                                             <div className="relative bg-white border border-gray-200 rounded-lg p-4 overflow-hidden">
                                                 <div className="filter blur-sm pointer-events-none">
-                                                    <span className="text-xs text-gray-500">Galvenie konkurenti</span>
-                                                    <p className="text-lg font-bold text-gray-800">3 uzņēmumi</p>
+                                                    <span className="text-xs text-gray-500">{t('main_competitors')}</span>
+                                                    <p className="text-lg font-bold text-gray-800">3 {t('company')}</p>
                                                 </div>
                                                 <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
                                                     <span className="text-sm font-medium text-gray-600">🔒 Pro</span>
@@ -1297,7 +1301,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                             </div>
                                             <div className="relative bg-white border border-gray-200 rounded-lg p-4 overflow-hidden">
                                                 <div className="filter blur-sm pointer-events-none">
-                                                    <span className="text-xs text-gray-500">Vidējā cenu nobīde</span>
+                                                    <span className="text-xs text-gray-500">{t('avg_price_deviation')}</span>
                                                     <p className="text-2xl font-bold text-gray-800">-12%</p>
                                                 </div>
                                                 <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
@@ -1309,16 +1313,16 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
 
                                     {/* Recent Contracts Table (Restored + Status Badges) */}
                                     <div>
-                                        <h4 className="text-md font-semibold text-gray-700 mb-3">Pēdējie uzvarētie iepirkumi</h4>
+                                        <h4 className="text-md font-semibold text-gray-700 mb-3">{t('recent_won_procurements')}</h4>
                                         <div className="border border-gray-200 rounded-lg overflow-hidden">
                                             <table className="w-full">
                                                 <thead className="bg-gray-50 border-b border-gray-200">
                                                     <tr>
-                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pasūtītājs</th>
-                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priekšmets</th>
-                                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Summa</th>
-                                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Statuss</th>
-                                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Termiņš</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('authority')}</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('subject')}</th>
+                                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('amount')}</th>
+                                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('procurement_status')}</th>
+                                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('deadline')}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-200">
@@ -1346,10 +1350,10 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                                                 <td className="px-4 py-3 text-sm text-right font-semibold text-success">{formatCurrency(proc.amount)}</td>
                                                                 <td className="px-4 py-3 text-right">
                                                                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${status === 'EXPIRING' ? 'bg-orange-100 text-orange-800' :
-                                                                            status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                                                                                'bg-gray-100 text-gray-600'
+                                                                        status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                                                                            'bg-gray-100 text-gray-600'
                                                                         }`}>
-                                                                        {status === 'EXPIRING' ? 'Beidzas' : status === 'ACTIVE' ? 'Aktīvs' : 'Noslēgts'}
+                                                                        {status === 'EXPIRING' ? t('status.expiring') : status === 'ACTIVE' ? t('status.active') : t('status.closed')}
                                                                     </span>
                                                                 </td>
                                                                 <td className={`px-4 py-3 text-sm text-right whitespace-nowrap ${dateClass}`}>
@@ -1366,7 +1370,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                     {/* CTA Button (Restored) */}
                                     <div className="bg-gradient-to-r from-primary to-accent rounded-lg p-6 text-center">
                                         <p className="text-white text-lg font-medium mb-3">
-                                            Vēlies redzēt, kuros konkursos {company.name.split('"')[1] || company.name} zaudēja un kas ir viņu sīvākie konkurenti?
+                                            {t('cta_text', { name: company.name.split('"')[1] || company.name })}
                                         </p>
                                         <a
                                             href={`https://www.iepirkumi.animas.lv/${company.regcode}`}
@@ -1375,19 +1379,19 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                             className="inline-flex items-center gap-2 px-6 py-3 bg-white text-primary font-bold rounded-lg hover:bg-gray-100 transition-colors shadow-lg"
                                         >
                                             <span>🚀</span>
-                                            Atvērt Pilno Iepirkumu Analītiku
+                                            {t('cta_button')}
                                         </a>
                                         <p className="text-white/80 text-sm mt-3">
-                                            Salīdzini uzņēmumus, atrodi apakšuzņēmēju ķēdes un prognozē nākamos uzvarētājus
+                                            {t('cta_subtext')}
                                         </p>
                                     </div>
                                 </>
                             ) : (
                                 <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
                                     <span className="text-4xl">📋</span>
-                                    <h3 className="mt-4 text-lg font-semibold text-gray-900">Nav iepirkumu datu</h3>
+                                    <h3 className="mt-4 text-lg font-semibold text-gray-900">{t('no_procurement_data')}</h3>
                                     <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
-                                        Šim uzņēmumam nav reģistrēti valsts iepirkumi vai dati vēl nav pieejami.
+                                        {t('no_procurement_desc')}
                                     </p>
                                     <a
                                         href={`https://www.iepirkumi.animas.lv/${company.regcode}`}
@@ -1395,7 +1399,7 @@ ${signatory ? `Paraksttiesīgā persona: ${signatory.name}, ${positionText}` : '
                                         rel="noopener noreferrer"
                                         className="inline-flex items-center gap-2 mt-4 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors"
                                     >
-                                        Pārbaudīt Iepirkumu platformā
+                                        {t('check_platform')}
                                     </a>
                                 </div>
                             )}

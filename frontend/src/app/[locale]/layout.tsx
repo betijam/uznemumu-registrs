@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css";
+import "@/app/globals.css";
 import { ComparisonProvider } from "@/contexts/ComparisonContext";
 import ComparisonCart from "@/components/benchmark/ComparisonCart";
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages, getTranslations } from 'next-intl/server';
+import { notFound } from 'next/navigation';
+import { routing } from '@/i18n/routing';
 
 // Optimized font loading - reduced weights and Latin subset only
 const inter = Inter({
@@ -15,18 +19,40 @@ const inter = Inter({
   adjustFontFallback: false,  // Reduce layout shift
 });
 
-export const metadata: Metadata = {
-  title: "UR Portāls - Uzņēmumu Reģistrs",
-  description: "Latvijas uzņēmumu reģistra dati, finanšu rādītāji un MVK deklarācijas",
-};
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'HomePage' });
 
-export default function RootLayout({
+  return {
+    title: t('title'),
+    description: t('subtitle') // Or a specific metadata description key
+  };
+}
+
+export default async function RootLayout({
   children,
-}: Readonly<{
+  params
+}: {
   children: React.ReactNode;
-}>) {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+
+  // Ensure that the incoming `locale` is valid
+  if (!routing.locales.includes(locale as any)) {
+    // notFound(); // Should be handled by middleware, but good safety
+  }
+
+  // Providing all messages to the client
+  // side is the easiest way to get started
+  const messages = await getMessages();
+
   return (
-    <html lang="lv" className={inter.variable}>
+    <html lang={locale} className={inter.variable}>
       <head>
         {/* Preconnect to critical origins - reduces latency by ~200-400ms on mobile */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -66,10 +92,12 @@ export default function RootLayout({
         `}} />
       </head>
       <body className="antialiased">
-        <ComparisonProvider>
-          {children}
-          <ComparisonCart />
-        </ComparisonProvider>
+        <NextIntlClientProvider messages={messages}>
+          <ComparisonProvider>
+            {children}
+            <ComparisonCart />
+          </ComparisonProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

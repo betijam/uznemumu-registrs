@@ -3,6 +3,7 @@
 import React from 'react';
 import TopListCard from './TopListCard';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { formatCompanyName } from '@/utils/formatCompanyName';
 import { BuildingOffice2Icon, BanknotesIcon, CircleStackIcon, BoltIcon, FireIcon } from '@heroicons/react/24/outline'; // Need to install heroicons or use existing icons
 
@@ -31,6 +32,7 @@ interface BentoGridProps {
 }
 
 export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoGridProps) {
+    const t = useTranslations('BentoGrid');
 
     const formatCurrency = (val: number) => {
         if (val >= 1e6) return `${(val / 1e6).toFixed(1)} M€`;
@@ -41,9 +43,9 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
     return (
         <div className="w-full max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold text-gray-900">Biznesa Vides Pārskats ({year})</h2>
+                <h2 className="text-2xl font-bold text-gray-900">{t('overview_title', { year })}</h2>
                 <Link href="/explore" className="text-sm font-medium text-purple-600 hover:text-purple-700">
-                    Skatīt visu analītiku →
+                    {t('view_all_analytics')}
                 </Link>
             </div>
 
@@ -51,22 +53,24 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
 
                 {/* 1. TOP Turnover */}
                 <TopListCard
-                    title="TOP Apgrozījums"
+                    title={t('top_turnover')}
                     icon={<Icons.Building />}
                     items={tops.turnover}
                     valueFormatter={(v) => formatCurrency(v)}
                     colorClass="text-blue-600 bg-blue-50"
                     linkTo="/explore?sort_by=turnover&order=desc"
+                    viewAllLabel={t('view_all')}
                 />
 
                 {/* 2. TOP Profit */}
                 <TopListCard
-                    title="Efektivitāte (Peļņa)"
+                    title={t('top_profit')}
                     icon={<Icons.Chart />}
                     items={tops.profit}
                     valueFormatter={(v) => formatCurrency(v)}
                     colorClass="text-purple-600 bg-purple-50"
                     linkTo="/explore?sort_by=profit&order=desc"
+                    viewAllLabel={t('view_all')}
                 />
 
                 {/* 3. Latest Registered (Live Feed) */}
@@ -76,9 +80,9 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                             <div className="p-2 rounded-lg bg-orange-50 text-orange-600">
                                 <Icons.Lightning />
                             </div>
-                            <h3 className="font-semibold text-gray-900">Tikko Reģistrēti</h3>
+                            <h3 className="font-semibold text-gray-900">{t('just_registered')}</h3>
                         </div>
-                        <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded animate-pulse">Live</span>
+                        <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded animate-pulse">{t('live_badge')}</span>
                     </div>
 
                     <div className="flex-1 space-y-5">
@@ -91,14 +95,14 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                                     <p className="text-xs text-gray-400 mt-0.5">{company.regcode}</p>
                                 </div>
                                 <span className="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
-                                    Jauns
+                                    {t('new_badge')}
                                 </span>
                             </div>
                         ))}
                     </div>
                     <div className="mt-6 pt-4 border-t border-gray-50 text-center">
                         <Link href="/explore?sort_by=reg_date&order=desc" className="text-xs text-purple-600 hover:underline">
-                            Skatīt visus
+                            {t('view_all')}
                         </Link>
                     </div>
                 </div>
@@ -112,10 +116,10 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                             <div className="p-2 rounded-lg bg-white/10 text-pink-400">
                                 <Icons.Fire />
                             </div>
-                            <h3 className="font-semibold text-lg">Straujākā Izaugsme (Gazeles)</h3>
+                            <h3 className="font-semibold text-lg">{t('fastest_growth')}</h3>
                         </div>
                         <Link href="/explore?sort_by=turnover" className="text-sm font-medium text-slate-300 hover:text-white bg-white/10 px-4 py-2 rounded-lg">
-                            Skatīt visus
+                            {t('view_all')}
                         </Link>
                     </div>
 
@@ -124,7 +128,7 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                             <div key={company.regcode} className="bg-white/5 rounded-xl p-5 border border-white/10 hover:bg-white/10 transition-colors group cursor-pointer">
                                 <div className="text-3xl font-bold text-green-400 mb-2">+{company.growth}%</div>
                                 <h4 className="font-bold text-white mb-1 group-hover:text-blue-300 transition-colors line-clamp-1">{formatCompanyName(company)}</h4>
-                                <p className="text-sm text-slate-400">Apgrozījums sasniedz {formatCurrency(company.turnover)}</p>
+                                <p className="text-sm text-slate-400">{t('turnover_reaches', { amount: formatCurrency(company.turnover) })}</p>
                                 {company.industry && <p className="text-xs text-slate-500 mt-2 line-clamp-1">{company.industry}</p>}
                             </div>
                         ))}
@@ -133,13 +137,14 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
 
                 {/* 5. TOP Salaries */}
                 <TopListCard
-                    title="Top Algas (Bruto)"
-                    subtitle="Uzņēmumi ar vismaz 5 darbiniekiem"
+                    title={t('top_salaries')}
+                    subtitle={t('top_salaries_sub')}
                     icon={<Icons.Money />}
                     items={tops.salaries}
                     valueFormatter={(v) => formatCurrency(v)}
                     colorClass="text-yellow-600 bg-yellow-50"
                     linkTo="/explore?sort_by=salary&order=desc"
+                    viewAllLabel={t('view_all')}
                 />
 
             </div>

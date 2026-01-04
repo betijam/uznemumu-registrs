@@ -1,5 +1,6 @@
 import Link from "next/link";
 import React from "react";
+import { useTranslations } from 'next-intl';
 
 interface Column {
     key: string;
@@ -18,6 +19,7 @@ interface CompanyListTableProps {
 }
 
 export default function CompanyListTable({ data, loading, columns, sortConfig, onSort }: CompanyListTableProps) {
+    const t = useTranslations('Analytics');
     if (loading) {
         return (
             <div className="bg-white rounded-lg shadow border border-gray-100 p-8 space-y-4">
@@ -31,7 +33,7 @@ export default function CompanyListTable({ data, loading, columns, sortConfig, o
     if (!data.length) {
         return (
             <div className="bg-white rounded-lg shadow border border-gray-100 p-12 text-center text-gray-500">
-                Netika atrasti uzņēmumi pēc norādītajiem kritērijiem.
+                {t('no_results')}
             </div>
         );
     }

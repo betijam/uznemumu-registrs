@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslations } from 'next-intl';
 
 interface MarketPulseProps {
     data: {
@@ -12,6 +13,8 @@ interface MarketPulseProps {
 }
 
 export default function MarketPulse({ data, loading = false }: MarketPulseProps) {
+    const t = useTranslations('MarketPulse');
+
     if (loading || !data) {
         return (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-7xl mx-auto mb-12">
@@ -24,22 +27,22 @@ export default function MarketPulse({ data, loading = false }: MarketPulseProps)
 
     const stats = [
         {
-            label: "AKTĪVI UZŅĒMUMI",
+            label: t('active_companies'),
             value: data.active_companies.toLocaleString(),
             color: "text-gray-900"
         },
         {
-            label: "DARBINIEKI KOPĀ",
+            label: t('total_employees'),
             value: data.total_employees.toLocaleString(),
             color: "text-blue-600"
         },
         {
-            label: "VID. BRUTO ALGA",
+            label: t('avg_salary'),
             value: `${data.avg_salary.toLocaleString()} €`,
             color: "text-green-600"
         },
         {
-            label: "KOPĒJAIS APGROZĪJUMS",
+            label: t('total_turnover'),
             value: `${(data.total_turnover / 1e9).toFixed(1)} Md €`,
             sub: "▲ 6%", // Static trend or calculated if we have history
             color: "text-gray-900"

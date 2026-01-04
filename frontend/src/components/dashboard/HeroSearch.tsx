@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from 'next-intl';
 
 interface CompanyHint {
     name: string;
@@ -23,6 +24,7 @@ interface SearchHintsData {
 }
 
 export default function HeroSearch() {
+    const t = useTranslations('HeroSearch');
     const [query, setQuery] = useState("");
     const [hints, setHints] = useState<SearchHintsData>({ companies: [], persons: [] });
     const [showHints, setShowHints] = useState(false);
@@ -86,7 +88,7 @@ export default function HeroSearch() {
                 <input
                     type="search"
                     className="block w-full p-5 pl-14 text-lg text-gray-900 border-0 rounded-xl bg-white focus:ring-4 focus:ring-purple-200 focus:outline-none transition-all placeholder-gray-400"
-                    placeholder="Meklēt uzņēmumu, reģ. nr. vai amatpersonu..."
+                    placeholder={t('placeholder')}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => { if (hasResults) setShowHints(true); }}
@@ -95,7 +97,7 @@ export default function HeroSearch() {
                     type="submit"
                     className="absolute right-3 bottom-3 bg-purple-600 text-white hover:bg-purple-700 font-bold rounded-lg text-sm px-6 py-2.5 transition-colors"
                 >
-                    Meklēt
+                    {t('search_button')}
                 </button>
             </form>
 
@@ -107,7 +109,7 @@ export default function HeroSearch() {
                     {hints.companies.length > 0 && (
                         <div>
                             <div className="px-4 py-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                Uzņēmumi
+                                {t('companies_header')}
                             </div>
                             <ul>
                                 {hints.companies.map((hint) => (
@@ -133,7 +135,7 @@ export default function HeroSearch() {
                     {hints.persons.length > 0 && (
                         <div>
                             <div className="px-4 py-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-t border-gray-100">
-                                Personas
+                                {t('persons_header')}
                             </div>
                             <ul>
                                 {hints.persons.map((hint) => (
@@ -146,10 +148,10 @@ export default function HeroSearch() {
                                             <div className="flex justify-between items-center">
                                                 <span className="font-medium text-gray-800">{hint.name}</span>
                                                 <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                                                    {hint.company_count} uzņēmumi
+                                                    {hint.company_count} {t('companies_count_suffix')}
                                                 </span>
                                             </div>
-                                            <div className="text-xs text-blue-400 mt-0.5 capitalize">Persona</div>
+                                            <div className="text-xs text-blue-400 mt-0.5 capitalize">{t('person_type')}</div>
                                         </Link>
                                     </li>
                                 ))}
@@ -159,7 +161,7 @@ export default function HeroSearch() {
 
                     <div className="bg-gray-50 px-4 py-2 text-center sticky bottom-0 border-t border-gray-100">
                         <button onClick={handleSearch} className="text-sm font-medium text-purple-600 hover:text-purple-800">
-                            Skatīt visus rezultātus "{query}" &rarr;
+                            {t('view_all_prefix')} "{query}" &rarr;
                         </button>
                     </div>
                 </div>
