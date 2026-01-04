@@ -412,22 +412,23 @@ def get_person_profile(identifier: str, response: Response):
         # Aggregate in Python with normalization
         network_map = {}
         
+        # Normalize target person name to exclude self even if name is reversed
+        target_name_parts = person_name.lower().split()
+        target_name_parts.sort()
+        target_norm_key = "-".join(target_name_parts)
+
         for row in network_raw:
             # Normalize name for grouping: lowercase, split, sort parts
             # This merges "Oļegs Smirnovs" and "Smirnovs Oļegs"
             name_parts = row.person_name.lower().split()
             name_parts.sort()
-            # Use person_code if available for even better grouping, but name normalization is key request
-            # We'll use a composite key: person_code (if consistent) or normalized name
-            # Actually, sometimes person_code might differ slightly or be same. 
-            # Let's rely on the normalized name similarity primarily if codes are close, but here robust way is:
-            # Group by Normalized Name AND Person Code (if we assume code is unique). 
-            # BUT the user report implies same person has variations. 
-            # Often legacy data has valid code but shuffled name.
-            # Let's group by Normalized Name. If person codes differ significantly, it's risky, but for this feature ("Collaboration") it's acceptable.
             
             norm_key = "-".join(name_parts)
             
+            # EXCLUDE SELF: Check if this person matches the target person
+            if norm_key == target_norm_key:
+                continue
+
             if norm_key not in network_map:
                 network_map[norm_key] = {
                     "name": row.person_name, # Keep one display name (first encountered)
