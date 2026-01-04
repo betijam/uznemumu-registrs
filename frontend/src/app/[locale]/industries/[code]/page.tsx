@@ -2,10 +2,11 @@
 
 import { useState, useEffect, use } from 'react';
 import Navbar from '@/components/Navbar';
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import FinancialHistoryChart from '@/components/FinancialHistoryChart';
 import SubIndustryList from '@/components/SubIndustryList';
+import { useTranslations } from 'next-intl';
 
 interface KPI {
     total_turnover: number | null;
@@ -62,6 +63,7 @@ interface IndustryDetailData {
 }
 
 export default function IndustryDetailPage({ params }: { params: Promise<{ code: string }> }) {
+    const t = useTranslations('IndustryDetail');
     const resolvedParams = use(params);
     const code = resolvedParams.code;
 
@@ -117,9 +119,9 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
             <div className="min-h-screen bg-gray-50">
                 <Navbar />
                 <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-                    <h1 className="text-4xl font-bold text-gray-800 mb-4">Nozare nav atrasta</h1>
+                    <h1 className="text-4xl font-bold text-gray-800 mb-4">{t('not_found')}</h1>
                     <Link href="/industries" className="text-blue-600 hover:underline">
-                        ← Atpakaļ uz nozaru pārskatu
+                        {t('back_to_industries')}
                     </Link>
                 </div>
             </div>
@@ -176,7 +178,7 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* Turnover */}
                     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                        <p className="text-xs font-medium text-gray-500 uppercase mb-1">Kopējais Apgrozījums</p>
+                        <p className="text-xs font-medium text-gray-500 uppercase mb-1">{t('total_turnover')}</p>
                         <p className="text-3xl font-bold text-gray-900 mb-1">
                             {data.stats.total_turnover_formatted || '-'}
                         </p>
@@ -185,7 +187,7 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
 
                     {/* Profit */}
                     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                        <p className="text-xs font-medium text-gray-500 uppercase mb-1">Kopējā Peļņa</p>
+                        <p className="text-xs font-medium text-gray-500 uppercase mb-1">{t('total_profit')}</p>
                         <p className={`text-3xl font-bold mb-1 ${(data.stats.total_profit || 0) >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
                             {data.stats.total_profit_formatted || '-'}
                         </p>
@@ -193,23 +195,23 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
 
                     {/* Companies */}
                     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                        <p className="text-xs font-medium text-gray-500 uppercase mb-1">Aktīvie Uzņēmumi</p>
+                        <p className="text-xs font-medium text-gray-500 uppercase mb-1">{t('active_companies')}</p>
                         <p className="text-3xl font-bold text-gray-900 mb-1">
                             {data.stats.active_companies?.toLocaleString() || '-'}
                         </p>
                         <span className="text-sm text-gray-500">
-                            {data.stats.total_employees?.toLocaleString() || 0} darbinieki
+                            {data.stats.total_employees?.toLocaleString() || 0} {t('employees')}
                         </span>
                     </div>
 
                     {/* Salary */}
                     <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-sm p-6 text-white">
-                        <p className="text-xs font-medium text-purple-100 uppercase mb-1">Vid. Bruto Alga</p>
+                        <p className="text-xs font-medium text-purple-100 uppercase mb-1">{t('avg_salary')}</p>
                         <p className="text-3xl font-bold mb-1">
                             {data.stats.avg_salary ? `${data.stats.avg_salary.toLocaleString()} €` : '-'}
                         </p>
                         {data.stats.salary_ratio && (
-                            <span className="text-sm text-purple-100">{data.stats.salary_ratio}x pret vidējo</span>
+                            <span className="text-sm text-purple-100">{data.stats.salary_ratio}x {t('vs_national')}</span>
                         )}
                     </div>
                 </div>
@@ -225,12 +227,12 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
                     <div className="lg:col-span-3">
                         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-full">
                             <div className="flex items-center justify-between px-6 py-4 border-b">
-                                <h2 className="font-semibold text-gray-800">Nozares Līderi (TOP 5)</h2>
+                                <h2 className="font-semibold text-gray-800">{t('industry_leaders')}</h2>
                                 <Link
                                     href={`/industry/${code}`}
                                     className="text-sm text-blue-600 hover:underline"
                                 >
-                                    Skatīt vairāk →
+                                    {t('view_more')} →
                                 </Link>
                             </div>
                             <div className="overflow-x-auto">
@@ -238,10 +240,10 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
                                     <thead className="bg-gray-50">
                                         <tr>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uzņēmums</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Apgrozījums</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tirgus Daļa</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Peļņa</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('company')}</th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('turnover')}</th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('market_share')}</th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('profit')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
@@ -263,7 +265,7 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
                                                         {leader.name}
                                                     </Link>
                                                     <div className="text-xs text-gray-500 mt-0.5">
-                                                        {leader.employees} darbinieki
+                                                        {leader.employees} {t('employees')}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right font-semibold text-gray-800">
@@ -293,15 +295,15 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Salary Comparison */}
                     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                        <h3 className="font-semibold text-gray-800 mb-4">Algu Analītika</h3>
+                        <h3 className="font-semibold text-gray-800 mb-4">{t('salary_analytics')}</h3>
                         <p className="text-xs text-gray-500 mb-4">
-                            Salīdzinājums ar valsts vidējo ({data.stats.national_avg_salary?.toLocaleString() || '-'}€)
+                            {t('comparison_with_national', { avg: data.stats.national_avg_salary?.toLocaleString() || '-' })}
                         </p>
 
                         {/* Industry */}
                         <div className="mb-4">
                             <div className="flex justify-between text-sm mb-1">
-                                <span className="text-gray-600">Šī nozare</span>
+                                <span className="text-gray-600">{t('this_industry')}</span>
                                 <span className="font-semibold text-gray-900">
                                     {data.stats.avg_salary?.toLocaleString() || '-'}€
                                 </span>
@@ -319,7 +321,7 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
                         {/* National */}
                         <div>
                             <div className="flex justify-between text-sm mb-1">
-                                <span className="text-gray-600">Valsts vid.</span>
+                                <span className="text-gray-600">{t('national_avg')}</span>
                                 <span className="font-semibold text-gray-500">
                                     {data.stats.national_avg_salary?.toLocaleString() || '-'}€
                                 </span>
@@ -335,11 +337,11 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
 
                     {/* Tax Burden */}
                     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                        <h3 className="font-semibold text-gray-800 mb-2">Nodokļu Slogs</h3>
+                        <h3 className="font-semibold text-gray-800 mb-2">{t('tax_burden')}</h3>
                         <p className="text-4xl font-bold text-gray-900 mb-1">
                             {data.stats.tax_burden !== null ? `${data.stats.tax_burden}%` : '-'}
                         </p>
-                        <p className="text-sm text-gray-500">No apgrozījuma tiek samaksāts nodokļos</p>
+                        <p className="text-sm text-gray-500">{t('of_turnover_paid_as_tax')}</p>
                     </div>
 
                     {/* Market Concentration */}
