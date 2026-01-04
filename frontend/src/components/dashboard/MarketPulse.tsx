@@ -52,7 +52,7 @@ export default function MarketPulse({ data, loading = false }: MarketPulseProps)
     return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-7xl mx-auto mb-12">
             {stats.map((stat, idx) => (
-                <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow">
+                <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow min-h-[96px]">
                     <div className={`text-2xl md:text-3xl font-bold mb-1 ${stat.color}`}>
                         {stat.value}
                         {stat.sub && <span className="text-xs text-green-500 ml-2 align-middle">{stat.sub}</span>}

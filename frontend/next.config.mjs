@@ -8,13 +8,21 @@ const nextConfig = {
 
     // Performance optimizations
     experimental: {
-        optimizePackageImports: ['lodash.debounce'],
+        optimizePackageImports: ['lodash.debounce', '@heroicons/react'],
     },
 
     // Compiler optimizations
     compiler: {
         // Remove console.log in production
         removeConsole: process.env.NODE_ENV === 'production',
+    },
+
+    // Use SWC minifier for better performance
+    swcMinify: true,
+
+    // Optimize images
+    images: {
+        formats: ['image/avif', 'image/webp'],
     },
 
     async rewrites() {
