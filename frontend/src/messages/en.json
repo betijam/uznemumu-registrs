@@ -402,5 +402,15 @@
     "high_concentration": "High concentration",
     "medium_concentration": "Medium concentration",
     "low_concentration": "Low concentration"
+  },
+  "CareerTimeline": {
+    "title": "Career Path",
+    "new_role": "Appointed as",
+    "exit": "Left position",
+    "active_role": "Currently serving",
+    "liquidation": "Company liquidated",
+    "show_more": "Show more",
+    "no_data": "No career data available",
+    "current": "Current"
   }
 }

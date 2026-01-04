@@ -2,6 +2,7 @@ import Navbar from "@/components/Navbar";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/routing";
 import CompanySearchBar from "@/components/CompanySearchBar";
+import CareerTimeline from "@/components/CareerTimeline";
 import { getTranslations } from "next-intl/server";
 
 // Cache configuration
@@ -300,6 +301,11 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                             </div>
                         </div>
                     </div>
+                </div>
+
+                {/* Career Timeline */}
+                <div className="mt-8">
+                    <CareerTimeline person_id={person.person_code_hash} />
                 </div>
             </main>
         </div>

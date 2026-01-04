@@ -402,5 +402,15 @@
     "high_concentration": "Augsta koncentrācija",
     "medium_concentration": "Vidēja koncentrācija",
     "low_concentration": "Zema koncentrācija"
+  },
+  "CareerTimeline": {
+    "title": "Karjeras Ceļš",
+    "new_role": "Iecelts par",
+    "exit": "Atstājis amatu",
+    "active_role": "Turpina darbu",
+    "liquidation": "Uzņēmums likvidēts",
+    "show_more": "Skatīt vairāk",
+    "no_data": "Nav karjeras datu",
+    "current": "Pašreiz"
   }
 }

@@ -402,5 +402,15 @@
     "high_concentration": "Высокая концентрация",
     "medium_concentration": "Средняя концентрация",
     "low_concentration": "Низкая концентрация"
+  },
+  "CareerTimeline": {
+    "title": "Карьерный Путь",
+    "new_role": "Назначен",
+    "exit": "Покинул должность",
+    "active_role": "В настоящее время",
+    "liquidation": "Компания ликвидирована",
+    "show_more": "Показать больше",
+    "no_data": "Нет данных о карьере",
+    "current": "Текущий"
   }
 }
