@@ -285,13 +285,17 @@ def get_person_profile(identifier: str, response: Response):
                 # Include turnover and employees for ALL active companies where person is involved
                 if comp.turnover:
                     try:
-                        total_turnover += float(comp.turnover)
+                        val = float(comp.turnover)
+                        total_turnover += val
+                        logger.info(f"  + Company {comp.regcode}: {val}")
                     except (ValueError, TypeError):
                         pass
                 if comp.employees:
                     total_employees += comp.employees
                 
                 processed_financial_regcodes.add(comp.regcode)
+        
+        logger.info(f"Person {person_code}: Total Turnover (accumulated): {total_turnover}")
         
         # Capital Value - Sum of (shares * nominal) for all ACTIVE member roles
         # Note: A person can be a member multiple times? Usually once per company.
