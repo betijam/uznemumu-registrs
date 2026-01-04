@@ -7,6 +7,7 @@ from .process_finance import process_finance
 from .process_procurements import process_procurements_etl
 from .process_taxes import process_vid_data
 from .process_nace import process_nace
+from .precompute_graphs import precompute_graphs
 from .loader import engine
 from sqlalchemy import text
 import logging
@@ -96,6 +97,9 @@ def run_all_etl():
     
     # 8. Process VID Tax Data + NACE (downloads data internally)
     process_vid_data()
+
+    # 9. Precompute Company Graphs (must run after all data is loaded)
+    precompute_graphs()
          
     logger.info("ETL Job Completed.")
 

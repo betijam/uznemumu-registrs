@@ -1289,248 +1289,67 @@ def find_all_linked_entities(conn, regcode: int, year: int = 2024) -> dict:
         "total_linked_count": len(all_linked) + len(via_person)
     }
 
+from app.services.graph_service import calculate_company_graph
+
+
+def save_cached_graph(conn, regcode: int, data: dict):
+    """Save computed graph to cache"""
+    try:
+        import json
+        # Ensure table exists
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS company_graph_cache (
+                company_regcode BIGINT PRIMARY KEY,
+                graph_data JSONB,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        
+        # Upsert
+        conn.execute(text("""
+            INSERT INTO company_graph_cache (company_regcode, graph_data, updated_at)
+            VALUES (:r, :d, NOW())
+            ON CONFLICT (company_regcode) 
+            DO UPDATE SET graph_data = :d, updated_at = NOW()
+        """), {"r": regcode, "d": json.dumps(data)})
+        conn.commit()
+        logger.info(f"[CACHE] Saved graph for company {regcode}")
+    except Exception as e:
+        logger.error(f"[CACHE] Error saving cache: {e}")
+
 @router.get("/companies/{regcode}/graph")
 def get_related_companies(regcode: int, year: int = 2024):
     """
-    ES MVU Saistīto Uzņēmumu un Personu Klasifikācija:
-    - Partner: 25-50% ownership
-    - Linked: >50% ownership  
-    - Autonomous: <25% or no relations
-    
-    Includes both legal entities AND physical persons with >=25% ownership.
+    Returns company relationship graph.
+    Uses pre-computed data from ETL if available.
+    Fallback to on-the-fly calculation.
     """
     
-    def classify_ownership(percent: float) -> str:
-        if percent is None:
-            return "unknown"
-        if percent > 50:
-            return "linked"
-        elif percent >= 25:
-            return "partner"
-        else:
-            return "minor"  # <25%, ignored
-    
-    # Financial cache - will be populated by bulk fetch for performance
-    _fin_cache = {}
-    
-    def get_financial_data(conn, related_regcode: int, year: int):
-        """Get financial data from cache or single query as fallback"""
-        if not related_regcode:
-            return {"employees": None, "turnover": None, "balance": None}
-        
-        # Check cache first (populated by bulk prefetch)
-        if related_regcode in _fin_cache:
-            return _fin_cache[related_regcode]
-        
-        # Fallback to single query if not in cache
-        fin = conn.execute(text("""
-            SELECT turnover, profit, employees, total_assets
-            FROM financial_reports
-            WHERE company_regcode = :r AND year = :y
-            ORDER BY year DESC LIMIT 1
-        """), {"r": related_regcode, "y": year}).fetchone()
-        
-        result = {"employees": None, "turnover": None, "balance": None}
-        if fin:
-            result = {
-                "employees": fin.employees,
-                "turnover": safe_float(fin.turnover),
-                "balance": safe_float(fin.total_assets)
-            }
-        _fin_cache[related_regcode] = result
-        return result
-    
-    partners = []  # 25-50%
-    linked = []    # >50%
-    total_capital = 0
-    
+    # 1. READ FROM PRE-COMPUTED CACHE
     with engine.connect() as conn:
-        # Get Company Info
-        company_row = conn.execute(text("SELECT name, regcode FROM companies WHERE regcode=:r"), {"r": regcode}).fetchone()
-        if not company_row:
-            return {"status": "NOT_FOUND", "partners": [], "linked": [], "total_capital": 0, "year": year}
-        
-        company_name = company_row.name
-        company_regcode = company_row.regcode
-        
-        # ===== 1. UPSTREAM: Who owns THIS company (Parents/Owners) =====
-        owners = conn.execute(text("""
-            SELECT 
-                p.person_name,
-                p.number_of_shares,
-                p.share_nominal_value,
-                p.legal_entity_regcode,
-                p.person_code,
-                c.name as legal_entity_name
-            FROM persons p
-            LEFT JOIN companies c ON c.regcode = p.legal_entity_regcode
-            WHERE p.company_regcode = :r AND p.role = 'member'
-        """), {"r": regcode}).fetchall()
-        
-        # PERFORMANCE: Bulk prefetch financials for all owner legal entities (N+1 fix)
-        owner_regcodes = [o.legal_entity_regcode for o in owners if o.legal_entity_regcode]
-        if owner_regcodes:
-            _fin_cache.update(bulk_fetch_financials(conn, owner_regcodes, year))
-        
-        logger.info(f"[DEBUG] Company {regcode} ({company_name}): Found {len(owners)} owners")
-        for o in owners:
-            logger.info(f"[DEBUG]   Owner: {o.person_name}, shares={o.number_of_shares}, nominal={o.share_nominal_value}, legal_entity_regcode={o.legal_entity_regcode}")
-        
-        # Calculate total capital
-        for owner in owners:
-            shares = float(owner.number_of_shares or 0)
-            nominal = float(owner.share_nominal_value or 0)
-            total_capital += shares * nominal
-        
-        logger.info(f"[DEBUG] Company {regcode}: Total capital = {total_capital}")
-        
-        # Classify owners (both legal entities and physical persons)
-        for owner in owners:
-            shares = float(owner.number_of_shares or 0)
-            nominal = float(owner.share_nominal_value or 0)
-            owner_value = shares * nominal
+        try:
+            # Check cache (NO expiration check - trust ETL)
+            res = conn.execute(text("""
+                SELECT graph_data 
+                FROM company_graph_cache 
+                WHERE company_regcode = :r 
+            """), {"r": regcode}).fetchone()
             
-            if total_capital > 0:
-                percent = (owner_value / total_capital) * 100
-            else:
-                percent = None
-            
-            classification = classify_ownership(percent)
-            
-            if classification in ["partner", "linked"]:
-                # Determine entity type
-                is_legal_entity = owner.legal_entity_regcode is not None
+            if res and res.graph_data:
+                logger.info(f"[CACHE] Hit for company {regcode}")
+                return res.graph_data
                 
-                # Get financial data only for legal entities
-                if is_legal_entity:
-                    financials = get_financial_data(conn, owner.legal_entity_regcode, year)
-                else:
-                    financials = {"employees": None, "turnover": None, "balance": None}
-                
-                entry = {
-                    "name": owner.person_name,
-                    "regcode": owner.legal_entity_regcode,
-                    "relation": "owner",
-                    "entity_type": "legal_entity" if is_legal_entity else "physical_person",
-                    "ownership_percent": round(percent, 2) if percent else None,
-                    "share_value": owner_value,
-                    **financials
-                }
-                
-                if classification == "partner":
-                    partners.append(entry)
-                else:
-                    linked.append(entry)
+        except Exception as e:
+            logger.error(f"[CACHE] Error reading cache: {e}")
+
+        # 2. FALLBACK: CALCULATE ON THE FLY
+        logger.info(f"[GRAPH] Cache miss for {regcode}. Calculating...")
+        result = calculate_company_graph(conn, regcode, year)
         
-        # ===== 2. DOWNSTREAM: Companies owned BY this company (Children/Subsidiaries) =====
-        # Method 1: Find where this company's regcode is listed as legal_entity_regcode
-        subsidiaries_by_regcode = conn.execute(text("""
-            SELECT 
-                c.regcode,
-                c.name,
-                p.number_of_shares,
-                p.share_nominal_value
-            FROM persons p
-            JOIN companies c ON c.regcode = p.company_regcode
-            WHERE p.legal_entity_regcode = :r AND p.role = 'member'
-        """), {"r": company_regcode}).fetchall()
+        # Save to cache for next time (fill the gap)
+        save_cached_graph(conn, regcode, result)
         
-        # Method 2: Also check by company name (fallback for older data)
-        subsidiaries_by_name = conn.execute(text("""
-            SELECT 
-                c.regcode,
-                c.name,
-                p.number_of_shares,
-                p.share_nominal_value
-            FROM persons p
-            JOIN companies c ON c.regcode = p.company_regcode
-            WHERE p.person_name = :n AND p.role = 'member' 
-              AND p.legal_entity_regcode IS NULL
-        """), {"n": company_name}).fetchall()
-        
-        logger.info(f"[DEBUG] Company {regcode}: Found {len(subsidiaries_by_regcode)} subsidiaries by regcode, {len(subsidiaries_by_name)} by name")
-        for s in subsidiaries_by_regcode:
-            logger.info(f"[DEBUG]   Subsidiary (by regcode): {s.name} ({s.regcode})")
-        for s in subsidiaries_by_name:
-            logger.info(f"[DEBUG]   Subsidiary (by name): {s.name} ({s.regcode})")
-        
-        # Combine and deduplicate subsidiaries
-        seen_regcodes = set()
-        all_subsidiaries = []
-        
-        for sub in subsidiaries_by_regcode:
-            if sub.regcode not in seen_regcodes:
-                seen_regcodes.add(sub.regcode)
-                all_subsidiaries.append(sub)
-        
-        for sub in subsidiaries_by_name:
-            if sub.regcode not in seen_regcodes:
-                seen_regcodes.add(sub.regcode)
-                all_subsidiaries.append(sub)
-        
-        # PERFORMANCE: Bulk prefetch financials for all subsidiaries (N+1 fix)
-        sub_regcodes = [s.regcode for s in all_subsidiaries if s.regcode and s.regcode != regcode]
-        if sub_regcodes:
-            _fin_cache.update(bulk_fetch_financials(conn, sub_regcodes, year))
-        
-        for sub in all_subsidiaries:
-            # Skip if this is the same company
-            if sub.regcode == regcode:
-                continue
-                
-            # Calculate ownership % in subsidiary
-            sub_capital = conn.execute(text("""
-                SELECT SUM(COALESCE(number_of_shares, 0) * COALESCE(share_nominal_value, 0)) as total
-                FROM persons
-                WHERE company_regcode = :r AND role = 'member'
-            """), {"r": sub.regcode}).scalar() or 0
-            
-            our_shares = float(sub.number_of_shares or 0)
-            our_nominal = float(sub.share_nominal_value or 0)
-            our_value = our_shares * our_nominal
-            
-            if sub_capital > 0:
-                percent = (our_value / float(sub_capital)) * 100
-            else:
-                percent = None
-            
-            classification = classify_ownership(percent)
-            logger.info(f"[DEBUG]   Subsidiary {sub.name}: percent={percent}, classification={classification}")
-            
-            if classification in ["partner", "linked"]:
-                financials = get_financial_data(conn, sub.regcode, year)
-                
-                entry = {
-                    "name": sub.name,
-                    "regcode": sub.regcode,
-                    "relation": "subsidiary",
-                    "entity_type": "legal_entity",
-                    "ownership_percent": round(percent, 2) if percent else None,
-                    "share_value": our_value,
-                    **financials
-                }
-                
-                if classification == "partner":
-                    partners.append(entry)
-                else:
-                    linked.append(entry)
-    
-    # Determine overall status
-    logger.info(f"[DEBUG] Company {regcode}: Final result - {len(linked)} linked, {len(partners)} partners")
-    if linked:
-        status = "LINKED"
-    elif partners:
-        status = "PARTNER"
-    else:
-        status = "AUTONOMOUS"
-    
-    return {
-        "status": status,
-        "year": year,
-        "total_capital": total_capital,
-        "partners": partners,
-        "linked": linked
-    }
+        return result
 
 # Alias route for compatibility (frontend may call without /companies/ prefix)
 @router.get("/mvk-declaration/{regcode}")

@@ -3,8 +3,12 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 from psycopg2.extras import execute_values
 import logging
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
+
+# Load .env file if present
+load_dotenv()
 
 # Pārliecinies, ka .env failā ir pareizs URL
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@db:5432/ur_db")
