@@ -17,9 +17,6 @@ const nextConfig = {
         removeConsole: process.env.NODE_ENV === 'production',
     },
 
-    // Use SWC minifier for better performance
-    swcMinify: true,
-
     // Optimize images
     images: {
         formats: ['image/avif', 'image/webp'],

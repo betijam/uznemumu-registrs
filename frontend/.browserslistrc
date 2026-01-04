@@ -1,9 +1,0 @@
-# Browsers that we support
-
-# Modern browsers - reduces bundle size by ~13KB
-last 2 Chrome versions
-last 2 Firefox versions
-last 2 Safari versions
-last 2 Edge versions
-not dead
-not IE 11
