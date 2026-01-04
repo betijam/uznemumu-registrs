@@ -16,6 +16,7 @@
   ],
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@swc/helpers": "^0.5.18",
     "@types/lodash.debounce": "^4.0.9",
     "autoprefixer": "^10.4.23",
     "chart.js": "^4.5.1",
