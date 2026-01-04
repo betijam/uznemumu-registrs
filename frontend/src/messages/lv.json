@@ -266,7 +266,10 @@
       "company": "Uzņēmums",
       "turnover": "Apgrozījums",
       "profit": "Peļņa",
-      "employees": "Darbinieki",
+      "employees": "Darb.",
+      "reg_no_short": "Reģ. Nr.",
+      "full_name": "Pilns nosaukums",
+      "industry": "Nozare",
       "tax_paid": "Nodokļi",
       "avg_salary": "Vid. Alga (Bruto)",
       "add_compare": "Pievienot salīdzināšanai",
@@ -351,7 +354,10 @@
     "no_data": "Nav datu",
     "sanctions": "SANKCIJAS",
     "insolvency": "Saistīts ar maksātnespēju",
-    "tax_debt": "Saistīts ar nodokļu parādiem"
+    "tax_debt": "Saistīts ar nodokļu parādiem",
+    "turnover": "Apgrozījums",
+    "show_more_count": "Skatīt vēl ({count})",
+    "show_less": "Skatīt mazāk"
   },
   "BenchmarkPage": {
     "title": "Uzņēmumu Salīdzināšana",

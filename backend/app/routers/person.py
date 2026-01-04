@@ -286,6 +286,8 @@ def get_person_profile(identifier: str, response: Response):
                 if comp.turnover:
                     try:
                         val = float(comp.turnover)
+                        if val != val: # Check for NaN (val != val is a common Python trick, or use math.isnan)
+                             val = 0
                         total_turnover += val
                         logger.info(f"  + Company {comp.regcode}: {val}")
                     except (ValueError, TypeError):

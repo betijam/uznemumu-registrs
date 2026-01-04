@@ -1,9 +1,12 @@
 import Navbar from "@/components/Navbar";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/routing";
-import CompanySearchBar from "@/components/CompanySearchBar";
+import CompanySearchBar from "@/components/dashboard/CompanySearchBar";
 import CareerTimeline from "@/components/CareerTimeline";
 import { getTranslations } from "next-intl/server";
+import { getPersonProfile } from '@/lib/api';
+import { formatCurrency } from "@/lib/utils";
+import PersonCompaniesTable from "@/components/person/PersonCompaniesTable";
 
 // Cache configuration
 const CACHE_CONFIG = { next: { revalidate: 1800 } }; // 30 min cache
@@ -191,74 +194,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                             </div>
 
                             {/* Active Companies Table */}
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('company')}</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('role')}</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('BenchmarkPage.turnover')}</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('status')}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {activeCompanies.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                                                    {t('no_active_companies')}
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            activeCompanies.map((company: any) => (
-                                                <tr key={company.regcode} className="hover:bg-gray-50">
-                                                    <td className="px-6 py-4">
-                                                        <Link href={`/company/${company.regcode}`} className="text-primary hover:underline font-medium">
-                                                            {company.name}
-                                                        </Link>
-                                                        <div className="text-xs text-gray-500">{t('reg_no')} {company.regcode}</div>
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {company.roles.map((role: any, idx: number) => {
-                                                                // Helper to determine badge style and text
-                                                                let colorClass = "bg-gray-100 text-gray-700 border-gray-200";
-                                                                let text = t('position');
-
-                                                                if (role.type === 'officer') {
-                                                                    colorClass = "bg-blue-50 text-blue-700 border-blue-200 border";
-                                                                    text = role.position || t('officer');
-                                                                } else if (role.type === 'member') {
-                                                                    colorClass = "bg-green-50 text-green-700 border-green-200 border";
-                                                                    text = `${t('member')} ${role.share_percent ? role.share_percent + '%' : ''}`;
-                                                                } else if (role.type === 'ubo') {
-                                                                    colorClass = "bg-yellow-50 text-yellow-700 border-yellow-200 border";
-                                                                    text = t('ubo');
-                                                                }
-
-                                                                return (
-                                                                    <span key={idx} className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${colorClass}`}>
-                                                                        {text}
-                                                                        {role.date_from && <span className="ml-1 opacity-70 text-[10px]">({role.date_from.substring(0, 4)})</span>}
-                                                                    </span>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-sm text-gray-900">
-                                                        {company.finances?.turnover ? formatCurrency(company.finances.turnover) : '-'}
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${company.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                                            }`}>
-                                                            {company.status === 'active' ? t('active') : t('liquidated')}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <PersonCompaniesTable activeCompanies={activeCompanies} />
                         </div>
                     </div>
 

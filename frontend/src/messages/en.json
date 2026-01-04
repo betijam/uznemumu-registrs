@@ -267,6 +267,9 @@
       "turnover": "Turnover",
       "profit": "Profit",
       "employees": "Employees",
+      "reg_no_short": "Reg. No.",
+      "full_name": "Full Name",
+      "industry": "Industry",
       "tax_paid": "Taxes",
       "avg_salary": "Avg. Salary (Gross)",
       "add_compare": "Add to compare",
@@ -351,7 +354,10 @@
     "no_data": "No data",
     "sanctions": "SANCTIONS",
     "insolvency": "Related to insolvency",
-    "tax_debt": "Related to tax debts"
+    "tax_debt": "Related to tax debts",
+    "turnover": "Turnover",
+    "show_more_count": "Show more ({count})",
+    "show_less": "Show less"
   },
   "BenchmarkPage": {
     "title": "Company Comparison",
