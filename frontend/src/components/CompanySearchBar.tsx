@@ -39,17 +39,18 @@ export default function CompanySearchBar() {
             }
             setIsSearching(true);
             try {
-                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const res = await fetch(`/api/home/search-hint?q=${encodeURIComponent(query)}`);
                 const data = await res.json();
 
-                // API returns companies array, we need to fetch persons separately
-                const personsRes = await fetch(`/api/persons/search?q=${encodeURIComponent(query)}&limit=5`);
-                const personsData = await personsRes.json();
-
-                setResults({
-                    companies: data.slice(0, 5),
-                    persons: personsData.slice(0, 5)
-                });
+                // Handle both old (array) and new (object) formats gracefully
+                if (Array.isArray(data)) {
+                    setResults({ companies: data.slice(0, 5), persons: [] });
+                } else {
+                    setResults({
+                        companies: data.companies?.slice(0, 5) || [],
+                        persons: data.persons?.slice(0, 5) || []
+                    });
+                }
                 setShowDropdown(true);
             } catch (e) {
                 console.error("Search failed:", e);

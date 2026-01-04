@@ -341,7 +341,10 @@ def get_person_profile(identifier: str, response: Response):
                 
                 if total_capital_result and total_capital_result.total and total_capital_result.total > 0:
                     my_value = float(comp.number_of_shares) * float(comp.share_nominal_value)
-                    share_percent = round((my_value / float(total_capital_result.total)) * 100, 2)
+                    raw_percent = (my_value / float(total_capital_result.total)) * 100
+                    share_percent = safe_float(raw_percent)
+                    if share_percent is not None:
+                        share_percent = round(share_percent, 2)
             
             # Determine if active relationship
             is_active = comp.status == 'active' and comp.date_to is None
