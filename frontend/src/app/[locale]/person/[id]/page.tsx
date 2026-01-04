@@ -149,14 +149,10 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
                 {/* KPI Dashboard */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
                         <div className="text-sm text-gray-500 mb-1">{t('active_companies')}</div>
                         <div className="text-2xl font-bold text-primary">{person.kpi.active_companies_count}</div>
-                    </div>
-                    <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                        <div className="text-sm text-gray-500 mb-1">{t('historical_companies')}</div>
-                        <div className="text-2xl font-bold text-gray-700">{person.kpi.historical_companies_count}</div>
                     </div>
                     <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
                         <div className="text-sm text-gray-500 mb-1">{t('total_turnover')}</div>
@@ -201,7 +197,6 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                                         <tr>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('company')}</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('role')}</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('shares')}</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('BenchmarkPage.turnover')}</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('status')}</th>
                                         </tr>
@@ -209,41 +204,57 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {activeCompanies.length === 0 ? (
                                             <tr>
-                                                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                                                    Nav aktīvu uzņ ēmumu
+                                                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                                                    {t('no_active_companies')}
                                                 </td>
                                             </tr>
                                         ) : (
-                                            activeCompanies.map((company: any) => {
-                                                const badge = getRoleBadge(company.role, t, company.position);
-                                                return (
-                                                    <tr key={company.regcode} className="hover:bg-gray-50">
-                                                        <td className="px-6 py-4">
-                                                            <Link href={`/company/${company.regcode}`} className="text-primary hover:underline font-medium">
-                                                                {company.name}
-                                                            </Link>
-                                                            <div className="text-xs text-gray-500">{t('reg_no')} {company.regcode}</div>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.color}`}>
-                                                                {badge.text}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                                            {company.share_percent ? `${company.share_percent}%` : '-'}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                                            {company.finances?.turnover ? formatCurrency(company.finances.turnover) : '-'}
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${company.status === 'active' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
-                                                                }`}>
-                                                                {company.status === 'active' ? t('active') : t('liquidated')}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })
+                                            activeCompanies.map((company: any) => (
+                                                <tr key={company.regcode} className="hover:bg-gray-50">
+                                                    <td className="px-6 py-4">
+                                                        <Link href={`/company/${company.regcode}`} className="text-primary hover:underline font-medium">
+                                                            {company.name}
+                                                        </Link>
+                                                        <div className="text-xs text-gray-500">{t('reg_no')} {company.regcode}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {company.roles.map((role: any, idx: number) => {
+                                                                // Helper to determine badge style and text
+                                                                let colorClass = "bg-gray-100 text-gray-700 border-gray-200";
+                                                                let text = t('position');
+
+                                                                if (role.type === 'officer') {
+                                                                    colorClass = "bg-blue-50 text-blue-700 border-blue-200 border";
+                                                                    text = role.position || t('officer');
+                                                                } else if (role.type === 'member') {
+                                                                    colorClass = "bg-green-50 text-green-700 border-green-200 border";
+                                                                    text = `${t('member')} ${role.share_percent ? role.share_percent + '%' : ''}`;
+                                                                } else if (role.type === 'ubo') {
+                                                                    colorClass = "bg-yellow-50 text-yellow-700 border-yellow-200 border";
+                                                                    text = t('ubo');
+                                                                }
+
+                                                                return (
+                                                                    <span key={idx} className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${colorClass}`}>
+                                                                        {text}
+                                                                        {role.date_from && <span className="ml-1 opacity-70 text-[10px]">({role.date_from.substring(0, 4)})</span>}
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-gray-900">
+                                                        {company.finances?.turnover ? formatCurrency(company.finances.turnover) : '-'}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${company.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                                            }`}>
+                                                            {company.status === 'active' ? t('active') : t('liquidated')}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))
                                         )}
                                     </tbody>
                                 </table>
@@ -305,7 +316,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
 
                 {/* Career Timeline */}
                 <div className="mt-8">
-                    <CareerTimeline person_id={person.person_code_hash} />
+                    <CareerTimeline person_id={id} />
                 </div>
             </main>
         </div>

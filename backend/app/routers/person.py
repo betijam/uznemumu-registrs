@@ -278,23 +278,20 @@ def get_person_profile(identifier: str, response: Response):
         active_companies_count = len(unique_active_regcodes)
         historical_companies_count = len(unique_historical_regcodes)
 
-        # Financials (Turnover/Employees) - Only for Active Companies where I am Officer or Member
-        # And only count ONCE per company
+        # Financials (Turnover/Employees) - Only for Active Companies
+        # Count ONCE per company (avoid double counting if person has multiple roles in same company)
         for comp in companies:
             if comp.regcode in unique_active_regcodes and comp.regcode not in processed_financial_regcodes:
-                # Check if role is relevant for "Management" stats (Officer/Member)
-                # Actually user wants "Kopējais apgrozījums" for companies they are involved in.
-                # Usually we include all active roles.
-                if comp.role in ('officer', 'member'):
-                    if comp.turnover:
-                        try:
-                            total_turnover += float(comp.turnover)
-                        except (ValueError, TypeError):
-                            pass
-                    if comp.employees:
-                        total_employees += comp.employees
-                    
-                    processed_financial_regcodes.add(comp.regcode)
+                # Include turnover and employees for ALL active companies where person is involved
+                if comp.turnover:
+                    try:
+                        total_turnover += float(comp.turnover)
+                    except (ValueError, TypeError):
+                        pass
+                if comp.employees:
+                    total_employees += comp.employees
+                
+                processed_financial_regcodes.add(comp.regcode)
         
         # Capital Value - Sum of (shares * nominal) for all ACTIVE member roles
         # Note: A person can be a member multiple times? Usually once per company.
@@ -328,6 +325,9 @@ def get_person_profile(identifier: str, response: Response):
         
         # Calculate share percentages and format company list
         companies_list = []
+        # Group companies by regcode
+        companies_map = {}
+        
         for comp in companies:
             # Calculate ownership percentage for members
             share_percent = None
@@ -346,30 +346,44 @@ def get_person_profile(identifier: str, response: Response):
                     if share_percent is not None:
                         share_percent = round(share_percent, 2)
             
-            # Determine if active relationship
-            is_active = comp.status == 'active' and comp.date_to is None
+            # Determine if this specific role is active
+            role_is_active = comp.status == 'active' and comp.date_to is None
+
+            # Create new company entry if not exists
+            if comp.regcode not in companies_map:
+                companies_map[comp.regcode] = {
+                    "regcode": comp.regcode,
+                    "name": comp.name,
+                    "status": comp.status,
+                    "nace_text": comp.nace_text,
+                    "nace_section_text": comp.nace_section_text,
+                    "roles": [],
+                    "finances": {
+                        "turnover": safe_float(comp.turnover),
+                        "profit": safe_float(comp.profit),
+                        "employees": comp.employees,
+                        "year": comp.financial_year
+                    },
+                    "is_active": False # Will be set to true if ANY role is active
+                }
             
-            companies_list.append({
-                "regcode": comp.regcode,
-                "name": comp.name,
-                "status": comp.status,
-                "nace_text": comp.nace_text,
-                "nace_section_text": comp.nace_section_text,
-                "role": comp.role,
+            # Add role to the list
+            companies_map[comp.regcode]["roles"].append({
+                "type": comp.role,
                 "position": comp.position,
                 "share_percent": share_percent,
                 "share_currency": comp.share_currency or "EUR",
                 "date_from": str(comp.date_from) if comp.date_from else None,
                 "date_to": str(comp.date_to) if comp.date_to else None,
-                "is_active": is_active,
-                "rights_of_representation": comp.rights_of_representation,
-                "finances": {
-                    "turnover": safe_float(comp.turnover),
-                    "profit": safe_float(comp.profit),
-                    "employees": comp.employees,
-                    "year": comp.financial_year
-                }
+                "is_active": role_is_active,
+                "rights_of_representation": comp.rights_of_representation
             })
+
+            # Update company overall active status
+            if role_is_active:
+                companies_map[comp.regcode]["is_active"] = True
+
+        companies_list = list(companies_map.values())
         
         # Get collaboration network (co-occurring persons)
         # Added STRING_AGG for company names
