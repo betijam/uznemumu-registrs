@@ -323,7 +323,7 @@
     "collaboration_network": "Сеть Сотрудничества",
     "collaboration_desc": "Люди, с которыми работал вместе",
     "collaborator": "Сотрудник",
-    "companies_together": "компаний вместе",
+    "companies_together": "{count} компаний вместе",
     "view_profile": "Просмотр профиля",
     "person_code": "Код человека",
     "birth_date": "Дата рождения",

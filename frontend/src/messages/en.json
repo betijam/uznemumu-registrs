@@ -326,7 +326,7 @@
     "collaboration_network": "Collaboration Network",
     "collaboration_desc": "People where this person has worked together",
     "collaborator": "Collaborator",
-    "companies_together": "companies together",
+    "companies_together": "{count} companies together",
     "view_profile": "View Profile",
     "person_code": "Person Code",
     "birth_date": "Birth Date",

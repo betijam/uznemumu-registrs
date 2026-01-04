@@ -326,7 +326,7 @@
     "collaboration_network": "Sadarbības Tīkls",
     "collaboration_desc": "Personas, ar kurām kopā uzņēmumos",
     "collaborator": "Līdzstrādnieks",
-    "companies_together": "uzņēmumos",
+    "companies_together": "{count} uzņēmumos",
     "view_profile": "Skatīt profilu",
     "person_code": "Personas kods",
     "birth_date": "Dzimšanas datums",
