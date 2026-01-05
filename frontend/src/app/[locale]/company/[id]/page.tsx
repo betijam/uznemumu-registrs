@@ -89,7 +89,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const company = await getCompany(id);
     if (!company) return { title: "Uzņēmums nav atrasts" };
     return {
-        title: `${company.name} (${company.regcode}) - UR Portāls`,
+        title: `${company.name} (${company.regcode}) - Company 360`,
         description: `Finanšu dati, amatpersonas un riski uzņēmumam ${company.name}.`,
     };
 }
