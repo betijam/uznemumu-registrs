@@ -99,11 +99,8 @@ def list_companies(
     # Dynamic Order Clause
     sort_col = SORT_FIELDS.get(sort_by, "s.turnover")
     
-    # Handle NaN values by treating them as NULL for sorting, ensuring they appear last
-    if sort_by in ["turnover", "profit", "employees", "salary", "tax", "growth"]:
-        # Cast to numeric to be safe if comparing with string literal, though strictly NULLIF(col, 'NaN') works on numeric too
-        sort_col = f"NULLIF({sort_col}, 'NaN')"
-        
+    # We rely on the Materialized View having pre-cleaned NULLs (instead of 'NaN' strings)
+    # The NULLS LAST clause handles the sorting order.
     order_clause = f"{sort_col} {order.upper()} NULLS LAST"
     
     # Construct Query

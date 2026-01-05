@@ -6,23 +6,13 @@ DROP MATERIALIZED VIEW IF EXISTS company_stats_materialized;
 CREATE MATERIALIZED VIEW company_stats_materialized AS
 WITH latest_fin AS (
     -- Get latest financial year for each company
-    -- For simplicity, we stick to a global latest year like dashboard, or we take the latest available per company?
-    -- Explore page defaults to "2024" (or calculated latest).
-    -- To allow sorting by "latest" data, we might need a specific year column.
-    -- Let's stick to the logic: Data for the "Global Working Year" (usually last closed year).
-    -- Or, ideally, we include stats for multiple years? No, Explore is usually "Latest".
-    -- Let's pin it to the dashboard logic: Determine "Latest Year" dynamically or fixed.
-    -- Better: Create keys (regcode, year) if we want multi-year support.
-    -- But for fast sorting, we usually want "Current Status".
-    -- Let's build it for specific years. OR simply assume "Latest Available" for each company?
-    -- Explore page uses `?year=X`. We should probably materialize for the specific "Active Reporting Year".
-    -- Let's allow it to contain data for the last 2 years.
+    -- Explicitly CAST to correct types, handling 'NaN' strings as NULL
     SELECT 
         f.company_regcode,
         f.year,
-        f.turnover,
-        f.profit,
-        f.employees
+        CAST(NULLIF(f.turnover, 'NaN') AS NUMERIC) as turnover,
+        CAST(NULLIF(f.profit, 'NaN') AS NUMERIC) as profit,
+        CAST(NULLIF(f.employees, 'NaN') AS INTEGER) as employees
     FROM financial_reports f
 ),
 growth_calc AS (
@@ -32,11 +22,11 @@ growth_calc AS (
         cur.turnover,
         cur.profit,
         cur.employees,
-        prev.turnover as prev_turnover,
-        ROUND(((CAST(cur.turnover AS NUMERIC) - CAST(prev.turnover AS NUMERIC)) / NULLIF(ABS(CAST(prev.turnover AS NUMERIC)), 0)) * 100, 1) as turnover_growth,
+        p.turnover as prev_turnover,
+        ROUND(((cur.turnover - p.turnover) / NULLIF(ABS(p.turnover), 0)) * 100, 1) as turnover_growth,
         (cur.profit / NULLIF(cur.turnover, 0)) * 100 as profit_margin
     FROM latest_fin cur
-    LEFT JOIN latest_fin prev ON cur.company_regcode = prev.company_regcode AND prev.year = cur.year - 1
+    LEFT JOIN latest_fin p ON cur.company_regcode = p.company_regcode AND p.year = cur.year - 1
 ),
 salary_calc AS (
     SELECT 
@@ -57,9 +47,6 @@ SELECT
     g.profit_margin,
     s.avg_salary,
     s.total_tax_paid as tax_paid
-    -- We can also include search fields here to avoid joining companies? 
-    -- companies table is small-ish (200k rows), joining on regcode (PK) is fast.
-    -- Main issue was the math and multi-joins.
 FROM companies c
 JOIN growth_calc g ON g.company_regcode = c.regcode
 LEFT JOIN salary_calc s ON s.company_regcode = c.regcode AND s.year = g.year
