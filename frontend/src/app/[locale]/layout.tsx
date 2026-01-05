@@ -33,6 +33,10 @@ export async function generateMetadata({
   };
 }
 
+import Footer from "@/components/Footer";
+
+// ... existing imports ...
+
 export default async function RootLayout({
   children,
   params
@@ -91,10 +95,11 @@ export default async function RootLayout({
           .min-h-screen{min-height:100vh}
         `}} />
       </head>
-      <body className="antialiased">
+      <body className="antialiased flex flex-col min-h-screen">
         <NextIntlClientProvider messages={messages}>
           <ComparisonProvider>
             {children}
+            <Footer />
             <ComparisonCart />
           </ComparisonProvider>
         </NextIntlClientProvider>

@@ -118,19 +118,21 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                             </div>
                             <h3 className="font-semibold text-lg">{t('fastest_growth')}</h3>
                         </div>
-                        <Link href="/explore?sort_by=turnover" className="text-sm font-medium text-slate-300 hover:text-white bg-white/10 px-4 py-2 rounded-lg">
+                        <Link href="/explore?sort_by=growth&order=desc" className="text-sm font-medium text-slate-300 hover:text-white bg-white/10 px-4 py-2 rounded-lg">
                             {t('view_all')}
                         </Link>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
                         {gazeles.slice(0, 3).map((company) => (
-                            <div key={company.regcode} className="bg-white/5 rounded-xl p-5 border border-white/10 hover:bg-white/10 transition-colors group cursor-pointer">
-                                <div className="text-3xl font-bold text-green-400 mb-2">+{company.growth}%</div>
-                                <h4 className="font-bold text-white mb-1 group-hover:text-blue-300 transition-colors line-clamp-1">{formatCompanyName(company)}</h4>
-                                <p className="text-sm text-slate-400">{t('turnover_reaches', { amount: formatCurrency(company.turnover) })}</p>
-                                {company.industry && <p className="text-xs text-slate-500 mt-2 line-clamp-1">{company.industry}</p>}
-                            </div>
+                            <Link key={company.regcode} href={`/company/${company.regcode}`} className="block">
+                                <div className="bg-white/5 rounded-xl p-5 border border-white/10 hover:bg-white/10 transition-colors group cursor-pointer h-full">
+                                    <div className="text-3xl font-bold text-green-400 mb-2">+{company.growth}%</div>
+                                    <h4 className="font-bold text-white mb-1 group-hover:text-blue-300 transition-colors line-clamp-1">{formatCompanyName(company)}</h4>
+                                    <p className="text-sm text-slate-400">{t('turnover_reaches', { amount: formatCurrency(company.turnover) })}</p>
+                                    {company.industry && <p className="text-xs text-slate-500 mt-2 line-clamp-1">{company.industry}</p>}
+                                </div>
+                            </Link>
                         ))}
                     </div>
                 </div>

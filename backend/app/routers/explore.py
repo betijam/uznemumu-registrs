@@ -15,7 +15,8 @@ SORT_FIELDS = {
     "employees": "f.employees",
     "reg_date": "c.registration_date",
     "salary": "salary_calc.avg_gross",
-    "tax": "tp.total_tax_paid"
+    "tax": "tp.total_tax_paid",
+    "growth": "growth_calc" # CTE or formula
 }
 
 @router.get("/companies/list")
@@ -23,11 +24,11 @@ def list_companies(
     response: Response,
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=100),
-    sort_by: str = Query("turnover", pattern="^(turnover|profit|employees|reg_date|salary|tax)$"),
+    sort_by: str = Query("turnover", pattern="^(turnover|profit|employees|reg_date|salary|tax|growth)$"),
     order: str = Query("desc", pattern="^(asc|desc)$"),
     nace: Optional[List[str]] = Query(None, description="List of NACE codes (partial match)"),
     region: Optional[str] = Query(None, description="Region search term, e.g. Riga"),
-    status: str = Query("active", pattern="^(active|liquidated|all)$"),
+    status: str = Query("all", pattern="^(active|liquidated|all)$"),
     min_turnover: Optional[int] = Query(None),
     max_turnover: Optional[int] = Query(None),
     min_employees: Optional[int] = Query(None),
@@ -48,6 +49,8 @@ def list_companies(
     if not year:
         # Simple heuristic: last year - 1
         year = 2024 
+        
+    prev_year = year - 1
     
     # Base Query Construction
     
@@ -81,9 +84,6 @@ def list_companies(
     
     if nace:
         # Support multiple NACE codes
-        # If passed as single string with commas, split it
-        # FastAPI handles List[str] if passed as ?nace=A&nace=B
-        # But let's handle safety
         nace_clauses = []
         for i, code in enumerate(nace):
             param_name = f"nace_{i}"
@@ -122,20 +122,25 @@ def list_companies(
         """)
 
     # Filter NaN from sorting fields to avoid bad data
-    # ALWAYS exclude NaN if sorting by numeric fields, to satisfy user expectation
     if sort_by in ["turnover", "profit"]:
         where_clauses.append(f"f.{sort_by} <> 'NaN'")
         where_clauses.append(f"f.{sort_by} IS NOT NULL")
-        where_clauses.append("f.{sort_by} > 0".replace("{sort_by}", sort_by))
+        where_clauses.append(f"f.{sort_by} > 0")
     
-    # When sorting by salary, only include companies with salary data (>= 5 employees)
+    if sort_by == "growth":
+         # Must have data for both years to calculate growth
+         where_clauses.append("f.turnover IS NOT NULL AND f.turnover <> 'NaN' AND f.turnover > 0")
+         where_clauses.append("prev.turnover IS NOT NULL AND prev.turnover <> 'NaN' AND prev.turnover > 0")
+    
     if sort_by == "salary":
         where_clauses.append("salary_calc.avg_gross IS NOT NULL")
         where_clauses.append("salary_calc.avg_gross > 0")
 
-
     # Dynamic Order Clause
     sort_col = SORT_FIELDS.get(sort_by, "f.turnover")
+    if sort_by == "growth":
+        sort_col = "ROUND(((CAST(f.turnover AS NUMERIC) - CAST(prev.turnover AS NUMERIC)) / NULLIF(ABS(CAST(prev.turnover AS NUMERIC)), 0)) * 100, 1)"
+        
     order_clause = f"{sort_col} {order.upper()} NULLS LAST"
     
     # Construct Query
@@ -146,9 +151,11 @@ def list_companies(
             f.turnover, f.profit, f.employees, f.year as fin_year,
             { "salary_calc.avg_gross as avg_salary," if sort_by == "salary" else "NULL as avg_salary," }
             { "tp.total_tax_paid," if sort_by == "tax" else "NULL as total_tax_paid," }
-            (f.profit / NULLIF(f.turnover, 0)) * 100 as profit_margin
+            (f.profit / NULLIF(f.turnover, 0)) * 100 as profit_margin,
+            ROUND(((CAST(f.turnover AS NUMERIC) - CAST(prev.turnover AS NUMERIC)) / NULLIF(ABS(CAST(prev.turnover AS NUMERIC)), 0)) * 100, 1) as turnover_growth
         FROM companies c
         LEFT JOIN financial_reports f ON f.company_regcode = c.regcode AND f.year = :year
+        LEFT JOIN financial_reports prev ON prev.company_regcode = c.regcode AND prev.year = :prev_year
         {cte_salary}
         {cte_tax}
         WHERE {" AND ".join(where_clauses)}
@@ -165,28 +172,22 @@ def list_companies(
             SUM(f.employees) as total_employees
         FROM companies c
         LEFT JOIN financial_reports f ON f.company_regcode = c.regcode AND f.year = :year
+        LEFT JOIN financial_reports prev ON prev.company_regcode = c.regcode AND prev.year = :prev_year
         {cte_salary}
         {cte_tax}
         WHERE {" AND ".join(where_clauses)}
     """
     
     # Logging for debugging
-    logger.info(f"Explorer Request - Status: '{status}', Region: '{region}', NACE: '{nace}'")
-    logger.info(f"WHERE clauses: {where_clauses}")
-    logger.info(f"Explorer Query params: {params}, year: {year}")
-    logger.info(f"Explorer Stats Query: {stats_query}")
+    logger.info(f"Explorer Request - Status: '{status}', Region: '{region}', Sort: '{sort_by}'")
     
     try:
         with engine.connect() as conn:
             # Execute Stats (includes Count)
-            logger.info("Executing stats query...")
-            stats = conn.execute(text(stats_query), {**params, "year": year}).fetchone()
-            logger.info(f"Stats result: count={stats.total_count if stats else 'None'}")
+            stats = conn.execute(text(stats_query), {**params, "year": year, "prev_year": prev_year}).fetchone()
             
             # Execute List
-            logger.info("Executing main query...")
-            result = conn.execute(text(main_query), {**params, "limit": limit, "offset": offset, "year": year}).fetchall()
-            logger.info(f"Main query returned {len(result)} rows")
+            result = conn.execute(text(main_query), {**params, "limit": limit, "offset": offset, "year": year, "prev_year": prev_year}).fetchall()
             
             companies = []
             for r in result:
@@ -204,7 +205,8 @@ def list_companies(
                     "employees": r.employees,
                     "salary": safe_float(r.avg_salary) if hasattr(r, 'avg_salary') else None,
                     "profit_margin": safe_float(r.profit_margin),
-                    "tax_paid": safe_float(r.total_tax_paid) if hasattr(r, 'total_tax_paid') else None
+                    "tax_paid": safe_float(r.total_tax_paid) if hasattr(r, 'total_tax_paid') else None,
+                    "turnover_growth": safe_float(r.turnover_growth)
                 })
             
             return {

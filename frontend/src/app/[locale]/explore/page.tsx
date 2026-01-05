@@ -256,6 +256,16 @@ function ExploreContent() {
             });
         }
 
+        if (filters.sort_by === 'growth') {
+            baseColumns.push({
+                key: 'turnover_growth',
+                label: 'Izaugsme',
+                align: 'right',
+                sortable: true,
+                render: (val: any) => val ? <span className="font-bold text-green-600">+{val}%</span> : <span className="text-gray-300">-</span>
+            });
+        }
+
         return baseColumns;
     };
 
