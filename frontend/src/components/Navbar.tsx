@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
+
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Navbar() {
@@ -65,6 +66,7 @@ export default function Navbar() {
 
                     {/* Mobile Menu Button */}
                     <div className="flex sm:hidden items-center gap-4">
+                        <LanguageSwitcher />
                         <button
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
                             className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"

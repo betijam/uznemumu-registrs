@@ -1,13 +1,19 @@
 
 import logging
 from sqlalchemy import text
-from app.services.graph_service import calculate_company_graph
-from .loader import engine
+from app.services.graph_service import calculate_company_graphs_batch
+from sqlalchemy import create_engine
+import os
 import json
 from psycopg2.extras import execute_values
 import time
 
 logger = logging.getLogger(__name__)
+
+# Create dedicated engine with high pool size for this specific ETL job
+# Standard engine from loader.py has default pool size (5), which bottlenecks 50 threads.
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@db:5432/ur_db")
+engine = create_engine(DATABASE_URL, pool_size=50, max_overflow=10, pool_pre_ping=True)
 
 def precompute_graphs():
     """
@@ -31,8 +37,6 @@ def precompute_graphs():
         # Prioritize companies with many members (likely to be slow)
         logger.info("Fetching target companies...")
         
-        # We process companies that have at least one member connection (either as owner or subsidiary)
-        # to avoid wasting time on completely isolated companies
         query = text("""
             SELECT DISTINCT c.regcode 
             FROM companies c
@@ -42,48 +46,51 @@ def precompute_graphs():
         
         companies = conn.execute(query).fetchall()
         total_count = len(companies)
+        all_regcodes = [r.regcode for r in companies]
         logger.info(f"Found {total_count} companies with connections to process.")
         
-        batch_size = 100
-        batch_data = []
-        
-        
         # Parallel processing setup
-        max_workers = 10
+        max_workers = 50
         logger.info(f"Starting parallel processing with {max_workers} workers...")
         
-        batch_size = 100
-        batch_data = [] # Buffer for main thread
-        total_processed = 0
+        # Chunk regcodes into larger batches for the workers
+        # Each worker will handle a batch of 100
+        chunk_size = 100
+        chunks = [all_regcodes[i:i + chunk_size] for i in range(0, len(all_regcodes), chunk_size)]
         
+        total_processed = 0
         start_time = time.time()
         
         from concurrent.futures import ThreadPoolExecutor, as_completed
         
-        def process_one_company(regcode):
-            """Worker function to process a single company"""
-            # Create NEW connection per thread to avoid race conditions
+        def process_batch(regcodes_chunk):
+            """Worker function to process a batch of companies"""
             with engine.connect() as thread_conn:
                 try:
-                    return regcode, calculate_company_graph(thread_conn, regcode, year=2024)
+                    return calculate_company_graphs_batch(thread_conn, regcodes_chunk, year=2024)
                 except Exception as e:
-                    return regcode, None
+                    logger.error(f"Error processing batch: {e}")
+                    return {}
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Submit all tasks
-            future_to_regcode = {executor.submit(process_one_company, row.regcode): row.regcode for row in companies}
+            # Submit chunk tasks
+            futures = [executor.submit(process_batch, chunk) for chunk in chunks]
             
-            for future in as_completed(future_to_regcode):
-                regcode, graph = future.result()
+            batch_accumulated = []
+            
+            for future in as_completed(futures):
+                results = future.result() # Dict of {regcode: graph}
                 
-                if graph:
-                    batch_data.append((regcode, json.dumps(graph)))
+                # Convert results to list tuples
+                for regcode, graph in results.items():
+                    if graph:
+                         batch_accumulated.append((regcode, json.dumps(graph)))
                 
-                # Batch upsert in main thread
-                if len(batch_data) >= batch_size:
-                    _upsert_batch(conn, batch_data)
-                    total_processed += len(batch_data)
-                    batch_data = []
+                # Upsert to DB if accumulated enough
+                if len(batch_accumulated) >= 200:
+                    _upsert_batch(conn, batch_accumulated)
+                    total_processed += len(batch_accumulated)
+                    batch_accumulated = []
                     
                     elapsed = time.time() - start_time
                     rate = total_processed / elapsed
@@ -91,8 +98,8 @@ def precompute_graphs():
                     logger.info(f"Processed {total_processed}/{total_count} ({rate:.1f} comp/sec). ETA: {remaining/60:.1f} min")
         
         # Flush remaining
-        if batch_data:
-            _upsert_batch(conn, batch_data)
+        if batch_accumulated:
+            _upsert_batch(conn, batch_accumulated)
             
     logger.info("✅ Graph pre-computation completed.")
 
