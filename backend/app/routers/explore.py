@@ -96,16 +96,14 @@ def list_companies(
             EXISTS (SELECT 1 FROM risks r WHERE r.company_regcode = c.regcode AND r.active = TRUE AND r.risk_type = 'sanction')
         """)
 
-    # Ensure data validity for sorting
-    if sort_by in ["turnover", "profit", "growth", "salary", "tax"]:
-        # When sorting by stats, we usually want non-null values
-        col = SORT_FIELDS[sort_by]
-        where_clauses.append(f"{col} IS NOT NULL")
-        if sort_by in ["turnover", "salary", "tax"]: # Positive checks
-             where_clauses.append(f"{col} > 0")
-
     # Dynamic Order Clause
     sort_col = SORT_FIELDS.get(sort_by, "s.turnover")
+    
+    # Handle NaN values by treating them as NULL for sorting, ensuring they appear last
+    if sort_by in ["turnover", "profit", "employees", "salary", "tax", "growth"]:
+        # Cast to numeric to be safe if comparing with string literal, though strictly NULLIF(col, 'NaN') works on numeric too
+        sort_col = f"NULLIF({sort_col}, 'NaN')"
+        
     order_clause = f"{sort_col} {order.upper()} NULLS LAST"
     
     # Construct Query

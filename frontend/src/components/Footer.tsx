@@ -31,7 +31,9 @@ export default function Footer() {
                     <div className="flex flex-wrap justify-center md:justify-start items-center gap-1">
                         <span>&copy; {new Date().getFullYear()} Latvijas Uzņēmumu Reģistrs 2.0.</span>
                         <span className="ml-1">Powered by</span>
-                        <img src="/animas-logo.jpg" alt="ANIMAS" className="h-4 w-auto mb-0.5" />
+                        <a href="https://animas.lv/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center hover:opacity-80 transition-opacity">
+                            <img src="/animas-logo.jpg" alt="ANIMAS" className="h-4 w-auto mb-0.5" />
+                        </a>
                         <span className="mx-1 text-gray-300">|</span>
                         <span>Visas tiesības aizsargātas.</span>
                     </div>
