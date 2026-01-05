@@ -18,13 +18,11 @@ export default function Footer() {
                             <li><Link href="/" className="hover:text-purple-600">Sākums</Link></li>
                             <li><Link href="/top-100" className="hover:text-purple-600">TOP 100</Link></li>
                             <li><Link href="/industries" className="hover:text-purple-600">Nozares</Link></li>
-                            <li><Link href="/about" className="hover:text-purple-600">Par Mums</Link></li>
                         </ul>
                     </div>
                     <div>
                         <h4 className="font-semibold text-gray-900 mb-4">Dati</h4>
                         <ul className="space-y-2 text-sm text-gray-600">
-                            <li><a href="https://info.ur.gov.lv" target="_blank" rel="noopener noreferrer" className="hover:text-purple-600">UR Atvērtie Dati</a></li>
                             <li><a href="https://data.gov.lv" target="_blank" rel="noopener noreferrer" className="hover:text-purple-600">Latvijas Atvērtie Dati</a></li>
                         </ul>
                     </div>

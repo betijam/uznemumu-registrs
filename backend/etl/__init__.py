@@ -100,6 +100,9 @@ def run_all_etl():
 
     # 9. Precompute Company Graphs (must run after all data is loaded)
     precompute_graphs()
+    
+    # 10. Refresh Materialized Views (for fast analytics)
+    refresh_materialized_views()
          
     logger.info("ETL Job Completed.")
 

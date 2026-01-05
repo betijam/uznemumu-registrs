@@ -10,13 +10,13 @@ logger = logging.getLogger(__name__)
 
 # Allowed sort fields
 SORT_FIELDS = {
-    "turnover": "f.turnover",
-    "profit": "f.profit",
-    "employees": "f.employees",
+    "turnover": "s.turnover",
+    "profit": "s.profit",
+    "employees": "s.employees",
     "reg_date": "c.registration_date",
-    "salary": "salary_calc.avg_gross",
-    "tax": "tp.total_tax_paid",
-    "growth": "growth_calc" # CTE or formula
+    "salary": "s.avg_salary",
+    "tax": "s.tax_paid",
+    "growth": "s.turnover_growth"
 }
 
 @router.get("/companies/list")
@@ -32,13 +32,13 @@ def list_companies(
     min_turnover: Optional[int] = Query(None),
     max_turnover: Optional[int] = Query(None),
     min_employees: Optional[int] = Query(None),
-    year: Optional[int] = Query(None, description="Financial year filter, defaults to latest available if sorting by finance"),
+    year: Optional[int] = Query(None, description="Financial year filter"),
     has_pvn: Optional[bool] = Query(None),
     has_sanctions: Optional[bool] = Query(None)
 ):
     """
     Universal Company Explorer Endpoint.
-    Supports filtering, sorting, and pagination for the 'Super-Table'.
+    Uses 'company_stats_materialized' for high performance.
     """
     # Cache for 5 mins
     response.headers["Cache-Control"] = "public, max-age=300"
@@ -47,34 +47,11 @@ def list_companies(
     
     # Determine efficient latest year if not provided
     if not year:
-        # Simple heuristic: last year - 1
         year = 2024 
-        
-    prev_year = year - 1
     
-    # Base Query Construction
-    
-    # If sorting by salary, we need tax payments - use INNER JOIN to exclude companies without data
-    cte_salary = ""
-    if sort_by == "salary":
-        cte_salary = f"""
-        INNER JOIN (
-            SELECT company_regcode, 
-                   (social_tax_vsaoi / NULLIF(avg_employees, 0) / 12 / 0.3409) as avg_gross
-            FROM tax_payments 
-            WHERE year = {year} AND avg_employees >= 5 AND social_tax_vsaoi > 0
-        ) salary_calc ON salary_calc.company_regcode = c.regcode
-        """
-    
-    cte_tax = ""
-    if sort_by == "tax":
-         cte_tax = f"""
-        LEFT JOIN tax_payments tp ON tp.company_regcode = c.regcode AND tp.year = {year}
-        """
-
     # Clause Builder
     where_clauses = ["1=1"]
-    params = {}
+    params = {"year": year}
     
     if status != "all":
         if status == "active":
@@ -83,7 +60,6 @@ def list_companies(
              where_clauses.append("(c.status = 'liquidated' OR c.status = 'L' OR c.status ILIKE 'likvidēts' OR c.status ILIKE 'steigta likvidācija')")
     
     if nace:
-        # Support multiple NACE codes
         nace_clauses = []
         for i, code in enumerate(nace):
             param_name = f"nace_{i}"
@@ -98,19 +74,18 @@ def list_companies(
         params["region"] = f"%{region}%"
         
     if min_turnover:
-        # IMPORTANT: Exclude NaN because NaN > 5000 is True in Postgres numeric
-        where_clauses.append("(f.turnover >= :min_t AND f.turnover <> 'NaN')")
+        where_clauses.append("(s.turnover >= :min_t)")
         params["min_t"] = min_turnover
     
     if max_turnover:
-        where_clauses.append("f.turnover <= :max_t")
+        where_clauses.append("s.turnover <= :max_t")
         params["max_t"] = max_turnover
         
     if min_employees:
         if sort_by == "reg_date": 
              where_clauses.append("c.employee_count >= :min_e") 
         else:
-             where_clauses.append("f.employees >= :min_e")
+             where_clauses.append("s.employees >= :min_e")
         params["min_e"] = min_employees
 
     if has_pvn:
@@ -121,26 +96,16 @@ def list_companies(
             EXISTS (SELECT 1 FROM risks r WHERE r.company_regcode = c.regcode AND r.active = TRUE AND r.risk_type = 'sanction')
         """)
 
-    # Filter NaN from sorting fields to avoid bad data
-    if sort_by in ["turnover", "profit"]:
-        where_clauses.append(f"f.{sort_by} <> 'NaN'")
-        where_clauses.append(f"f.{sort_by} IS NOT NULL")
-        where_clauses.append(f"f.{sort_by} > 0")
-    
-    if sort_by == "growth":
-         # Must have data for both years to calculate growth
-         where_clauses.append("f.turnover IS NOT NULL AND f.turnover <> 'NaN' AND f.turnover > 0")
-         where_clauses.append("prev.turnover IS NOT NULL AND prev.turnover <> 'NaN' AND prev.turnover > 0")
-    
-    if sort_by == "salary":
-        where_clauses.append("salary_calc.avg_gross IS NOT NULL")
-        where_clauses.append("salary_calc.avg_gross > 0")
+    # Ensure data validity for sorting
+    if sort_by in ["turnover", "profit", "growth", "salary", "tax"]:
+        # When sorting by stats, we usually want non-null values
+        col = SORT_FIELDS[sort_by]
+        where_clauses.append(f"{col} IS NOT NULL")
+        if sort_by in ["turnover", "salary", "tax"]: # Positive checks
+             where_clauses.append(f"{col} > 0")
 
     # Dynamic Order Clause
-    sort_col = SORT_FIELDS.get(sort_by, "f.turnover")
-    if sort_by == "growth":
-        sort_col = "ROUND(((CAST(f.turnover AS NUMERIC) - CAST(prev.turnover AS NUMERIC)) / NULLIF(ABS(CAST(prev.turnover AS NUMERIC)), 0)) * 100, 1)"
-        
+    sort_col = SORT_FIELDS.get(sort_by, "s.turnover")
     order_clause = f"{sort_col} {order.upper()} NULLS LAST"
     
     # Construct Query
@@ -148,16 +113,13 @@ def list_companies(
         SELECT 
             c.regcode, c.name, c.name_in_quotes, c."type" as company_type, c.type_text,
             c.nace_text, c.registration_date, c.status,
-            f.turnover, f.profit, f.employees, f.year as fin_year,
-            { "salary_calc.avg_gross as avg_salary," if sort_by == "salary" else "NULL as avg_salary," }
-            { "tp.total_tax_paid," if sort_by == "tax" else "NULL as total_tax_paid," }
-            (f.profit / NULLIF(f.turnover, 0)) * 100 as profit_margin,
-            ROUND(((CAST(f.turnover AS NUMERIC) - CAST(prev.turnover AS NUMERIC)) / NULLIF(ABS(CAST(prev.turnover AS NUMERIC)), 0)) * 100, 1) as turnover_growth
+            s.turnover, s.profit, s.employees, s.year as fin_year,
+            s.avg_salary,
+            s.tax_paid as total_tax_paid,
+            s.profit_margin,
+            s.turnover_growth
         FROM companies c
-        LEFT JOIN financial_reports f ON f.company_regcode = c.regcode AND f.year = :year
-        LEFT JOIN financial_reports prev ON prev.company_regcode = c.regcode AND prev.year = :prev_year
-        {cte_salary}
-        {cte_tax}
+        LEFT JOIN company_stats_materialized s ON s.regcode = c.regcode AND s.year = :year
         WHERE {" AND ".join(where_clauses)}
         ORDER BY {order_clause}
         LIMIT :limit OFFSET :offset
@@ -167,27 +129,23 @@ def list_companies(
     stats_query = f"""
         SELECT 
             COUNT(*) as total_count,
-            SUM(CASE WHEN f.turnover <> 'NaN' THEN f.turnover ELSE 0 END) as total_turnover,
-            SUM(CASE WHEN f.profit <> 'NaN' THEN f.profit ELSE 0 END) as total_profit,
-            SUM(f.employees) as total_employees
+            SUM(COALESCE(s.turnover, 0)) as total_turnover,
+            SUM(COALESCE(s.profit, 0)) as total_profit,
+            SUM(COALESCE(s.employees, 0)) as total_employees
         FROM companies c
-        LEFT JOIN financial_reports f ON f.company_regcode = c.regcode AND f.year = :year
-        LEFT JOIN financial_reports prev ON prev.company_regcode = c.regcode AND prev.year = :prev_year
-        {cte_salary}
-        {cte_tax}
+        LEFT JOIN company_stats_materialized s ON s.regcode = c.regcode AND s.year = :year
         WHERE {" AND ".join(where_clauses)}
     """
     
-    # Logging for debugging
-    logger.info(f"Explorer Request - Status: '{status}', Region: '{region}', Sort: '{sort_by}'")
+    logger.info(f"Explorer Request (MatView) - Sort: '{sort_by}'")
     
     try:
         with engine.connect() as conn:
-            # Execute Stats (includes Count)
-            stats = conn.execute(text(stats_query), {**params, "year": year, "prev_year": prev_year}).fetchone()
+            # Execute Stats
+            stats = conn.execute(text(stats_query), params).fetchone()
             
             # Execute List
-            result = conn.execute(text(main_query), {**params, "limit": limit, "offset": offset, "year": year, "prev_year": prev_year}).fetchall()
+            result = conn.execute(text(main_query), {**params, "limit": limit, "offset": offset}).fetchall()
             
             companies = []
             for r in result:
@@ -228,4 +186,6 @@ def list_companies(
             
     except Exception as e:
         logger.error(f"Explorer Error: {e}")
+        # Build strict fallback if MatView fails? 
+        # For now, just raise error, as MatView should exist.
         raise HTTPException(status_code=500, detail=str(e))

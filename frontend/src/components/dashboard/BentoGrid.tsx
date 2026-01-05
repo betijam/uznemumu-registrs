@@ -116,7 +116,12 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                             <div className="p-2 rounded-lg bg-white/10 text-pink-400">
                                 <Icons.Fire />
                             </div>
-                            <h3 className="font-semibold text-lg">{t('fastest_growth')}</h3>
+                            <div>
+                                <h3 className="font-semibold text-lg">{t('fastest_growth')}</h3>
+                                <p className="text-xs text-slate-400 font-medium">
+                                    Topā iekļauti uzņēmumi ar apgrozījumu virs 100k EUR un izaugsmi virs 30%
+                                </p>
+                            </div>
                         </div>
                         <Link href="/explore?sort_by=growth&order=desc" className="text-sm font-medium text-slate-300 hover:text-white bg-white/10 px-4 py-2 rounded-lg">
                             {t('view_all')}

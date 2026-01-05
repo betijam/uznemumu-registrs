@@ -232,20 +232,24 @@ function ExploreContent() {
                 align: 'center',
                 sortable: true,
                 render: (val: any) => <span className="text-gray-900">{val ?? '-'}</span>
-            }
-        );
-
-        // Conditional Columns
-        if (filters.sort_by === 'salary') {
-            baseColumns.push({
+            },
+            {
                 key: 'salary',
                 label: tTable('avg_salary'),
                 align: 'right',
                 sortable: true,
                 render: (val: any) => val ? <span className="font-bold text-green-700">{val.toFixed(0)} €</span> : <span className="text-gray-300">-</span>
-            });
-        }
+            },
+            {
+                key: 'turnover_growth',
+                label: 'Izaugsme',
+                align: 'right',
+                sortable: true,
+                render: (val: any) => val ? <span className="font-bold text-green-600">+{val}%</span> : <span className="text-gray-300">-</span>
+            }
+        );
 
+        // Conditional Columns
         if (filters.sort_by === 'tax') {
             baseColumns.push({
                 key: 'tax_paid',
@@ -253,16 +257,6 @@ function ExploreContent() {
                 align: 'right',
                 sortable: true,
                 render: (val: any) => val ? <span className="text-gray-900">{(val / 1e3).toFixed(1)} K€</span> : <span className="text-gray-300">-</span>
-            });
-        }
-
-        if (filters.sort_by === 'growth') {
-            baseColumns.push({
-                key: 'turnover_growth',
-                label: 'Izaugsme',
-                align: 'right',
-                sortable: true,
-                render: (val: any) => val ? <span className="font-bold text-green-600">+{val}%</span> : <span className="text-gray-300">-</span>
             });
         }
 
