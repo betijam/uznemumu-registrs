@@ -64,12 +64,14 @@ export default function Navbar() {
                         </button>
                     </div>
 
-                    {/* Mobile Menu Button */}
+                    {/* Mobile Menu Button - Visible ONLY on small screens */}
                     <div className="flex sm:hidden items-center gap-4">
-                        <LanguageSwitcher />
+                        <div className="block sm:hidden">
+                            <LanguageSwitcher />
+                        </div>
                         <button
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+                            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors sm:hidden"
                             aria-label="Toggle menu"
                         >
                             {isMenuOpen ? (

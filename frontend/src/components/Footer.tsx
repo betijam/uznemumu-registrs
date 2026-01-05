@@ -30,7 +30,13 @@ export default function Footer() {
                     </div>
                 </div>
                 <div className="border-t border-gray-100 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-400">
-                    <p>&copy; {new Date().getFullYear()} Latvijas Uzņēmumu Reģistrs 2.0. Visas tiesības aizsargātas.</p>
+                    <div className="flex flex-wrap justify-center md:justify-start items-center gap-1">
+                        <span>&copy; {new Date().getFullYear()} Latvijas Uzņēmumu Reģistrs 2.0.</span>
+                        <span className="ml-1">Powered by</span>
+                        <img src="/animas-logo.jpg" alt="ANIMAS" className="h-4 w-auto mb-0.5" />
+                        <span className="mx-1 text-gray-300">|</span>
+                        <span>Visas tiesības aizsargātas.</span>
+                    </div>
                     <p className="mt-2 md:mt-0">Dati tiek atjaunoti reizi dienā.</p>
                 </div>
             </div>
