@@ -7,7 +7,7 @@ import {
     MetricType,
     RegionProperties,
     getColor,
-    calculateRange,
+    getColorScale,
     formatValue,
     calculateCentroid,
     LATVIA_CENTER,
@@ -69,10 +69,27 @@ export default function RegionsMap({ onRegionClick }: RegionsMapProps) {
             });
     }, []);
 
-    // Calculate value range for current metric
-    const valueRange = useMemo(() => {
-        if (!geoData) return { min: 0, max: 0 };
-        return calculateRange(geoData.features, selectedMetric);
+    // Get color scale thresholds for legend
+    const colorScale = useMemo(() => {
+        return getColorScale(selectedMetric);
+    }, [selectedMetric]);
+
+    // Get top performers for overlay
+    const topPerformers = useMemo(() => {
+        if (!geoData) return [];
+        return [...geoData.features]
+            .sort((a: any, b: any) => (b.properties[selectedMetric] || 0) - (a.properties[selectedMetric] || 0))
+            .slice(0, 10)
+            .map((feature: any) => {
+                const coords = feature.geometry.type === "MultiPolygon"
+                    ? feature.geometry.coordinates[0]
+                    : feature.geometry.coordinates;
+                return {
+                    name: feature.properties.name,
+                    center: calculateCentroid(coords),
+                    value: feature.properties[selectedMetric] || 0,
+                };
+            });
     }, [geoData, selectedMetric]);
 
     // Calculate centroids for bubble overlay
@@ -97,7 +114,7 @@ export default function RegionsMap({ onRegionClick }: RegionsMapProps) {
         const isHovered = hoveredRegion === feature.properties.name;
 
         return {
-            fillColor: getColor(value, selectedMetric, valueRange.min, valueRange.max),
+            fillColor: getColor(value, selectedMetric),
             weight: isHovered ? 3 : 1,
             opacity: 1,
             color: isHovered ? "#1e40af" : "#666",
@@ -196,6 +213,27 @@ export default function RegionsMap({ onRegionClick }: RegionsMapProps) {
                             </Tooltip>
                         </CircleMarker>
                     ))}
+
+                {/* Top Performers Overlay */}
+                {showTopPerformers &&
+                    topPerformers.map((region: any, index: number) => (
+                        <CircleMarker
+                            key={`top-${region.name}`}
+                            center={region.center}
+                            radius={12 - index}
+                            pathOptions={{
+                                color: "#dc2626",
+                                fillColor: "#fbbf24",
+                                fillOpacity: 0.9,
+                                weight: 2,
+                            }}
+                        >
+                            <Tooltip>
+                                <div className="font-semibold">#{index + 1} {region.name}</div>
+                                <div className="text-sm">{formatValue(region.value, selectedMetric)}</div>
+                            </Tooltip>
+                        </CircleMarker>
+                    ))}
             </MapContainer>
 
             {/* Layer Control Panel */}
@@ -209,11 +247,7 @@ export default function RegionsMap({ onRegionClick }: RegionsMapProps) {
             />
 
             {/* Legend */}
-            <MapLegend
-                metric={selectedMetric}
-                minValue={valueRange.min}
-                maxValue={valueRange.max}
-            />
+            <MapLegend metric={selectedMetric} />
 
             {/* CSS for custom tooltip */}
             <style jsx global>{`

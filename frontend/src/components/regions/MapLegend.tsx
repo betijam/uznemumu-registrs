@@ -4,11 +4,9 @@ import { MetricType, getColorScale } from "@/lib/mapUtils";
 
 interface MapLegendProps {
     metric: MetricType;
-    minValue: number;
-    maxValue: number;
 }
 
-export default function MapLegend({ metric, minValue, maxValue }: MapLegendProps) {
+export default function MapLegend({ metric }: MapLegendProps) {
     const scale = getColorScale(metric);
 
     if (!scale) return null;
@@ -27,23 +25,32 @@ export default function MapLegend({ metric, minValue, maxValue }: MapLegendProps
         return value.toFixed(0);
     };
 
+    // Create legend labels from thresholds
+    const thresholds = scale.thresholds || [];
+    const legendLabels = [
+        "< " + formatLegendValue(thresholds[0] || 0),
+        ...thresholds.slice(0, -1).map((t, i) =>
+            formatLegendValue(t) + " - " + formatLegendValue(thresholds[i + 1])
+        ),
+        "> " + formatLegendValue(thresholds[thresholds.length - 1] || 0)
+    ];
+
     return (
-        <div className="absolute bottom-8 left-4 z-[1000] bg-white rounded-xl shadow-lg p-4">
+        <div className="absolute bottom-8 left-4 z-[1000] bg-white rounded-xl shadow-lg p-4 max-w-[200px]">
             <h4 className="text-sm font-semibold text-gray-700 mb-2">{scale.label}</h4>
 
-            <div className="flex items-center gap-1">
+            <div className="space-y-1">
                 {scale.colors.map((color, i) => (
-                    <div
-                        key={i}
-                        className="w-6 h-4 first:rounded-l last:rounded-r"
-                        style={{ backgroundColor: color }}
-                    />
+                    <div key={i} className="flex items-center gap-2">
+                        <div
+                            className="w-5 h-4 rounded"
+                            style={{ backgroundColor: color }}
+                        />
+                        <span className="text-xs text-gray-600">
+                            {legendLabels[i] || ""}
+                        </span>
+                    </div>
                 ))}
-            </div>
-
-            <div className="flex justify-between mt-1 text-xs text-gray-500">
-                <span>{formatLegendValue(minValue)}</span>
-                <span>{formatLegendValue(maxValue)}</span>
             </div>
         </div>
     );

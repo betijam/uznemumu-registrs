@@ -16,50 +16,59 @@ export interface RegionProperties {
     avg_salary: number;
 }
 
-// Color scales for each metric
-const COLOR_SCALES: Record<MetricType, { colors: string[]; label: string; format: (v: number) => string }> = {
+// Color buckets for each metric (threshold-based to avoid Riga dominance)
+const COLOR_BUCKETS: Record<MetricType, { thresholds: number[]; colors: string[]; label: string; format: (v: number) => string }> = {
     total_revenue: {
+        thresholds: [10000000, 50000000, 100000000, 500000000, 1000000000], // 10M, 50M, 100M, 500M, 1B
         colors: ['#e3f2fd', '#90caf9', '#42a5f5', '#1e88e5', '#1565c0', '#0d47a1'],
         label: 'Apgrozījums',
-        format: (v) => `€${(v / 1000000).toFixed(1)}M`
+        format: (v) => v >= 1000000000 ? `€${(v / 1000000000).toFixed(1)}B` : `€${(v / 1000000).toFixed(1)}M`
     },
     total_profit: {
+        thresholds: [1000000, 5000000, 20000000, 50000000, 100000000], // 1M, 5M, 20M, 50M, 100M
         colors: ['#e8f5e9', '#a5d6a7', '#66bb6a', '#43a047', '#2e7d32', '#1b5e20'],
         label: 'Peļņa',
-        format: (v) => `€${(v / 1000000).toFixed(1)}M`
+        format: (v) => v >= 1000000000 ? `€${(v / 1000000000).toFixed(1)}B` : `€${(v / 1000000).toFixed(1)}M`
     },
     avg_salary: {
+        thresholds: [800, 1000, 1200, 1500, 2000], // Salary buckets
         colors: ['#f3e5f5', '#ce93d8', '#ab47bc', '#8e24aa', '#6a1b9a', '#4a148c'],
         label: 'Vid. alga',
         format: (v) => `€${Math.round(v)}`
     },
     total_employees: {
+        thresholds: [500, 2000, 5000, 20000, 50000], // Employee buckets
         colors: ['#fff3e0', '#ffcc80', '#ffa726', '#fb8c00', '#f57c00', '#e65100'],
         label: 'Darbinieki',
-        format: (v) => v.toLocaleString()
+        format: (v) => v >= 1000 ? `${(v / 1000).toFixed(1)}K` : v.toString()
     }
 };
 
 /**
- * Get color for a value based on the metric and data range
+ * Get color for a value using threshold buckets (logarithmic-like distribution)
  */
-export function getColor(value: number, metric: MetricType, minValue: number, maxValue: number): string {
-    const scale = COLOR_SCALES[metric];
-    if (!scale || value === 0 || maxValue === minValue) {
+export function getColor(value: number, metric: MetricType): string {
+    const bucket = COLOR_BUCKETS[metric];
+    if (!bucket || value === 0 || value === null) {
         return '#f5f5f5'; // Gray for no data
     }
 
-    const normalized = (value - minValue) / (maxValue - minValue);
-    const index = Math.min(Math.floor(normalized * scale.colors.length), scale.colors.length - 1);
+    // Find which bucket the value falls into
+    for (let i = 0; i < bucket.thresholds.length; i++) {
+        if (value < bucket.thresholds[i]) {
+            return bucket.colors[i];
+        }
+    }
 
-    return scale.colors[Math.max(0, index)];
+    // Value exceeds all thresholds - return darkest color
+    return bucket.colors[bucket.colors.length - 1];
 }
 
 /**
  * Get the color scale configuration for a metric
  */
 export function getColorScale(metric: MetricType) {
-    return COLOR_SCALES[metric];
+    return COLOR_BUCKETS[metric];
 }
 
 /**
@@ -84,7 +93,7 @@ export function calculateRange(features: any[], metric: MetricType): { min: numb
  * Format a value for display based on metric type
  */
 export function formatValue(value: number, metric: MetricType): string {
-    return COLOR_SCALES[metric]?.format(value) || value.toString();
+    return COLOR_BUCKETS[metric]?.format(value) || value.toString();
 }
 
 /**

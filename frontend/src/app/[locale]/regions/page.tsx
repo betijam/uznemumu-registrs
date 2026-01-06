@@ -99,18 +99,26 @@ export default function RegionsPage() {
 
                 {/* Filters */}
                 <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-4 items-center">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Tips
-                        </label>
-                        <select
-                            value={locationType}
-                            onChange={(e) => setLocationType(e.target.value as "municipalities" | "cities")}
-                            className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/50"
+                    {/* Location Type Selector */}
+                    <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                        <button
+                            onClick={() => setLocationType("cities")}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${locationType === "cities"
+                                    ? "bg-white shadow text-gray-900"
+                                    : "text-gray-600 hover:text-gray-900"
+                                }`}
                         >
-                            <option value="cities">Pilsētas</option>
-                            <option value="municipalities">Novadi</option>
-                        </select>
+                            Pilsētas
+                        </button>
+                        <button
+                            onClick={() => setLocationType("municipalities")}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${locationType === "municipalities"
+                                    ? "bg-white shadow text-gray-900"
+                                    : "text-gray-600 hover:text-gray-900"
+                                }`}
+                        >
+                            Novadi
+                        </button>
                     </div>
 
                     {/* View Toggle */}
@@ -118,8 +126,8 @@ export default function RegionsPage() {
                         <button
                             onClick={() => setViewType("table")}
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewType === "table"
-                                ? "bg-white shadow text-gray-900"
-                                : "text-gray-600 hover:text-gray-900"
+                                    ? "bg-white shadow text-gray-900"
+                                    : "text-gray-600 hover:text-gray-900"
                                 }`}
                         >
                             📊 Tabula
@@ -127,8 +135,8 @@ export default function RegionsPage() {
                         <button
                             onClick={() => setViewType("map")}
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewType === "map"
-                                ? "bg-white shadow text-gray-900"
-                                : "text-gray-600 hover:text-gray-900"
+                                    ? "bg-white shadow text-gray-900"
+                                    : "text-gray-600 hover:text-gray-900"
                                 }`}
                         >
                             🗺️ Karte
