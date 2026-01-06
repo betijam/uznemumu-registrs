@@ -7,7 +7,7 @@ from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy import text
-from app.database import get_db_connection
+from etl.loader import engine
 
 router = APIRouter(prefix="/api/analytics/people", tags=["People Analytics"])
 
@@ -59,8 +59,7 @@ def get_nace_name(code: str) -> str:
 @router.get("/highlights", response_model=HighlightsResponse)
 async def get_highlights():
     """Get top 3 highlighted persons for Elite Grid cards"""
-    conn = get_db_connection()
-    try:
+    with engine.connect() as conn:
         # Top by wealth
         result = conn.execute(text("""
             SELECT person_hash, full_name, net_worth, main_company_name, primary_nace
@@ -103,8 +102,6 @@ async def get_highlights():
         ) if row else None
 
         return HighlightsResponse(top_wealth=top_wealth, top_active=top_active, top_manager=top_manager)
-    finally:
-        conn.close()
 
 
 @router.get("/rankings", response_model=List[PersonRanking])
@@ -113,8 +110,7 @@ async def get_rankings(
     limit: int = Query(50, ge=1, le=100)
 ):
     """Get ranked list of persons by specified metric"""
-    conn = get_db_connection()
-    try:
+    with engine.connect() as conn:
         col_map = {"wealth": "net_worth", "active": "active_companies_count", "turnover": "managed_turnover"}
         order_col = col_map.get(type, "net_worth")
 
@@ -131,5 +127,3 @@ async def get_rankings(
             value=float(row.value or 0), main_company=row.main_company_name,
             primary_nace=get_nace_name(row.primary_nace), active_companies=row.active_companies_count
         ) for row in result]
-    finally:
-        conn.close()
