@@ -9,6 +9,8 @@ interface LayerControlProps {
     onBubblesChange: (show: boolean) => void;
     showTopPerformers: boolean;
     onTopPerformersChange: (show: boolean) => void;
+    showCities: boolean;
+    onShowCitiesChange: (show: boolean) => void;
 }
 
 const METRICS: { value: MetricType; label: string; icon: string }[] = [
@@ -25,6 +27,8 @@ export default function LayerControl({
     onBubblesChange,
     showTopPerformers,
     onTopPerformersChange,
+    showCities,
+    onShowCitiesChange,
 }: LayerControlProps) {
     return (
         <div className="absolute top-4 right-4 z-[1000] bg-white rounded-xl shadow-lg p-4 min-w-[200px]">
@@ -38,8 +42,8 @@ export default function LayerControl({
                         <label
                             key={metric.value}
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${selectedMetric === metric.value
-                                    ? "bg-primary/10 text-primary"
-                                    : "hover:bg-gray-50"
+                                ? "bg-primary/10 text-primary"
+                                : "hover:bg-gray-50"
                                 }`}
                         >
                             <input
@@ -82,7 +86,16 @@ export default function LayerControl({
                             onChange={(e) => onTopPerformersChange(e.target.checked)}
                             className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
                         />
-                        <span className="text-sm">Top 10 uzņēmumi</span>
+                        <span className="text-sm">Top 10 reģioni</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={showCities}
+                            onChange={(e) => onShowCitiesChange(e.target.checked)}
+                            className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
+                        />
+                        <span className="text-sm">🏙️ Pilsētas</span>
                     </label>
                 </div>
             </div>

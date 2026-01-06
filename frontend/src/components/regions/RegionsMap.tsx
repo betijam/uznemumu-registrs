@@ -53,6 +53,8 @@ export default function RegionsMap({ onRegionClick }: RegionsMapProps) {
     const [selectedMetric, setSelectedMetric] = useState<MetricType>("total_revenue");
     const [showBubbles, setShowBubbles] = useState(false);
     const [showTopPerformers, setShowTopPerformers] = useState(false);
+    const [showCities, setShowCities] = useState(true); // Default ON to show cities
+    const [citiesData, setCitiesData] = useState<any[]>([]);
     const [hoveredRegion, setHoveredRegion] = useState<string | null>(null);
 
     // Load GeoJSON data
@@ -67,6 +69,12 @@ export default function RegionsMap({ onRegionClick }: RegionsMapProps) {
                 console.error("Failed to load GeoJSON:", err);
                 setLoading(false);
             });
+
+        // Load cities data
+        fetch("/cities.json")
+            .then((res) => res.json())
+            .then((data) => setCitiesData(data))
+            .catch((err) => console.error("Failed to load cities:", err));
     }, []);
 
     // Get color scale thresholds for legend
@@ -234,6 +242,28 @@ export default function RegionsMap({ onRegionClick }: RegionsMapProps) {
                             </Tooltip>
                         </CircleMarker>
                     ))}
+
+                {/* Cities Overlay */}
+                {showCities &&
+                    citiesData.map((city: any) => (
+                        <CircleMarker
+                            key={`city-${city.name}`}
+                            center={[city.lat, city.lng]}
+                            radius={Math.max(4, Math.log10(city.company_count + 1) * 3)}
+                            pathOptions={{
+                                color: "#1e3a5f",
+                                fillColor: getColor(city[selectedMetric.replace('total_', '')] || city[selectedMetric] || 0, selectedMetric),
+                                fillOpacity: 0.85,
+                                weight: 2,
+                            }}
+                        >
+                            <Tooltip>
+                                <div className="font-semibold">{city.name}</div>
+                                <div className="text-sm">{city.company_count.toLocaleString()} uzņēmumi</div>
+                                <div className="text-sm">{formatValue(city[selectedMetric] || 0, selectedMetric)}</div>
+                            </Tooltip>
+                        </CircleMarker>
+                    ))}
             </MapContainer>
 
             {/* Layer Control Panel */}
@@ -244,6 +274,8 @@ export default function RegionsMap({ onRegionClick }: RegionsMapProps) {
                 onBubblesChange={setShowBubbles}
                 showTopPerformers={showTopPerformers}
                 onTopPerformersChange={setShowTopPerformers}
+                showCities={showCities}
+                onShowCitiesChange={setShowCities}
             />
 
             {/* Legend */}

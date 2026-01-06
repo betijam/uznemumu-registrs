@@ -1,0 +1,632 @@
+[
+  {
+    "name": "Rīga",
+    "lat": 56.9496,
+    "lng": 24.1052,
+    "company_count": 88292,
+    "total_employees": 414315,
+    "total_revenue": 52730472870.0,
+    "total_profit": 3077869317.0,
+    "avg_salary": 1514.0888312929424
+  },
+  {
+    "name": "Liepāja",
+    "lat": 56.5047,
+    "lng": 21.0108,
+    "company_count": 6184,
+    "total_employees": 23979,
+    "total_revenue": 2258963727.0,
+    "total_profit": 168278159.0,
+    "avg_salary": 1230.769985942424
+  },
+  {
+    "name": "Jūrmala",
+    "lat": 56.9681,
+    "lng": 23.7703,
+    "company_count": 5428,
+    "total_employees": 14523,
+    "total_revenue": 910505548.0,
+    "total_profit": 58282967.0,
+    "avg_salary": 1057.6808798638328
+  },
+  {
+    "name": "Jelgava",
+    "lat": 56.6511,
+    "lng": 23.7211,
+    "company_count": 4899,
+    "total_employees": 14382,
+    "total_revenue": 1405981772.0,
+    "total_profit": 42478428.0,
+    "avg_salary": 1131.1867027319624
+  },
+  {
+    "name": "Daugavpils",
+    "lat": 55.8747,
+    "lng": 26.536,
+    "company_count": 4593,
+    "total_employees": 21970,
+    "total_revenue": 1217791121.0,
+    "total_profit": 48446410.0,
+    "avg_salary": 988.0544769342265
+  },
+  {
+    "name": "Mārupe",
+    "lat": 56.9069,
+    "lng": 24.0389,
+    "company_count": 2647,
+    "total_employees": 16091,
+    "total_revenue": 3162732987.0,
+    "total_profit": 123763393.0,
+    "avg_salary": 1518.955605197905
+  },
+  {
+    "name": "Ventspils",
+    "lat": 57.3942,
+    "lng": 21.5647,
+    "company_count": 2535,
+    "total_employees": 10603,
+    "total_revenue": 984985404.0,
+    "total_profit": 27611181.0,
+    "avg_salary": 1312.1442206349252
+  },
+  {
+    "name": "Ogre",
+    "lat": 56.8166,
+    "lng": 24.6055,
+    "company_count": 2055,
+    "total_employees": 5307,
+    "total_revenue": 331416699.0,
+    "total_profit": 12461232.0,
+    "avg_salary": 1057.2143760396373
+  },
+  {
+    "name": "Valmiera",
+    "lat": 57.5384,
+    "lng": 25.4263,
+    "company_count": 2030,
+    "total_employees": 9130,
+    "total_revenue": 1042511572.0,
+    "total_profit": 14275408.0,
+    "avg_salary": 1332.70783074945
+  },
+  {
+    "name": "Rēzekne",
+    "lat": 56.5099,
+    "lng": 27.3345,
+    "company_count": 1861,
+    "total_employees": 8050,
+    "total_revenue": 457222685.0,
+    "total_profit": 12380645.0,
+    "avg_salary": 970.4192076496665
+  },
+  {
+    "name": "Sigulda",
+    "lat": 57.1536,
+    "lng": 24.8536,
+    "company_count": 1728,
+    "total_employees": 5271,
+    "total_revenue": 395839339.0,
+    "total_profit": 20719777.0,
+    "avg_salary": 964.7648342528375
+  },
+  {
+    "name": "Cēsis",
+    "lat": 57.3119,
+    "lng": 25.2744,
+    "company_count": 1714,
+    "total_employees": 5535,
+    "total_revenue": 505422810.0,
+    "total_profit": 34844605.0,
+    "avg_salary": 1156.0199046306536
+  },
+  {
+    "name": "Jēkabpils",
+    "lat": 56.5,
+    "lng": 25.8667,
+    "company_count": 1553,
+    "total_employees": 6192,
+    "total_revenue": 471804783.0,
+    "total_profit": 9688100.0,
+    "avg_salary": 1093.287673749405
+  },
+  {
+    "name": "Salaspils",
+    "lat": 56.8617,
+    "lng": 24.3492,
+    "company_count": 1427,
+    "total_employees": 3431,
+    "total_revenue": 247459857.0,
+    "total_profit": 3239162.0,
+    "avg_salary": 1050.7975103027195
+  },
+  {
+    "name": "Tukums",
+    "lat": 56.9669,
+    "lng": 23.1552,
+    "company_count": 1295,
+    "total_employees": 5316,
+    "total_revenue": 509349375.0,
+    "total_profit": 20820411.0,
+    "avg_salary": 1124.589366014884
+  },
+  {
+    "name": "Kuldīga",
+    "lat": 56.9678,
+    "lng": 21.9686,
+    "company_count": 1059,
+    "total_employees": 3551,
+    "total_revenue": 316589340.0,
+    "total_profit": 18791388.0,
+    "avg_salary": 1058.2957746585505
+  },
+  {
+    "name": "Saldus",
+    "lat": 56.6636,
+    "lng": 22.4883,
+    "company_count": 1055,
+    "total_employees": 2828,
+    "total_revenue": 249013573.0,
+    "total_profit": 11518138.0,
+    "avg_salary": 1080.7041224856846
+  },
+  {
+    "name": "Talsi",
+    "lat": 57.2453,
+    "lng": 22.5756,
+    "company_count": 931,
+    "total_employees": 2785,
+    "total_revenue": 281145099.0,
+    "total_profit": 16604832.0,
+    "avg_salary": 1226.7300628714115
+  },
+  {
+    "name": "Ikšķile",
+    "lat": 56.8336,
+    "lng": 24.5028,
+    "company_count": 907,
+    "total_employees": 1771,
+    "total_revenue": 163142764.0,
+    "total_profit": 8121152.0,
+    "avg_salary": 907.7998361025756
+  },
+  {
+    "name": "Ādaži",
+    "lat": 57.0753,
+    "lng": 24.3214,
+    "company_count": 875,
+    "total_employees": 2916,
+    "total_revenue": 244022912.0,
+    "total_profit": 14361025.0,
+    "avg_salary": 1133.309535836369
+  },
+  {
+    "name": "Bauska",
+    "lat": 56.4075,
+    "lng": 24.1944,
+    "company_count": 766,
+    "total_employees": 1960,
+    "total_revenue": 144301698.0,
+    "total_profit": 5905902.0,
+    "avg_salary": 1112.202965638365
+  },
+  {
+    "name": "Olaine",
+    "lat": 56.7853,
+    "lng": 23.9381,
+    "company_count": 727,
+    "total_employees": 3876,
+    "total_revenue": 218817003.0,
+    "total_profit": 9915923.0,
+    "avg_salary": 1591.7885970561492
+  },
+  {
+    "name": "Dobele",
+    "lat": 56.6253,
+    "lng": 23.2781,
+    "company_count": 689,
+    "total_employees": 4078,
+    "total_revenue": 623090878.0,
+    "total_profit": 47663053.0,
+    "avg_salary": 1354.807671054982
+  },
+  {
+    "name": "Saulkrasti",
+    "lat": 57.2594,
+    "lng": 24.4094,
+    "company_count": 660,
+    "total_employees": 1368,
+    "total_revenue": 142617076.0,
+    "total_profit": 5977933.0,
+    "avg_salary": 1175.650535609823
+  },
+  {
+    "name": "Madona",
+    "lat": 56.8536,
+    "lng": 26.2178,
+    "company_count": 641,
+    "total_employees": 1901,
+    "total_revenue": 107395131.0,
+    "total_profit": 3572361.0,
+    "avg_salary": 1070.5027813862068
+  },
+  {
+    "name": "Limbaži",
+    "lat": 57.5147,
+    "lng": 24.7133,
+    "company_count": 582,
+    "total_employees": 1943,
+    "total_revenue": 139800815.0,
+    "total_profit": 3114722.0,
+    "avg_salary": 1062.6959187793711
+  },
+  {
+    "name": "Gulbene",
+    "lat": 57.1769,
+    "lng": 26.7511,
+    "company_count": 569,
+    "total_employees": 1169,
+    "total_revenue": 70424089.0,
+    "total_profit": 649893.0,
+    "avg_salary": 865.0319768895835
+  },
+  {
+    "name": "Ķekava",
+    "lat": 56.8269,
+    "lng": 24.2292,
+    "company_count": 551,
+    "total_employees": 2225,
+    "total_revenue": 233651890.0,
+    "total_profit": 2450253.0,
+    "avg_salary": 1366.5980641566923
+  },
+  {
+    "name": "Alūksne",
+    "lat": 57.4217,
+    "lng": 27.0472,
+    "company_count": 500,
+    "total_employees": 1269,
+    "total_revenue": 61998791.0,
+    "total_profit": 748232.0,
+    "avg_salary": 927.0589304350941
+  },
+  {
+    "name": "Aizkraukle",
+    "lat": 56.6006,
+    "lng": 25.2556,
+    "company_count": 481,
+    "total_employees": 1654,
+    "total_revenue": 124680751.0,
+    "total_profit": 4435179.0,
+    "avg_salary": 1195.3791606499487
+  },
+  {
+    "name": "Lielvārde",
+    "lat": 56.7208,
+    "lng": 24.8053,
+    "company_count": 470,
+    "total_employees": 1229,
+    "total_revenue": 125607194.0,
+    "total_profit": 6333894.0,
+    "avg_salary": 1094.099918020113
+  },
+  {
+    "name": "Krāslava",
+    "lat": 55.8958,
+    "lng": 27.1689,
+    "company_count": 425,
+    "total_employees": 1339,
+    "total_revenue": 66583407.0,
+    "total_profit": 1949123.0,
+    "avg_salary": 988.0004207519607
+  },
+  {
+    "name": "Ludza",
+    "lat": 56.5486,
+    "lng": 27.7192,
+    "company_count": 425,
+    "total_employees": 1435,
+    "total_revenue": 58609098.0,
+    "total_profit": 5334306.0,
+    "avg_salary": 860.9124007230384
+  },
+  {
+    "name": "Līvāni",
+    "lat": 56.3542,
+    "lng": 26.1764,
+    "company_count": 420,
+    "total_employees": 1392,
+    "total_revenue": 121180513.0,
+    "total_profit": 27238919.0,
+    "avg_salary": 1430.6154355178048
+  },
+  {
+    "name": "Balvi",
+    "lat": 57.1311,
+    "lng": 27.2658,
+    "company_count": 411,
+    "total_employees": 1054,
+    "total_revenue": 41469102.0,
+    "total_profit": 1790668.0,
+    "avg_salary": 959.7564577030696
+  },
+  {
+    "name": "Smiltene",
+    "lat": 57.4244,
+    "lng": 25.9019,
+    "company_count": 403,
+    "total_employees": 3385,
+    "total_revenue": 382141837.0,
+    "total_profit": 28744970.0,
+    "avg_salary": 1048.0756454927523
+  },
+  {
+    "name": "Preiļi",
+    "lat": 56.2942,
+    "lng": 26.7247,
+    "company_count": 383,
+    "total_employees": 2134,
+    "total_revenue": 143043071.0,
+    "total_profit": 1704966.0,
+    "avg_salary": 985.0617927537319
+  },
+  {
+    "name": "Baldone",
+    "lat": 56.7456,
+    "lng": 24.3933,
+    "company_count": 351,
+    "total_employees": 568,
+    "total_revenue": 31799145.0,
+    "total_profit": 1038445.0,
+    "avg_salary": 913.9410384276914
+  },
+  {
+    "name": "Aizpute",
+    "lat": 56.7183,
+    "lng": 21.6,
+    "company_count": 324,
+    "total_employees": 704,
+    "total_revenue": 36223806.0,
+    "total_profit": 32702.0,
+    "avg_salary": 910.2147040579957
+  },
+  {
+    "name": "Valka",
+    "lat": 57.775,
+    "lng": 26.0092,
+    "company_count": 318,
+    "total_employees": 965,
+    "total_revenue": 66008732.0,
+    "total_profit": 29830.0,
+    "avg_salary": 938.0152303712026
+  },
+  {
+    "name": "Kandava",
+    "lat": 57.0356,
+    "lng": 22.7683,
+    "company_count": 266,
+    "total_employees": 585,
+    "total_revenue": 28858653.0,
+    "total_profit": 1070835.0,
+    "avg_salary": 841.5573621645783
+  },
+  {
+    "name": "Brocēni",
+    "lat": 56.6836,
+    "lng": 22.5783,
+    "company_count": 231,
+    "total_employees": 362,
+    "total_revenue": 25359124.0,
+    "total_profit": 695379.0,
+    "avg_salary": 943.4095335601729
+  },
+  {
+    "name": "Ķegums",
+    "lat": 56.7433,
+    "lng": 24.725,
+    "company_count": 212,
+    "total_employees": 363,
+    "total_revenue": 22423767.0,
+    "total_profit": 1486734.0,
+    "avg_salary": 743.2895686788947
+  },
+  {
+    "name": "Pļaviņas",
+    "lat": 56.6175,
+    "lng": 25.7197,
+    "company_count": 161,
+    "total_employees": 321,
+    "total_revenue": 18611300.0,
+    "total_profit": -507824.0,
+    "avg_salary": 975.9460252273394
+  },
+  {
+    "name": "Koknese",
+    "lat": 56.6539,
+    "lng": 25.4378,
+    "company_count": 159,
+    "total_employees": 358,
+    "total_revenue": 23223310.0,
+    "total_profit": 558850.0,
+    "avg_salary": 886.185527582059
+  },
+  {
+    "name": "Viļāni",
+    "lat": 56.55,
+    "lng": 26.925,
+    "company_count": 141,
+    "total_employees": 601,
+    "total_revenue": 31031719.0,
+    "total_profit": 1735279.0,
+    "avg_salary": 938.6684616617238
+  },
+  {
+    "name": "Pāvilosta",
+    "lat": 56.8892,
+    "lng": 21.1781,
+    "company_count": 128,
+    "total_employees": 247,
+    "total_revenue": 8047968.0,
+    "total_profit": 69019.0,
+    "avg_salary": 756.7351554495559
+  },
+  {
+    "name": "Auce",
+    "lat": 56.4594,
+    "lng": 22.8997,
+    "company_count": 123,
+    "total_employees": 335,
+    "total_revenue": 13329998.0,
+    "total_profit": 650672.0,
+    "avg_salary": 997.7039174803809
+  },
+  {
+    "name": "Stende",
+    "lat": 57.1856,
+    "lng": 22.5378,
+    "company_count": 120,
+    "total_employees": 264,
+    "total_revenue": 17875107.0,
+    "total_profit": 537515.0,
+    "avg_salary": 991.6210612838564
+  },
+  {
+    "name": "Skrunda",
+    "lat": 56.6761,
+    "lng": 22.0203,
+    "company_count": 114,
+    "total_employees": 230,
+    "total_revenue": 11803768.0,
+    "total_profit": -527938.0,
+    "avg_salary": 894.1691841640263
+  },
+  {
+    "name": "Sabile",
+    "lat": 57.0461,
+    "lng": 22.5711,
+    "company_count": 109,
+    "total_employees": 102,
+    "total_revenue": 4013794.0,
+    "total_profit": 305370.0,
+    "avg_salary": 662.4311669408231
+  },
+  {
+    "name": "Jaunjelgava",
+    "lat": 56.6128,
+    "lng": 25.0781,
+    "company_count": 108,
+    "total_employees": 528,
+    "total_revenue": 331650738.0,
+    "total_profit": 33000167.0,
+    "avg_salary": 1907.2780069682183
+  },
+  {
+    "name": "Cesvaine",
+    "lat": 56.9683,
+    "lng": 26.3089,
+    "company_count": 107,
+    "total_employees": 294,
+    "total_revenue": 29949914.0,
+    "total_profit": 48212.0,
+    "avg_salary": 1261.3761596716931
+  },
+  {
+    "name": "Viesīte",
+    "lat": 56.3447,
+    "lng": 25.555,
+    "company_count": 104,
+    "total_employees": 176,
+    "total_revenue": 8058779.0,
+    "total_profit": 759287.0,
+    "avg_salary": 783.8904689632303
+  },
+  {
+    "name": "Ilūkste",
+    "lat": 55.9789,
+    "lng": 26.2967,
+    "company_count": 97,
+    "total_employees": 274,
+    "total_revenue": 6219085.0,
+    "total_profit": 603500.0,
+    "avg_salary": 747.4837908110428
+  },
+  {
+    "name": "Lubāna",
+    "lat": 56.9,
+    "lng": 26.7167,
+    "company_count": 96,
+    "total_employees": 252,
+    "total_revenue": 13361021.0,
+    "total_profit": -224192.0,
+    "avg_salary": 920.5819562595743
+  },
+  {
+    "name": "Varakļāni",
+    "lat": 56.6094,
+    "lng": 26.7556,
+    "company_count": 91,
+    "total_employees": 422,
+    "total_revenue": 27113877.0,
+    "total_profit": 1152791.0,
+    "avg_salary": 825.5381955816556
+  },
+  {
+    "name": "Kārsava",
+    "lat": 56.7836,
+    "lng": 27.685,
+    "company_count": 90,
+    "total_employees": 232,
+    "total_revenue": 13837330.0,
+    "total_profit": 112859.0,
+    "avg_salary": 878.7029955719454
+  },
+  {
+    "name": "Dagda",
+    "lat": 56.0947,
+    "lng": 27.5361,
+    "company_count": 86,
+    "total_employees": 230,
+    "total_revenue": 15370909.0,
+    "total_profit": 1147364.0,
+    "avg_salary": 922.5866938151031
+  },
+  {
+    "name": "Zilupe",
+    "lat": 56.3875,
+    "lng": 28.1211,
+    "company_count": 57,
+    "total_employees": 100,
+    "total_revenue": 3722824.0,
+    "total_profit": 185025.0,
+    "avg_salary": 589.2996652750246
+  },
+  {
+    "name": "Viļaka",
+    "lat": 57.1844,
+    "lng": 27.6728,
+    "company_count": 56,
+    "total_employees": 29,
+    "total_revenue": 764690.0,
+    "total_profit": 24774.0,
+    "avg_salary": 642.5800984322545
+  },
+  {
+    "name": "Aknīste",
+    "lat": 56.1606,
+    "lng": 25.7489,
+    "company_count": 55,
+    "total_employees": 239,
+    "total_revenue": 21892506.0,
+    "total_profit": 501981.0,
+    "avg_salary": 1777.2943080951295
+  },
+  {
+    "name": "Durbe",
+    "lat": 56.5875,
+    "lng": 21.3658,
+    "company_count": 52,
+    "total_employees": 45,
+    "total_revenue": 1594083.0,
+    "total_profit": -20411.0,
+    "avg_salary": 734.9825624979629
+  }
+]
