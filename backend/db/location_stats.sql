@@ -26,7 +26,7 @@ latest_taxes AS (
         CASE 
             WHEN social_tax_vsaoi > 0 AND avg_employees > 0 THEN 
                 (social_tax_vsaoi / 0.3409) / avg_employees / 12
-            ELSE 0 
+            ELSE NULL 
         END as calc_avg_gross_salary
     FROM tax_payments
     WHERE year >= 2020
@@ -82,16 +82,12 @@ LEFT JOIN latest_financials f ON c.regcode = f.company_regcode
 LEFT JOIN latest_taxes t ON c.regcode = t.company_regcode
 WHERE a.municipality_name IS NOT NULL
   AND c.status = 'active'
--- exclude cities that are also distinct administrative units if they appear in the city list?
--- Usually, "Rīga" is a city. "Rīgas pilsēta" (municipality code) might also exist.
--- If we want strict separation:
--- Cities = 7 state cities + others.
--- Municipalities = 36/43 regions.
 GROUP BY a.municipality_name;
 
 -- Create indexes for fast lookups
 CREATE INDEX idx_location_stats_type_name ON public.location_statistics(location_type, location_name);
 CREATE INDEX idx_location_stats_revenue ON public.location_statistics(total_revenue DESC NULLS LAST);
+CREATE INDEX idx_location_stats_employees ON public.location_statistics(total_employees DESC NULLS LAST);
 
 -- Refresh function
 CREATE OR REPLACE FUNCTION refresh_location_statistics()
