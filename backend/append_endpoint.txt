@@ -1,0 +1,66 @@
+
+
+@router.get("/{location_type}/{name}/top-companies", response_model=List[TopCompanyInLocation])
+def get_location_top_companies(
+    location_type: str,
+    name: str,
+    limit: int = Query(20, ge=1, le=100),
+    response: Response = None,
+):
+    """
+    Get top companies in a specific location by turnover.
+    location_type: 'city' or 'municipality'
+    """
+    if response:
+        response.headers["Cache-Control"] = "public, max-age=3600"
+    
+    # Map type to column
+    column_map = {
+        "city": "city_name",
+        "municipality": "municipality_name"
+    }
+    
+    if location_type not in column_map:
+        raise HTTPException(status_code=400, detail="Invalid location_type. Use: city or municipality")
+    
+    column = column_map[location_type]
+    
+    with engine.connect() as conn:
+        result = conn.execute(text(f"""
+            SELECT 
+                c.regcode,
+                c.name,
+                fr.turnover,
+                fr.profit,
+                fr.employees,
+                c.nace_text
+            FROM companies c
+            JOIN address_dimension a ON c.addressid = a.address_id
+            LEFT JOIN LATERAL (
+                SELECT turnover, profit, employees
+                FROM financial_reports
+                WHERE company_regcode = c.regcode
+                  AND turnover IS NOT NULL
+                  AND turnover != 'Infinity'::float 
+                  AND turnover != 'NaN'::float
+                ORDER BY year DESC
+                LIMIT 1
+            ) fr ON true
+            WHERE a.{column} = :name
+              AND c.status = 'active'
+              AND fr.turnover IS NOT NULL
+            ORDER BY fr.turnover DESC
+            LIMIT :limit
+        """), {"name": name, "limit": limit})
+        
+        return [
+            TopCompanyInLocation(
+                regcode=row.regcode,
+                name=row.name,
+                turnover=safe_float(row.turnover),
+                profit=safe_float(row.profit),
+                employees=row.employees,
+                nace_text=row.nace_text
+            )
+            for row in result.fetchall()
+        ]
