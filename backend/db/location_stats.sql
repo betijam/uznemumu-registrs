@@ -8,8 +8,14 @@ WITH latest_financials AS (
     SELECT DISTINCT ON (company_regcode)
         company_regcode,
         year,
-        turnover,
-        profit,
+        CASE 
+            WHEN turnover = 'Infinity'::float OR turnover = '-Infinity'::float OR turnover = 'NaN'::float THEN NULL
+            ELSE turnover 
+        END as turnover,
+        CASE 
+            WHEN profit = 'Infinity'::float OR profit = '-Infinity'::float OR profit = 'NaN'::float THEN NULL
+            ELSE profit 
+        END as profit,
         employees
     FROM financial_reports
     WHERE year >= 2020
@@ -20,16 +26,11 @@ latest_taxes AS (
         company_regcode,
         year,
         social_tax_vsaoi,
-        avg_employees,
-        -- Calculate monthly gross salary per company
-        -- Formula: (Social Tax / 0.3409) / Avg Employees / 12
-        CASE 
-            WHEN social_tax_vsaoi > 0 AND avg_employees > 0 THEN 
-                (social_tax_vsaoi / 0.3409) / avg_employees / 12
-            ELSE NULL 
-        END as calc_avg_gross_salary
+        avg_employees
     FROM tax_payments
     WHERE year >= 2020
+      AND social_tax_vsaoi > 0
+      AND avg_employees > 0
     ORDER BY company_regcode, year DESC
 )
 SELECT 
@@ -42,11 +43,16 @@ SELECT
     SUM(f.turnover) as total_revenue,
     SUM(f.profit) as total_profit,
     
-    -- Real Average Salary (Average of company averages, consistent with Dashboard)
-    AVG(t.calc_avg_gross_salary) FILTER (WHERE t.calc_avg_gross_salary > 0 AND t.avg_employees >= 1) as avg_salary,
+    -- Weighted average salary: SUM(total_salary_paid) / SUM(employees)
+    -- total_salary_paid = (social_tax / 0.3409) / 12 * avg_employees
+    CASE 
+        WHEN SUM(t.avg_employees) > 0 THEN
+            SUM((t.social_tax_vsaoi / 0.3409) / 12) / SUM(t.avg_employees)
+        ELSE NULL
+    END as avg_salary,
     
     -- Avg Revenue per company
-    CASE WHEN COUNT(DISTINCT c.regcode) > 0 THEN SUM(f.turnover) / COUNT(DISTINCT c.regcode) ELSE 0 END as avg_revenue_per_company,
+    CASE WHEN COUNT(DISTINCT c.regcode) > 0 THEN SUM(f.turnover) / COUNT(DISTINCT c.regcode) ELSE NULL END as avg_revenue_per_company,
     
     ARRAY_AGG(c.regcode ORDER BY f.turnover DESC NULLS LAST) FILTER (WHERE f.turnover IS NOT NULL) as top_company_codes
     
@@ -70,9 +76,13 @@ SELECT
     SUM(f.turnover) as total_revenue,
     SUM(f.profit) as total_profit,
     
-    AVG(t.calc_avg_gross_salary) FILTER (WHERE t.calc_avg_gross_salary > 0 AND t.avg_employees >= 1) as avg_salary,
+    CASE 
+        WHEN SUM(t.avg_employees) > 0 THEN
+            SUM((t.social_tax_vsaoi / 0.3409) / 12) / SUM(t.avg_employees)
+        ELSE NULL
+    END as avg_salary,
     
-    CASE WHEN COUNT(DISTINCT c.regcode) > 0 THEN SUM(f.turnover) / COUNT(DISTINCT c.regcode) ELSE 0 END as avg_revenue_per_company,
+    CASE WHEN COUNT(DISTINCT c.regcode) > 0 THEN SUM(f.turnover) / COUNT(DISTINCT c.regcode) ELSE NULL END as avg_revenue_per_company,
     
     ARRAY_AGG(c.regcode ORDER BY f.turnover DESC NULLS LAST) FILTER (WHERE f.turnover IS NOT NULL) as top_company_codes
     
