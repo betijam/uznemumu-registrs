@@ -9,7 +9,7 @@ from typing import List, Optional
 from sqlalchemy import text
 from etl.loader import engine
 
-router = APIRouter(prefix="/api/analytics/people", tags=["People Analytics"])
+router = APIRouter(prefix="/analytics/people", tags=["People Analytics"])
 
 
 class PersonHighlight(BaseModel):
