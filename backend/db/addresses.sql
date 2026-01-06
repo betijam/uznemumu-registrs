@@ -194,11 +194,12 @@ BEGIN
     FROM stage.aw_novads WHERE objekta_kods IS NOT NULL;
 
     -- Calculate Hierarchy using CTE
-    -- We'll just insert directly into dimension to save space/time, or use a temp table.
-    -- Let's use a temp table for the hierarchy.
+    -- Start from ANY object type that might be in companies.addressid
+    -- (telpu grupa, ēka, pilsēta, novads, pagasts)
     CREATE TEMP TABLE tmp_hierarchy AS
     WITH RECURSIVE hierarchy AS (
-        -- Anchor: Telpu grupas (Units) - these link to Companies
+        -- Anchor: Start from ALL object types (not just telpu grupa)
+        -- Companies can have addressid pointing to any level
         SELECT
             d.kods               AS leaf_address_id,
             d.kods               AS current_kods,
@@ -208,12 +209,12 @@ BEGIN
             d.vkur_tips          AS parent_tips,
             0                    AS level
         FROM core.address_objects d
-        WHERE d.tips_cd = '109' -- Telpu grupa
-        -- AND d.source = 'DZIV' -- Redundant check but ok
+        WHERE d.tips_cd IN ('109', '108', '104', '113', '110', '107', '106')
+        -- 109=telpu grupa, 108=ēka, 104=pilsēta, 113=novads, 110=pagasts, 107=iela, 106=ciems
 
         UNION ALL
 
-        -- Recursive Step: Climb up parent
+        -- Recursive Step: Climb up parent hierarchy
         SELECT
             h.leaf_address_id,
             p.kods               AS current_kods,
@@ -226,6 +227,7 @@ BEGIN
         JOIN core.address_objects p
           ON p.kods = h.parent_kods
          AND p.tips_cd = h.parent_tips
+        WHERE h.level < 10  -- Safety limit to prevent infinite loops
     )
     SELECT * FROM hierarchy;
 
