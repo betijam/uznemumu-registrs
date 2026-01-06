@@ -111,7 +111,8 @@ def get_municipalities(
                 company_count=row.company_count,
                 total_employees=row.total_employees,
                 total_revenue=safe_float(row.total_revenue),
-                total_profit=safe_float(row.total_profit)
+                total_profit=safe_float(row.total_profit),
+                avg_salary=safe_float(row.avg_salary)
             )
             for row in result.fetchall()
         ]
@@ -202,7 +203,8 @@ def get_parishes(
                 company_count=row.company_count,
                 total_employees=row.total_employees,
                 total_revenue=safe_float(row.total_revenue),
-                total_profit=safe_float(row.total_profit)
+                total_profit=safe_float(row.total_profit),
+                avg_salary=safe_float(row.avg_salary)
             )
             for row in result.fetchall()
         ]
@@ -231,36 +233,68 @@ def get_location_stats(
     if location_type not in column_map:
         raise HTTPException(status_code=400, detail="Invalid location_type. Use: municipality, city, or parish")
     
-    column = column_map[location_type]
-    
+    # For parish, we still need to calculate on the fly as it's not in the materialized view (yet)
+    if location_type == 'parish':
+         with engine.connect() as conn:
+            result = conn.execute(text(f"""
+                SELECT 
+                    a.parish_name as name,
+                    COUNT(DISTINCT c.regcode) as company_count,
+                    SUM(fr.employees) as total_employees,
+                    SUM(fr.turnover) as total_revenue,
+                    SUM(fr.profit) as total_profit,
+                    AVG(fr.turnover) as avg_revenue_per_company,
+                    AVG(fr.avg_salary) as avg_salary
+                FROM companies c
+                JOIN address_dimension a ON c.addressid = a.address_id
+                LEFT JOIN LATERAL (
+                    SELECT employees, turnover, profit,
+                           CASE WHEN employees > 0 THEN turnover / employees ELSE NULL END as avg_salary
+                    FROM financial_reports
+                    WHERE company_regcode = c.regcode
+                    ORDER BY year DESC
+                    LIMIT 1
+                ) fr ON true
+                WHERE a.parish_name = :name
+                  AND c.status = 'active'
+                GROUP BY a.parish_name
+            """), {"name": name})
+            
+            row = result.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail=f"Parish not found")
+            
+            return LocationStats(
+                name=row.name,
+                location_type=location_type,
+                company_count=row.company_count,
+                total_employees=row.total_employees,
+                total_revenue=safe_float(row.total_revenue),
+                total_profit=safe_float(row.total_profit),
+                avg_salary=safe_float(row.avg_salary),
+                avg_revenue_per_company=safe_float(row.avg_revenue_per_company)
+            )
+
+    # For cities and municipalities, use the materialized view
     with engine.connect() as conn:
-        result = conn.execute(text(f"""
+        result = conn.execute(text("""
             SELECT 
-                a.{column} as name,
-                COUNT(DISTINCT c.regcode) as company_count,
-                SUM(fr.employees) as total_employees,
-                SUM(fr.turnover) as total_revenue,
-                SUM(fr.profit) as total_profit,
-                AVG(fr.turnover) as avg_revenue_per_company,
-                AVG(fr.avg_salary) as avg_salary
-            FROM companies c
-            JOIN address_dimension a ON c.addressid = a.address_id
-            LEFT JOIN LATERAL (
-                SELECT employees, turnover, profit, 
-                       CASE WHEN employees > 0 THEN turnover / employees ELSE NULL END as avg_salary
-                FROM financial_reports
-                WHERE company_regcode = c.regcode
-                ORDER BY year DESC
-                LIMIT 1
-            ) fr ON true
-            WHERE a.{column} = :name
-              AND c.status = 'active'
-            GROUP BY a.{column}
-        """), {"name": name})
+                location_name as name,
+                company_count,
+                total_employees,
+                total_revenue,
+                total_profit,
+                avg_salary,
+                avg_revenue_per_company
+            FROM location_statistics
+            WHERE location_type = :type
+              AND location_name = :name
+        """), {"type": location_type, "name": name})
         
         row = result.fetchone()
+        
         if not row:
-            raise HTTPException(status_code=404, detail=f"{location_type.capitalize()} not found")
+             raise HTTPException(status_code=404, detail=f"{location_type.capitalize()} not found")
         
         return LocationStats(
             name=row.name,
