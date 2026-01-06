@@ -34,3 +34,8 @@ postgres_data/
 # Python
 *.egg-info/
 .eggs/
+
+# ETL Temporary Files
+backend/temp_addresses/
+*.csv
+
