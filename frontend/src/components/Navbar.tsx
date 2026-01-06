@@ -53,6 +53,12 @@ export default function Navbar() {
                             📈 {t('analytics')}
                         </Link>
                         <Link
+                            href="/personas"
+                            className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
+                        >
+                            👤 Personas
+                        </Link>
+                        <Link
                             href="/mvk-declaration"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
                         >
