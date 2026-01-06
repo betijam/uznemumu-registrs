@@ -90,7 +90,9 @@ async def get_highlights():
         # Top by managed turnover
         result = conn.execute(text("""
             SELECT person_hash, full_name, managed_turnover, main_company_name, primary_nace
-            FROM person_analytics_cache WHERE managed_turnover > 0
+            FROM person_analytics_cache 
+            WHERE managed_turnover > 0 
+              AND managed_turnover::text != 'NaN'
             ORDER BY managed_turnover DESC LIMIT 1
         """))
         row = result.fetchone()
@@ -118,7 +120,9 @@ async def get_rankings(
             SELECT ROW_NUMBER() OVER (ORDER BY {order_col} DESC) as rank,
                 person_hash, full_name, {order_col} as value,
                 main_company_name, primary_nace, active_companies_count
-            FROM person_analytics_cache WHERE {order_col} > 0
+            FROM person_analytics_cache 
+            WHERE {order_col} > 0 
+              AND {order_col}::text != 'NaN'
             ORDER BY {order_col} DESC LIMIT :limit
         """), {"limit": limit})
 
