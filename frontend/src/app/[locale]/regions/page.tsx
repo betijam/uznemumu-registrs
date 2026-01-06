@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import Navbar from "@/components/Navbar";
+
+// Dynamic import for map (avoid SSR issues with Leaflet)
+const RegionsMap = dynamic(
+    () => import("@/components/regions/RegionsMap"),
+    { ssr: false, loading: () => <div className="w-full h-[600px] bg-gray-100 rounded-xl animate-pulse" /> }
+);
 
 interface Location {
     name: string;
@@ -31,6 +38,7 @@ export default function RegionsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [locationType, setLocationType] = useState<"municipalities" | "cities">("cities");
+    const [viewType, setViewType] = useState<"table" | "map">("table");
     const [sortColumn, setSortColumn] = useState<keyof Location>("company_count");
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
@@ -105,6 +113,28 @@ export default function RegionsPage() {
                         </select>
                     </div>
 
+                    {/* View Toggle */}
+                    <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                        <button
+                            onClick={() => setViewType("table")}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewType === "table"
+                                ? "bg-white shadow text-gray-900"
+                                : "text-gray-600 hover:text-gray-900"
+                                }`}
+                        >
+                            📊 Tabula
+                        </button>
+                        <button
+                            onClick={() => setViewType("map")}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewType === "map"
+                                ? "bg-white shadow text-gray-900"
+                                : "text-gray-600 hover:text-gray-900"
+                                }`}
+                        >
+                            🗺️ Karte
+                        </button>
+                    </div>
+
                     <div className="ml-auto text-sm text-gray-500">
                         {locations.length} {locationType === "cities" ? "pilsētas" : "novadi"}
                     </div>
@@ -144,15 +174,17 @@ export default function RegionsPage() {
                 )}
 
                 {/* Table */}
-                {loading ? (
+                {viewType === "table" && loading ? (
                     <div className="bg-white rounded-xl shadow-sm p-12 text-center">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
                         <p className="mt-4 text-gray-500">Ielādē datus...</p>
                     </div>
-                ) : error ? (
+                ) : viewType === "table" && error ? (
                     <div className="bg-red-50 rounded-xl p-8 text-center text-red-600">
                         {error}
                     </div>
+                ) : viewType === "map" ? (
+                    <RegionsMap />
                 ) : (
                     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">

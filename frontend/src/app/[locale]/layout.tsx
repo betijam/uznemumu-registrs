@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "@/app/globals.css";
+import "leaflet/dist/leaflet.css";
 import { ComparisonProvider } from "@/contexts/ComparisonContext";
 import ComparisonCart from "@/components/benchmark/ComparisonCart";
 import { NextIntlClientProvider } from 'next-intl';
