@@ -10,6 +10,7 @@ interface Location {
     total_employees: number | null;
     total_revenue: number | null;
     total_profit: number | null;
+    avg_salary: number | null;
 }
 
 const formatNumber = (num: number | null | undefined) => {
@@ -181,6 +182,12 @@ export default function RegionsPage() {
                                         </th>
                                         <th
                                             className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                            onClick={() => handleSort("avg_salary")}
+                                        >
+                                            Vid. alga <SortIcon column="avg_salary" />
+                                        </th>
+                                        <th
+                                            className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                                             onClick={() => handleSort("company_count")}
                                         >
                                             Uzņēmumi <SortIcon column="company_count" />
@@ -194,12 +201,15 @@ export default function RegionsPage() {
                                             className="hover:bg-gray-50 transition-colors"
                                         >
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className="font-medium text-gray-900">
+                                                <Link
+                                                    href={`/regions/${locationType === "cities" ? "city" : "municipality"}/${encodeURIComponent(location.name)}`}
+                                                    className="font-medium text-primary hover:underline"
+                                                >
                                                     {location.name}
-                                                </span>
+                                                </Link>
                                                 <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${locationType === "cities"
-                                                        ? "bg-purple-100 text-purple-700"
-                                                        : "bg-blue-100 text-blue-700"
+                                                    ? "bg-purple-100 text-purple-700"
+                                                    : "bg-blue-100 text-blue-700"
                                                     }`}>
                                                     {locationType === "cities" ? "Pilsēta" : "Novads"}
                                                 </span>
@@ -212,6 +222,9 @@ export default function RegionsPage() {
                                             </td>
                                             <td className="px-6 py-4 text-right whitespace-nowrap">
                                                 {formatCurrency(location.total_profit)}
+                                            </td>
+                                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                {location.avg_salary ? `€${Math.round(location.avg_salary)}` : "-"}
                                             </td>
                                             <td className="px-6 py-4 text-right whitespace-nowrap">
                                                 {formatNumber(location.company_count)}
