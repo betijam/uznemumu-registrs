@@ -7,6 +7,7 @@ import HeroSearch from "@/components/dashboard/HeroSearch";
 import MarketPulse from "@/components/dashboard/MarketPulse";
 import BentoGrid from "@/components/dashboard/BentoGrid";
 import { Link } from "@/i18n/routing";
+// Force rebuild
 import { useTranslations } from "next-intl";
 
 interface DashboardData {
