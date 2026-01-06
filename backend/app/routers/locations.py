@@ -21,6 +21,25 @@ router = APIRouter(prefix="/locations", tags=["locations"])
 
 
 # ============================================================================
+# Helper Functions
+# ============================================================================
+
+import math
+
+def safe_float(val):
+    """Convert value to JSON-safe float. Returns None for inf/NaN."""
+    if val is None:
+        return None
+    try:
+        f = float(val)
+        if math.isnan(f) or math.isinf(f):
+            return None
+        return f
+    except (ValueError, TypeError):
+        return None
+
+
+# ============================================================================
 # Pydantic Models
 # ============================================================================
 
@@ -89,8 +108,8 @@ def get_municipalities(
                 name=row.name,
                 company_count=row.company_count,
                 total_employees=row.total_employees,
-                total_revenue=float(row.total_revenue) if row.total_revenue else None,
-                total_profit=float(row.total_profit) if row.total_profit else None
+                total_revenue=safe_float(row.total_revenue),
+                total_profit=safe_float(row.total_profit)
             )
             for row in result.fetchall()
         ]
@@ -138,8 +157,8 @@ def get_cities(
                 name=row.name,
                 company_count=row.company_count,
                 total_employees=row.total_employees,
-                total_revenue=float(row.total_revenue) if row.total_revenue else None,
-                total_profit=float(row.total_profit) if row.total_profit else None
+                total_revenue=safe_float(row.total_revenue),
+                total_profit=safe_float(row.total_profit)
             )
             for row in result.fetchall()
         ]
@@ -187,8 +206,8 @@ def get_parishes(
                 name=row.name,
                 company_count=row.company_count,
                 total_employees=row.total_employees,
-                total_revenue=float(row.total_revenue) if row.total_revenue else None,
-                total_profit=float(row.total_profit) if row.total_profit else None
+                total_revenue=safe_float(row.total_revenue),
+                total_profit=safe_float(row.total_profit)
             )
             for row in result.fetchall()
         ]
@@ -253,8 +272,8 @@ def get_location_stats(
             location_type=location_type,
             company_count=row.company_count,
             total_employees=row.total_employees,
-            total_revenue=float(row.total_revenue) if row.total_revenue else None,
-            total_profit=float(row.total_profit) if row.total_profit else None,
-            avg_salary=float(row.avg_salary) if row.avg_salary else None,
-            avg_revenue_per_company=float(row.avg_revenue_per_company) if row.avg_revenue_per_company else None
+            total_revenue=safe_float(row.total_revenue),
+            total_profit=safe_float(row.total_profit),
+            avg_salary=safe_float(row.avg_salary),
+            avg_revenue_per_company=safe_float(row.avg_revenue_per_company)
         )
