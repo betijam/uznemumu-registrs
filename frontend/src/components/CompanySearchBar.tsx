@@ -79,14 +79,22 @@ export default function CompanySearchBar() {
         router.push(`/person/${person.person_id}`);
     };
 
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (searchQuery.trim().length > 1) {
+            router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+            setShowDropdown(false);
+        }
+    };
+
     const hasResults = results.companies.length > 0 || results.persons.length > 0;
 
     return (
         <div className="relative">
-            <div className="flex items-center gap-2">
+            <form onSubmit={handleSearch} className="flex items-center gap-2">
                 <div className="relative flex-1">
                     <input
-                        type="text"
+                        type="search"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Meklēt uzņēmumu vai personu..."
@@ -94,26 +102,28 @@ export default function CompanySearchBar() {
                         onFocus={() => hasResults && setShowDropdown(true)}
                         onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                     />
-                    <svg
-                        className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                        />
-                    </svg>
+                    <button type="submit" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors">
+                        <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            />
+                        </svg>
+                    </button>
                     {isSearching && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                         </div>
                     )}
                 </div>
-            </div>
+            </form>
 
             {/* Dropdown */}
             {showDropdown && hasResults && (
@@ -167,6 +177,19 @@ export default function CompanySearchBar() {
                             ))}
                         </div>
                     )}
+
+                    {/* View All Button */}
+                    <div className="bg-gray-50 px-4 py-2 text-center sticky bottom-0 border-t border-gray-100">
+                        <button
+                            onMouseDown={(e) => {
+                                e.preventDefault(); // Prevent blur
+                                handleSearch(e as unknown as React.FormEvent);
+                            }}
+                            className="text-sm font-medium text-primary hover:text-primary/80"
+                        >
+                            Skatīt visus rezultātus ({searchQuery}) &rarr;
+                        </button>
+                    </div>
                 </div>
             )}
         </div>
