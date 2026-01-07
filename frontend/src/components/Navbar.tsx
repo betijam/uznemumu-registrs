@@ -1,14 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { Link } from "@/i18n/routing";
+import { useState, useEffect } from "react";
+import { Link, useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
+import Cookies from "js-cookie";
 
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Navbar() {
     const t = useTranslations('Navigation');
+    const tAuth = useTranslations('Auth');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const router = useRouter();
+
+    useEffect(() => {
+        const token = Cookies.get('token');
+        setIsLoggedIn(!!token);
+    }, []);
+
+    const handleLogout = () => {
+        Cookies.remove('token');
+        setIsLoggedIn(false);
+        router.refresh();
+        router.push('/');
+    };
 
     return (
         <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
@@ -65,9 +81,19 @@ export default function Navbar() {
                             {t('mvk')}
                         </Link>
                         <LanguageSwitcher />
-                        <button className="inline-flex items-center gap-2 px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-primary hover:bg-secondary transition-colors shadow-sm">
-                            {t('login')}
-                        </button>
+
+                        {isLoggedIn ? (
+                            <button
+                                onClick={handleLogout}
+                                className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm"
+                            >
+                                Logout
+                            </button>
+                        ) : (
+                            <Link href="/auth/login" className="inline-flex items-center gap-2 px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-primary hover:bg-secondary transition-colors shadow-sm">
+                                {t('login')}
+                            </Link>
+                        )}
                     </div>
 
                     {/* Mobile Menu Button - Visible ONLY on small screens */}
@@ -133,9 +159,19 @@ export default function Navbar() {
                         >
                             {t('mvk')}
                         </Link>
-                        <button className="w-full mt-2 px-4 py-2.5 border border-transparent rounded-lg text-sm font-medium text-white bg-primary hover:bg-secondary transition-colors shadow-sm">
-                            {t('login')}
-                        </button>
+
+                        {isLoggedIn ? (
+                            <button
+                                onClick={handleLogout}
+                                className="w-full mt-2 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm"
+                            >
+                                Logout
+                            </button>
+                        ) : (
+                            <Link href="/auth/login" className="block w-full mt-2 px-4 py-2.5 border border-transparent rounded-lg text-sm font-medium text-white bg-primary hover:bg-secondary transition-colors shadow-sm text-center">
+                                {t('login')}
+                            </Link>
+                        )}
                     </div>
                 </div>
             )}

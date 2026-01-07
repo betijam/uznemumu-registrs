@@ -21,6 +21,13 @@
     "loading": "Ielādē...",
     "error": "Kļūda"
   },
+  "AccessControl": {
+    "restricted_access": "Ierobežota Piekļuve",
+    "register_to_view_full": "Reģistrējies, lai redzētu pilnus datus",
+    "register_now": "Reģistrēties",
+    "login": "Pieslēgties",
+    "free_views_limit": "Bezmaksas skatījumu limits sasniegts"
+  },
   "Company": {
     "notFound": "Uzņēmums nav atrasts",
     "meta_description": "Finanšu dati, amatpersonas un riski uzņēmumam {name}.",
@@ -421,5 +428,20 @@
     "show_more": "Skatīt vairāk",
     "no_data": "Nav karjeras datu",
     "current": "Pašreiz"
+  },
+  "Auth": {
+    "login_title": "Pieslēgties",
+    "register_title": "Reģistrēties",
+    "email": "E-pasts",
+    "password": "Parole",
+    "full_name": "Vārds, Uzvārds",
+    "submit_login": "Ienākt",
+    "submit_register": "Reģistrēties",
+    "have_account": "Jau ir konts?",
+    "no_account": "Nav konta?",
+    "register_link": "Reģistrējies šeit",
+    "login_link": "Pieslēdzies šeit",
+    "error_generic": "Notika kļūda",
+    "success_register": "Reģistrācija veiksmīga! Lūdzu pieslēdzieties."
   }
 }

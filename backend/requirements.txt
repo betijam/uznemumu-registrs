@@ -8,3 +8,6 @@ pandas
 requests
 apscheduler
 asgi-correlation-id
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart

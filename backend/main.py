@@ -5,7 +5,7 @@ from asgi_correlation_id import CorrelationIdMiddleware
 import logging
 import os
 from etl import run_all_etl
-from app.routers import search, companies, benchmarking, industries, dashboard, explore, benchmark, regions, person, locations, people_analytics
+from app.routers import search, companies, benchmarking, industries, dashboard, explore, benchmark, regions, person, locations, people_analytics, auth
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -41,6 +41,7 @@ app = FastAPI(title="Uzņēmumu Reģistrs API", version="1.0.0", lifespan=lifesp
 app.add_middleware(CorrelationIdMiddleware)
 
 # Include Routers
+app.include_router(auth.router)
 app.include_router(search.router)
 app.include_router(explore.router)  # Check explore before companies (to avoid /companies/list collision)
 app.include_router(companies.router)

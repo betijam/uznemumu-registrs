@@ -24,6 +24,7 @@ interface MVKData {
         address: string;
         regcode: string;
         authorized_person: string | null;
+        authorized_person_hash?: string | null;
         authorized_position: string | null;
     };
     own_financials: {
@@ -599,8 +600,22 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                     {copySuccess === "identification" ? "✓ Nokopēts!" : "📋 Kopēt"}
                                 </button>
                             </div>
-                            <div className="bg-gray-50 rounded-lg p-4 font-mono text-sm whitespace-pre-line">
-                                {getIdentificationText()}
+                            <div className="bg-gray-50 rounded-lg p-4 font-mono text-sm space-y-1">
+                                <p><span className="font-semibold">Komercsabiedrības nosaukums:</span> {mvkData.identification.name}</p>
+                                <p><span className="font-semibold">Juridiskā adrese:</span> {mvkData.identification.address}</p>
+                                <p><span className="font-semibold">Reģistrācijas numurs:</span> {mvkData.identification.regcode}</p>
+                                <p>
+                                    <span className="font-semibold">Paraksttiesīgā persona:</span>{' '}
+                                    {mvkData.identification.authorized_person_hash ? (
+                                        <Link href={`/person/${mvkData.identification.authorized_person_hash}`} className="text-blue-600 hover:underline">
+                                            {mvkData.identification.authorized_person}
+                                        </Link>
+                                    ) : (
+                                        mvkData.identification.authorized_person || "—"
+                                    )}
+                                    {' '}
+                                    ({mvkData.identification.authorized_position || "—"})
+                                </p>
                             </div>
                         </div>
 
@@ -828,6 +843,10 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                                             <Link href={`/company/${partner.regcode}`} className="text-primary hover:underline">
                                                                 {partner.name}
                                                             </Link>
+                                                        ) : partner.person_hash ? (
+                                                            <Link href={`/person/${partner.person_hash}`} className="text-primary hover:underline">
+                                                                {partner.name}
+                                                            </Link>
                                                         ) : (
                                                             partner.name
                                                         )}
@@ -894,6 +913,10 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                                     <td className="px-4 py-3 font-medium">
                                                         {entity.regcode ? (
                                                             <Link href={`/company/${entity.regcode}`} className="text-primary hover:underline">
+                                                                {entity.name}
+                                                            </Link>
+                                                        ) : entity.person_hash ? (
+                                                            <Link href={`/person/${entity.person_hash}`} className="text-primary hover:underline">
                                                                 {entity.name}
                                                             </Link>
                                                         ) : (

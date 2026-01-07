@@ -24,11 +24,16 @@ const CompanyTabs = dynamic(() => import("@/components/CompanyTabs"), {
 // Cache configuration - revalidate every 60 seconds for fresher data with caching
 const CACHE_CONFIG = { next: { revalidate: 60 } };
 
+import { headers } from "next/headers";
+
 // Data Fetching with caching
-async function getCompany(id: string) {
+async function getCompany(id: string, reqHeaders: HeadersInit = {}) {
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
     try {
-        const res = await fetch(`${API_BASE_URL}/companies/${id}`, CACHE_CONFIG);
+        const res = await fetch(`${API_BASE_URL}/companies/${id}`, {
+            ...CACHE_CONFIG,
+            headers: reqHeaders
+        });
         if (!res.ok) return null;
         return res.json();
     } catch (e) {
@@ -36,10 +41,13 @@ async function getCompany(id: string) {
     }
 }
 
-async function getGraph(id: string) {
+async function getGraph(id: string, reqHeaders: HeadersInit = {}) {
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
     try {
-        const res = await fetch(`${API_BASE_URL}/companies/${id}/graph`, CACHE_CONFIG);
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/graph`, {
+            ...CACHE_CONFIG,
+            headers: reqHeaders
+        });
         if (!res.ok) return { parents: [], children: [] };
         return res.json();
     } catch (e) {
@@ -47,10 +55,13 @@ async function getGraph(id: string) {
     }
 }
 
-async function getBenchmark(id: string) {
+async function getBenchmark(id: string, reqHeaders: HeadersInit = {}) {
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
     try {
-        const res = await fetch(`${API_BASE_URL}/companies/${id}/benchmark`, CACHE_CONFIG);
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/benchmark`, {
+            ...CACHE_CONFIG,
+            headers: reqHeaders
+        });
         if (!res.ok) return null;
         return res.json();
     } catch (e) {
@@ -58,10 +69,14 @@ async function getBenchmark(id: string) {
     }
 }
 
-async function getCompetitors(id: string) {
+async function getCompetitors(id: string, reqHeaders: HeadersInit = {}) {
+    // Competitors list is usually public, but let's pass headers for consistency
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
     try {
-        const res = await fetch(`${API_BASE_URL}/companies/${id}/competitors?limit=5`, CACHE_CONFIG);
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/competitors?limit=5`, {
+            ...CACHE_CONFIG,
+            headers: reqHeaders
+        });
         if (!res.ok) return [];
         return res.json();
     } catch (e) {
@@ -97,11 +112,23 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function CompanyPage({ params }: { params: Promise<{ id: string, locale: string }> }) {
     const { id } = await params;
 
+    // Extract headers to pass context to Backend API (View Count, Auth)
+    const headersList = await headers();
+    const viewCount = headersList.get('X-View-Count') || '0';
+    const authHeader = headersList.get('Authorization');
+
+    const apiHeaders: HeadersInit = {
+        'X-View-Count': viewCount,
+    };
+    if (authHeader) {
+        apiHeaders['Authorization'] = authHeader;
+    }
+
     const [company, graph, benchmark, competitors] = await Promise.all([
-        getCompany(id),
-        getGraph(id),
-        getBenchmark(id),
-        getCompetitors(id)
+        getCompany(id, apiHeaders),
+        getGraph(id, apiHeaders),
+        getBenchmark(id, apiHeaders),
+        getCompetitors(id, apiHeaders)
     ]);
 
     const t = await getTranslations({ locale: (await params).locale, namespace: 'Company' });

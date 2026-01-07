@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Response, Request, Depends
 from sqlalchemy import text
 from etl.loader import engine
 import logging
@@ -8,6 +8,8 @@ from typing import Optional
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# Helper to check access level (Duplicated from companies to avoid circular imports)
+from app.utils.access_control import check_access
 
 def safe_float(val):
     """Convert value to JSON-safe float. Returns None for inf/NaN."""
@@ -159,7 +161,7 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[tuple]:
 
 
 @router.get("/person/{identifier}")
-def get_person_profile(identifier: str, response: Response):
+async def get_person_profile(identifier: str, response: Response, request: Request):
     """
     Get comprehensive person profile with all business connections.
     
@@ -168,6 +170,9 @@ def get_person_profile(identifier: str, response: Response):
     - Person code fragment + slug (DDMMYY-slug)
     """
     response.headers["Cache-Control"] = "public, max-age=1800"  # 30 min cache
+    
+    # Check Access
+    has_full_access = await check_access(request)
     
     with engine.connect() as conn:
         # Resolve identifier to actual person_code and person_name
@@ -194,6 +199,28 @@ def get_person_profile(identifier: str, response: Response):
         
         if not person_info:
             raise HTTPException(status_code=404, detail="Person not found")
+
+        # RESTRICTION: Stop here if limited view
+        if not has_full_access:
+            return {
+                "person_code_masked": mask_person_code(person_code),
+                "person_code_hash": hash_person_code(person_code),
+                "full_name": person_info.person_name,
+                "birth_date": None, # Hide birth date
+                "nationality": person_info.nationality or "LV",
+                "residence": None, # Hide residence
+                "risk_badges": {"tax_debt": False, "insolvency": False, "sanctions": False}, # Hide risk flags
+                "kpi": {
+                    "active_companies_count": 0,
+                    "historical_companies_count": 0,
+                    "total_turnover_managed": 0,
+                    "total_employees_managed": 0,
+                    "capital_share_value": 0
+                },
+                "companies": [], # HIDDEN
+                "collaboration_network": [], # HIDDEN
+                "has_full_access": False
+            }
 
         # Get all related companies
         companies = conn.execute(text("""

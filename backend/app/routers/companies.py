@@ -1,12 +1,23 @@
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Response, Request, Depends
 from sqlalchemy import text
 from etl.loader import engine
 import logging
 import math
 from concurrent.futures import ThreadPoolExecutor
+import hashlib
+from app.routers.auth import get_current_user
+from typing import Optional
+
+def get_person_hash(person_code: str):
+    if not person_code:
+        return None
+    return "P-" + hashlib.md5(person_code.encode()).hexdigest()
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# Helper to check access level
+from app.utils.access_control import check_access
 
 # Global thread pool for parallel database queries
 # Using 8 workers as we have many I/O bound tasks
@@ -87,9 +98,12 @@ def calculate_company_size(employees: int, turnover: float, assets: float) -> st
 
 
 @router.get("/companies/{regcode}")
-def get_company_details(regcode: int, response: Response):
+async def get_company_details(regcode: int, response: Response, request: Request):
     # Cache for 1 hour
     response.headers["Cache-Control"] = "public, max-age=3600"
+    
+    # Check Access Level
+    has_full_access = await check_access(request)
     
     # 1. Main Info - Get this first to ensure company exists
     with engine.connect() as conn:
@@ -119,11 +133,17 @@ def get_company_details(regcode: int, response: Response):
             "nace_section": res.nace_section,
             "nace_section_text": res.nace_section_text,
             "employee_count": res.employee_count,
-            "tax_data_year": res.tax_data_year
+            "tax_data_year": res.tax_data_year,
+            # Add access flag to response so Frontend knows whether to show Teaser UI
+            "has_full_access": has_full_access
         }
 
     # Parallel Data Loading Function Definitions
     def get_financial_history():
+        # RESTRICTION: Only return full history if allowed
+        if not has_full_access:
+            return [] # Empty history for Teaser view
+            
         with engine.connect() as conn:
             fin_rows = conn.execute(text("""
                 SELECT year, turnover, profit, employees, cash_balance,
@@ -280,6 +300,10 @@ def get_company_details(regcode: int, response: Response):
             return by_type, total_score
 
     def get_persons():
+        # RESTRICTION: Hide person details if no access
+        if not has_full_access:
+            return [], [], [], 0
+
         with engine.connect() as conn:
             rows = conn.execute(text("""
                 SELECT person_name, role, share_percent, date_from, person_code, birth_date,
@@ -333,6 +357,10 @@ def get_company_details(regcode: int, response: Response):
             return ubos, members, officers, total_capital
 
     def get_procurements():
+        # Procurements are typically public data (A), but let's check if we want to teaser it.
+        # User prompt didn't strictly say procurements are B.
+        # But usually value added data is B.
+        # I'll leave procurements visible as "Public data" usually includes Govt interactions.
         with engine.connect() as conn:
             rows = conn.execute(text("""
                 SELECT authority_name, subject, amount, contract_date
@@ -363,7 +391,21 @@ def get_company_details(regcode: int, response: Response):
     
     # Construct final response
     company["financial_history"] = financial_history
-    company["finances"] = financial_history[0] if financial_history else {"turnover": None, "profit": None, "employees": None, "year": None}
+    # If no access, show latest year from main company record (which is A data) as teaser
+    # But financial_history is empty list.
+    # main company record has: employee_count, turnover (not currently in A definition in code?)
+    # Wait, in get_company_details SQL "SELECT * FROM companies" usually has turnover/profit columns if they are cached there.
+    # But let's look at `get_company_quick` - it joins.
+    # Here `res` is `SELECT * FROM companies`.
+    
+    # If restricted, we return empty financial_history.
+    # But we want to show "Blur" over data.
+    # Frontend handles empty list -> Blur.
+    
+    company["finances"] = financial_history[0] if financial_history else {
+        "turnover": None, "profit": None, "employees": res.employee_count, "year": res.tax_data_year
+    }
+    
     if financial_history:
         latest = financial_history[0]
         company["finances"].update({"turnover_growth": latest["turnover_growth"], "profit_growth": latest["profit_growth"]})
@@ -389,7 +431,7 @@ def get_company_details(regcode: int, response: Response):
 # ================================================================================
 
 @router.get("/companies/{regcode}/quick")
-def get_company_quick(regcode: int, response: Response):
+async def get_company_quick(regcode: int, response: Response, request: Request):
     """
     Ultra-fast endpoint for initial page render.
     Returns: Main info, latest finances, risks, rating.
@@ -398,6 +440,9 @@ def get_company_quick(regcode: int, response: Response):
     Target: <200ms response time (vs 900ms for full /companies/{regcode})
     """
     response.headers["Cache-Control"] = "public, max-age=3600"
+    
+    # Check Access Level
+    has_full_access = await check_access(request)
     
     with engine.connect() as conn:
         # Single query: Company + Latest Financial + Rating in one round-trip
@@ -1416,7 +1461,7 @@ def get_mvk_declaration(regcode: int, year: int = 2024):
         
         # 2. Get Authorized Person (first officer with representation rights)
         auth_person = conn.execute(text("""
-            SELECT person_name, position
+            SELECT person_name, position, person_code
             FROM persons
             WHERE company_regcode = :r AND role = 'officer'
             ORDER BY date_from DESC
@@ -1439,7 +1484,7 @@ def get_mvk_declaration(regcode: int, year: int = 2024):
         # 4. Calculate Capital and Get Owners
         owners = conn.execute(text("""
             SELECT 
-                p.person_name, p.number_of_shares, p.share_nominal_value,
+                p.person_name, p.number_of_shares, p.share_nominal_value, p.person_code,
                 p.legal_entity_regcode, c.name as legal_entity_name
             FROM persons p
             LEFT JOIN companies c ON c.regcode = p.legal_entity_regcode
@@ -1471,9 +1516,12 @@ def get_mvk_declaration(regcode: int, year: int = 2024):
                 is_legal_entity = owner.legal_entity_regcode is not None
                 financials = get_financial_data(conn, owner.legal_entity_regcode, year) if is_legal_entity else {"employees": None, "turnover": None, "balance": None}
                 
+                person_hash = get_person_hash(owner.person_code) if not is_legal_entity else None
+
                 entry = {
                     "name": owner.person_name,
                     "regcode": owner.legal_entity_regcode,
+                    "person_hash": person_hash,
                     "relation": "owner",
                     "entity_type": "legal_entity" if is_legal_entity else "physical_person",
                     "ownership_percent": round(percent, 2) if percent else None,
@@ -1626,6 +1674,7 @@ def get_mvk_declaration(regcode: int, year: int = 2024):
                 "address": company_row.address,
                 "regcode": str(company_row.regcode),
                 "authorized_person": auth_person.person_name if auth_person else None,
+                "authorized_person_hash": get_person_hash(auth_person.person_code) if auth_person else None,
                 "authorized_position": auth_person.position if auth_person else None
             },
             "own_financials": own_financials,

@@ -6,6 +6,8 @@ import CareerTimeline from "@/components/CareerTimeline";
 import { getTranslations } from "next-intl/server";
 import { formatCurrency } from "@/lib/utils";
 import PersonCompaniesTable from "@/components/person/PersonCompaniesTable";
+import { headers } from "next/headers";
+import TeaserOverlay from "@/components/TeaserOverlay";
 
 // Cache configuration
 const CACHE_CONFIG = { next: { revalidate: 1800 } }; // 30 min cache
@@ -13,8 +15,20 @@ const CACHE_CONFIG = { next: { revalidate: 1800 } }; // 30 min cache
 // Data Fetching
 async function getPersonProfile(id: string) {
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+
+    // Get headers for metered access
+    const headersList = await headers();
+    const viewCount = headersList.get('X-View-Count') || '0';
+    const authHeader = headersList.get('Authorization') || '';
+
     try {
-        const res = await fetch(`${API_BASE_URL}/person/${id}`, CACHE_CONFIG);
+        const res = await fetch(`${API_BASE_URL}/person/${id}`, {
+            ...CACHE_CONFIG,
+            headers: {
+                'X-View-Count': viewCount,
+                'Authorization': authHeader
+            }
+        });
         if (!res.ok) return null;
         return res.json();
     } catch (e) {
@@ -69,6 +83,8 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
     if (!person) {
         notFound();
     }
+
+    const hasFullAccess = person.has_full_access !== false;
 
     // Separate companies into active and historical
     const activeCompanies = person.companies.filter((c: any) => c.is_active);
@@ -137,109 +153,117 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             </div>
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-                {/* KPI Dashboard */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                        <div className="text-sm text-gray-500 mb-1">{t('active_companies')}</div>
-                        <div className="text-2xl font-bold text-primary">{person.kpi.active_companies_count}</div>
+                {!hasFullAccess ? (
+                    <div className="mt-8">
+                        <TeaserOverlay />
                     </div>
-                    <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                        <div className="text-sm text-gray-500 mb-1">{t('total_turnover')}</div>
-                        <div className="text-2xl font-bold text-success">{formatCurrency(person.kpi.total_turnover_managed)}</div>
-                    </div>
-                    <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                        <div className="text-sm text-gray-500 mb-1">{t('total_employees')}</div>
-                        <div className="text-2xl font-bold text-gray-700">{person.kpi.total_employees_managed || 0}</div>
-                    </div>
-                    <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                        <div className="text-sm text-gray-500 mb-1">{t('capital_share_value')}</div>
-                        <div className="text-2xl font-bold text-blue-600">{formatCurrency(person.kpi.capital_share_value)}</div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Companies List - Takes 2 columns */}
-                    <div className="lg:col-span-2">
-                        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                                <h2 className="text-xl font-bold text-primary">{t('related_companies')}</h2>
+                ) : (
+                    <>
+                        {/* KPI Dashboard */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                                <div className="text-sm text-gray-500 mb-1">{t('active_companies')}</div>
+                                <div className="text-2xl font-bold text-primary">{person.kpi.active_companies_count}</div>
                             </div>
-
-                            {/* Tabs */}
-                            <div className="border-b border-gray-200">
-                                <nav className="flex -mb-px">
-                                    <div className="px-6 py-3 border-b-2 border-primary font-medium text-primary text-sm">
-                                        {t('active_tab')} ({activeCompanies.length})
-                                    </div>
-                                    {historicalCompanies.length > 0 && (
-                                        <div className="px-6 py-3 text-gray-500 hover:text-gray-700 text-sm cursor-not-allowed">
-                                            {t('historical_tab')} ({historicalCompanies.length})
-                                        </div>
-                                    )}
-                                </nav>
+                            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                                <div className="text-sm text-gray-500 mb-1">{t('total_turnover')}</div>
+                                <div className="text-2xl font-bold text-success">{formatCurrency(person.kpi.total_turnover_managed)}</div>
                             </div>
-
-                            {/* Active Companies Table */}
-                            <PersonCompaniesTable activeCompanies={activeCompanies} />
+                            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                                <div className="text-sm text-gray-500 mb-1">{t('total_employees')}</div>
+                                <div className="text-2xl font-bold text-gray-700">{person.kpi.total_employees_managed || 0}</div>
+                            </div>
+                            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                                <div className="text-sm text-gray-500 mb-1">{t('capital_share_value')}</div>
+                                <div className="text-2xl font-bold text-blue-600">{formatCurrency(person.kpi.capital_share_value)}</div>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Collaboration Network - Sidebar */}
-                    <div className="lg:col-span-1">
-                        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                                <h2 className="text-lg font-bold text-primary">{t('collaboration_network')}</h2>
-                                <p className="text-xs text-gray-500 mt-1">{t('collaboration_desc')}</p>
-                            </div>
-                            <div className="p-4">
-                                {person.collaboration_network.length === 0 ? (
-                                    <p className="text-sm text-gray-500 text-center py-4">{t('no_collaboration_partners')}</p>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {person.collaboration_network.map((collab: any) => (
-                                            <div key={collab.person_id} className="group relative">
-                                                <Link
-                                                    href={`/person/${collab.person_id}`}
-                                                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                                                >
-                                                    {/* Avatar */}
-                                                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
-                                                        {getInitials(collab.name)}
-                                                    </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Companies List - Takes 2 columns */}
+                            <div className="lg:col-span-2">
+                                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                                    <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                                        <h2 className="text-xl font-bold text-primary">{t('related_companies')}</h2>
+                                    </div>
 
-                                                    {/* Content */}
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="font-medium text-sm text-primary truncate">
-                                                            {collab.name}
-                                                        </div>
-                                                        <div className="text-xs text-gray-500">
-                                                            {t('companies_together', { count: collab.companies_together })}
-                                                        </div>
-                                                    </div>
-                                                </Link>
-
-                                                {/* Tooltip - Popups on hover */}
-                                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-gray-900 text-white text-xs rounded shadow-lg z-10 pointer-events-none">
-                                                    <div className="font-semibold mb-1 border-b border-gray-700 pb-1">{t('common_companies')}</div>
-                                                    <div className="leading-relaxed">
-                                                        {collab.company_names || t('no_data')}
-                                                    </div>
-                                                    {/* Arrow */}
-                                                    <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900"></div>
-                                                </div>
+                                    {/* Tabs */}
+                                    <div className="border-b border-gray-200">
+                                        <nav className="flex -mb-px">
+                                            <div className="px-6 py-3 border-b-2 border-primary font-medium text-primary text-sm">
+                                                {t('active_tab')} ({activeCompanies.length})
                                             </div>
-                                        ))}
+                                            {historicalCompanies.length > 0 && (
+                                                <div className="px-6 py-3 text-gray-500 hover:text-gray-700 text-sm cursor-not-allowed">
+                                                    {t('historical_tab')} ({historicalCompanies.length})
+                                                </div>
+                                            )}
+                                        </nav>
                                     </div>
-                                )}
+
+                                    {/* Active Companies Table */}
+                                    <PersonCompaniesTable activeCompanies={activeCompanies} />
+                                </div>
+                            </div>
+
+                            {/* Collaboration Network - Sidebar */}
+                            <div className="lg:col-span-1">
+                                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                                    <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                                        <h2 className="text-lg font-bold text-primary">{t('collaboration_network')}</h2>
+                                        <p className="text-xs text-gray-500 mt-1">{t('collaboration_desc')}</p>
+                                    </div>
+                                    <div className="p-4">
+                                        {person.collaboration_network.length === 0 ? (
+                                            <p className="text-sm text-gray-500 text-center py-4">{t('no_collaboration_partners')}</p>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {person.collaboration_network.map((collab: any) => (
+                                                    <div key={collab.person_id} className="group relative">
+                                                        <Link
+                                                            href={`/person/${collab.person_id}`}
+                                                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                                                        >
+                                                            {/* Avatar */}
+                                                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
+                                                                {getInitials(collab.name)}
+                                                            </div>
+
+                                                            {/* Content */}
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="font-medium text-sm text-primary truncate">
+                                                                    {collab.name}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500">
+                                                                    {t('companies_together', { count: collab.companies_together })}
+                                                                </div>
+                                                            </div>
+                                                        </Link>
+
+                                                        {/* Tooltip - Popups on hover */}
+                                                        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-gray-900 text-white text-xs rounded shadow-lg z-10 pointer-events-none">
+                                                            <div className="font-semibold mb-1 border-b border-gray-700 pb-1">{t('common_companies')}</div>
+                                                            <div className="leading-relaxed">
+                                                                {collab.company_names || t('no_data')}
+                                                            </div>
+                                                            {/* Arrow */}
+                                                            <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900"></div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                {/* Career Timeline */}
-                <div className="mt-8">
-                    <CareerTimeline person_id={id} />
-                </div>
+                        {/* Career Timeline */}
+                        <div className="mt-8">
+                            <CareerTimeline person_id={id} />
+                        </div>
+                    </>
+                )}
             </main>
         </div>
     );
