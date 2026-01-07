@@ -21,8 +21,8 @@ const CompanyTabs = dynamic(() => import("@/components/CompanyTabs"), {
     ssr: true  // Keep SSR for SEO
 });
 
-// Cache configuration - revalidate every 60 seconds for fresher data with caching
-const CACHE_CONFIG = { next: { revalidate: 60 } };
+// Disable caching for company data - access control depends on user state
+const CACHE_CONFIG = { cache: 'no-store' as RequestCache };
 
 import { headers } from "next/headers";
 

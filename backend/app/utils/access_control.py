@@ -11,43 +11,8 @@ async def check_access(request: Request) -> bool:
     """
     Determine if user has FULL access to company data.
     
-    Access Rules:
-    1. Logged in users (Authorization header) -> FULL ACCESS
-    2. Bots (User-Agent) -> LIMITED ACCESS (Teaser)
-    3. Anonymous users -> METERED ACCESS (Max 2 views)
-       - View count is tracked via 'X-View-Count' header set by Frontend Middleware
+    TEMPORARILY: Always return True to restore functionality.
+    NOTE: Proper metered access will be implemented later with a different architecture
+    that doesn't conflict with Next.js caching.
     """
-    
-    # 1. Check Login (Authorization Header)
-    auth_header = request.headers.get('Authorization')
-    if auth_header and auth_header.startswith("Bearer "):
-        try:
-            token = auth_header.split(" ")[1]
-            # Simple signature verification verify
-            jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            return True # Valid token -> Full Access
-        except Exception:
-             pass # Invalid token, fall through to metered check
-
-    # 2. Check Bot
-    user_agent = request.headers.get('user-agent', '').lower()
-    if 'googlebot' in user_agent or 'bingbot' in user_agent or 'slurp' in user_agent:
-        return False # Bots get Teaser only (to avoid cloaking)
-
-    # 3. Check Metered Access (Headless/Cookie based)
-    # The frontend middleware is responsible for incrementing the cookie and sending the count here.
-    # If no header present, assume first view (give access).
-    view_count_header = request.headers.get('X-View-Count')
-    if view_count_header is None:
-        # No header = first view or header not propagated = give full access
-        return True
-    
-    try:
-        view_count = int(view_count_header)
-    except ValueError:
-        view_count = 0
-        
-    # First 2 views per day should have full access
-    ALLOWED_FREE_VIEWS = 3  # View 1, 2 are free (view_count 1, 2 < 3)
-    
-    return view_count < ALLOWED_FREE_VIEWS
+    return True
