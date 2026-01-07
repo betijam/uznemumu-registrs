@@ -13,35 +13,39 @@ ALGORITHM = "HS256"
 async def check_access(request: Request) -> bool:
     """
     Determine if user has FULL access to company data.
-    """  
+    
+    TEMPORARY: Always returning True to debug data visibility issue.
+    Re-enable metered access after verifying data shows correctly.
+    """
+    # TEMPORARY: Force full access to debug data issue
+    logger.info("[ACCESS] TEMPORARY: Granting full access for debugging")
+    return True
+    
+    # --- ORIGINAL LOGIC BELOW (disabled for debugging) ---
     # 1. Check Login (Authorization Header)
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith("Bearer "):
         try:
             token = auth_header.split(" ")[1]
-            # Simple signature verification verify
             jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             logger.info("[ACCESS] Granted via valid JWT")
-            return True # Valid token -> Full Access
+            return True
         except Exception as e:
             logger.warning(f"[ACCESS] Invalid JWT: {e}")
-            pass # Invalid token, fall through to metered check
+            pass
 
     # 2. Check Bot
     user_agent = request.headers.get('user-agent', '').lower()
     if 'googlebot' in user_agent or 'bingbot' in user_agent or 'slurp' in user_agent:
         logger.info("[ACCESS] Denied for bot (Teaser only)")
-        return False # Bots get Teaser only (to avoid cloaking)
+        return False
 
-    # 3. Check Metered Access (Headless/Cookie based)
-    # The frontend middleware is responsible for incrementing the cookie and sending the count here.
-    # If no header present, assume first view (give access).
+    # 3. Check Metered Access
     view_count_header = request.headers.get('X-View-Count')
     logger.info(f"[ACCESS] X-View-Count header value: '{view_count_header}'")
     
     if view_count_header is None:
-        # No header = first view or header not propagated = give full access
-        logger.info("[ACCESS] Granted (no X-View-Count header, assuming first view)")
+        logger.info("[ACCESS] Granted (no X-View-Count header)")
         return True
     
     try:
@@ -49,9 +53,7 @@ async def check_access(request: Request) -> bool:
     except ValueError:
         view_count = 0
         
-    # First 5 views per day should have full access (Increased for testing)
-    ALLOWED_FREE_VIEWS = 5  # View 0, 1, 2, 3, 4 are < 5.
-    
+    ALLOWED_FREE_VIEWS = 5
     result = view_count < ALLOWED_FREE_VIEWS
     logger.info(f"[ACCESS] View count: {view_count}, Limit: {ALLOWED_FREE_VIEWS}, Access: {result}")
     return result
