@@ -395,18 +395,38 @@ def get_industry_detail(
         return None
 
     try:
+        # Determine if this is a section code (2 digits) or sub-industry code (4 digits)
+        # 2-digit codes use nace_section, 4-digit codes use nace_code LIKE
+        is_section = len(nace_code) <= 2
+        
+        if is_section:
+            nace_filter = "c.nace_section = :code"
+            nace_param = nace_code
+        else:
+            nace_filter = "LEFT(c.nace_code, :code_len) = :code"
+            nace_param = nace_code
+        
+        code_len = len(nace_code)
+        
         # Year selection: validate that selected year has sufficient data for this industry
-        # Find the best year with at least 10 companies reporting data
-        best_year_row = conn.execute(text("""
+        # Find the best year with at least 5 companies reporting data (lower threshold for sub-industries)
+        min_companies = 10 if is_section else 3
+        
+        best_year_query = f"""
             SELECT f.year, COUNT(*) as cnt
             FROM financial_reports f
             JOIN companies c ON c.regcode = f.company_regcode
-            WHERE c.nace_section = :code AND f.turnover IS NOT NULL
+            WHERE {nace_filter} AND f.turnover IS NOT NULL
             GROUP BY f.year
-            HAVING COUNT(*) >= 10
+            HAVING COUNT(*) >= :min_companies
             ORDER BY f.year DESC
             LIMIT 1
-        """), {"code": nace_code}).fetchone()
+        """
+        best_year_row = conn.execute(text(best_year_query), {
+            "code": nace_param, 
+            "code_len": code_len, 
+            "min_companies": min_companies
+        }).fetchone()
         
         best_year = best_year_row.year if best_year_row else 2024
         
@@ -415,15 +435,20 @@ def get_industry_detail(
             year = best_year
         else:
             # Check if the requested year has enough data
-            year_check = conn.execute(text("""
+            year_check_query = f"""
                 SELECT COUNT(*) as cnt
                 FROM financial_reports f
                 JOIN companies c ON c.regcode = f.company_regcode
-                WHERE c.nace_section = :code AND f.year = :year AND f.turnover IS NOT NULL
-            """), {"code": nace_code, "year": year}).fetchone()
+                WHERE {nace_filter} AND f.year = :year AND f.turnover IS NOT NULL
+            """
+            year_check = conn.execute(text(year_check_query), {
+                "code": nace_param, 
+                "code_len": code_len, 
+                "year": year
+            }).fetchone()
             
-            # If requested year has very few companies (<10), use best year instead
-            if not year_check or year_check.cnt < 10:
+            # If requested year has very few companies, use best year instead
+            if not year_check or year_check.cnt < min_companies:
                 logger.info(f"Year {year} has insufficient data ({year_check.cnt if year_check else 0} companies), falling back to {best_year}")
                 year = best_year
 
@@ -469,23 +494,38 @@ def get_industry_detail(
         
         # If no NACE name found in dictionary, try database
         if not nace_name:
-            nace_db = conn.execute(text("""
-                SELECT nace_name FROM industry_stats_materialized 
-                WHERE nace_code = :code AND nace_level = 1
-                LIMIT 1
-            """), {"code": nace_code}).fetchone()
-            
-            if nace_db and nace_db.nace_name and 'cita nozare' not in nace_db.nace_name.lower():
-                nace_name = nace_db.nace_name
+            if is_section:
+                # For 2-digit codes, check materialized view first
+                nace_db = conn.execute(text("""
+                    SELECT nace_name FROM industry_stats_materialized 
+                    WHERE nace_code = :code AND nace_level = 1
+                    LIMIT 1
+                """), {"code": nace_code}).fetchone()
+                
+                if nace_db and nace_db.nace_name and 'cita nozare' not in nace_db.nace_name.lower():
+                    nace_name = nace_db.nace_name
             else:
-                # Last fallback to NACE_SECTIONS dict (for letter codes A-U)
+                # For 4-digit codes, get name from companies table
+                nace_db = conn.execute(text("""
+                    SELECT nace_text FROM companies 
+                    WHERE LEFT(nace_code, :code_len) = :code 
+                      AND nace_text IS NOT NULL 
+                      AND nace_text NOT ILIKE '%nenoteikt%'
+                    LIMIT 1
+                """), {"code": nace_code, "code_len": len(nace_code)}).fetchone()
+                
+                if nace_db and nace_db.nace_text:
+                    nace_name = nace_db.nace_text
+            
+            # Final fallback
+            if not nace_name:
                 nace_info = NACE_SECTIONS.get(nace_code)
                 nace_name = nace_info["name"] if nace_info else f"Nozare {nace_code}"
 
         # 2. Main KPIs for Selected Year
         # We compute this dynamically from companies/financial_reports to be fresh
         # and consistent with the specific selected 'year'
-        stats = conn.execute(text("""
+        stats_query = f"""
             SELECT 
                 SUM(f.turnover) as total_turnover,
                 SUM(f.profit) as total_profit,
@@ -498,12 +538,13 @@ def get_industry_detail(
                 WHERE company_regcode = c.regcode AND year = :year
                   AND turnover IS NOT NULL AND turnover < 1e15
             ) f ON true
-            WHERE c.nace_section = :code
+            WHERE {nace_filter}
               AND c.status = 'active'
-        """), {"code": nace_code, "year": year}).fetchone()
+        """
+        stats = conn.execute(text(stats_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchone()
 
         # Previous Year for Growth
-        prev_stats = conn.execute(text("""
+        prev_stats_query = f"""
             SELECT SUM(f.turnover) as total_turnover
             FROM companies c
             LEFT JOIN LATERAL (
@@ -512,12 +553,13 @@ def get_industry_detail(
                 WHERE company_regcode = c.regcode AND year = :prev_year
                   AND turnover IS NOT NULL AND turnover < 1e15
             ) f ON true
-            WHERE c.nace_section = :code
+            WHERE {nace_filter}
               AND c.status = 'active'
-        """), {"code": nace_code, "prev_year": year - 1}).fetchone()
+        """
+        prev_stats = conn.execute(text(prev_stats_query), {"code": nace_param, "code_len": code_len, "prev_year": year - 1}).fetchone()
 
         # Salary Data (from tax_payments)
-        salary_data = conn.execute(text("""
+        salary_data_query = f"""
             SELECT 
                 SUM(t.social_tax_vsaoi) as total_vsaoi,
                 SUM(t.avg_employees) as total_employees
@@ -527,8 +569,9 @@ def get_industry_detail(
                 FROM tax_payments
                 WHERE company_regcode = c.regcode AND year = :year
             ) t ON true
-            WHERE c.nace_section = :code
-        """), {"code": nace_code, "year": year}).fetchone()
+            WHERE {nace_filter}
+        """
+        salary_data = conn.execute(text(salary_data_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchone()
         
         industry_avg_salary = None
         try:
@@ -565,7 +608,7 @@ def get_industry_detail(
         total_industry_turnover = safe_float(stats.total_turnover) or 0
 
         # 4. TOP 5 Leaders with Market Share
-        leaders = conn.execute(text("""
+        leaders_query = f"""
             SELECT 
                 c.regcode,
                 c.name,
@@ -579,12 +622,13 @@ def get_industry_detail(
                 WHERE company_regcode = c.regcode AND year = :year
                   AND turnover IS NOT NULL AND turnover > 0 AND turnover < 1e15
             ) f ON true
-            WHERE c.nace_section = :code
+            WHERE {nace_filter}
               AND c.status = 'active'
               AND f.turnover IS NOT NULL
             ORDER BY f.turnover DESC
             LIMIT 5
-        """), {"code": nace_code, "year": year}).fetchall()
+        """
+        leaders = conn.execute(text(leaders_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchall()
 
         leaders_data = []
         for l in leaders:
@@ -605,7 +649,7 @@ def get_industry_detail(
             })
         
         # 5. Tax Burden
-        tax_data = conn.execute(text("""
+        tax_data_query = f"""
             SELECT 
                 SUM(t.total_tax_paid) as total_tax
             FROM companies c
@@ -613,8 +657,9 @@ def get_industry_detail(
                 SELECT total_tax_paid FROM tax_payments
                 WHERE company_regcode = c.regcode AND year = :year
             ) t ON true
-            WHERE c.nace_section = :code
-        """), {"code": nace_code, "year": year}).fetchone()
+            WHERE {nace_filter}
+        """
+        tax_data = conn.execute(text(tax_data_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchone()
         
         tax_burden = None
         total_tax = safe_float(tax_data.total_tax) or 0
@@ -634,19 +679,20 @@ def get_industry_detail(
         # 7. Financial History (Last 5 Years)
         # We want years: [year-4, year-3, year-2, year-1, year]
         start_year = year - 4
-        history_rows = conn.execute(text("""
+        history_query = f"""
             SELECT 
                 f.year,
                 SUM(f.turnover) as total_turnover,
                 SUM(f.profit) as total_profit
             FROM companies c
             JOIN financial_reports f ON f.company_regcode = c.regcode
-            WHERE c.nace_section = :code
+            WHERE {nace_filter}
               AND f.year BETWEEN :start_year AND :end_year
               AND f.turnover IS NOT NULL AND f.turnover < 1e15
             GROUP BY f.year
             ORDER BY f.year ASC
-        """), {"code": nace_code, "start_year": start_year, "end_year": year}).fetchall()
+        """
+        history_rows = conn.execute(text(history_query), {"code": nace_param, "code_len": code_len, "start_year": start_year, "end_year": year}).fetchall()
 
         history_data = [
             {
@@ -658,49 +704,52 @@ def get_industry_detail(
         ]
 
         # 8. Sub-industry Breakdown (Level 4 NACE - 4-digit codes)
-        # Group by 4-digit NACE code to get meaningful sub-industry breakdown
-        sub_industries_rows = conn.execute(text("""
-            SELECT 
-                LEFT(c.nace_code, 4) as sub_code,
-                MAX(c.nace_text) as sub_name_sample, 
-                SUM(f.turnover) as sub_turnover,
-                COUNT(DISTINCT c.regcode) as company_count
-            FROM companies c
-            LEFT JOIN LATERAL (
-                 SELECT turnover FROM financial_reports 
-                 WHERE company_regcode = c.regcode AND year = :year 
-                   AND turnover IS NOT NULL AND turnover > 0 AND turnover < 1e15
-                 ORDER BY year DESC LIMIT 1
-            ) f ON true
-            WHERE c.nace_section = :code
-              AND c.nace_code IS NOT NULL
-              AND f.turnover IS NOT NULL
-              AND c.nace_text NOT ILIKE '%nenoteikt%'
-            GROUP BY LEFT(c.nace_code, 4)
-            ORDER BY sub_turnover DESC
-            LIMIT 10
-        """), {"code": nace_code, "year": year}).fetchall()
-
+        # Only show sub-industries for section-level (2-digit) codes
+        # For 4-digit codes, don't show sub-industries (they ARE the sub-industry)
         sub_industries = []
-        for row in sub_industries_rows:
-            st = safe_float(row.sub_turnover) or 0
-            share = 0
-            if total_industry_turnover > 0:
-                share = round((st / total_industry_turnover) * 100, 1)
-            
-            # Use the name from DB, filtering out "Nenoteikta nozare"
-            name = row.sub_name_sample
-            if not name or 'nenoteikt' in name.lower():
-                name = f"Apakšnozare {row.sub_code}"
-            
-            sub_industries.append({
-                "code": row.sub_code,
-                "name": name,
-                "turnover": st,
-                "formatted_turnover": format_large_number(st),
-                "share": share,
-                "companies": row.company_count or 0
-            })
+        if is_section:
+            sub_industries_query = f"""
+                SELECT 
+                    LEFT(c.nace_code, 4) as sub_code,
+                    MAX(c.nace_text) as sub_name_sample, 
+                    SUM(f.turnover) as sub_turnover,
+                    COUNT(DISTINCT c.regcode) as company_count
+                FROM companies c
+                LEFT JOIN LATERAL (
+                     SELECT turnover FROM financial_reports 
+                     WHERE company_regcode = c.regcode AND year = :year 
+                       AND turnover IS NOT NULL AND turnover > 0 AND turnover < 1e15
+                     ORDER BY year DESC LIMIT 1
+                ) f ON true
+                WHERE {nace_filter}
+                  AND c.nace_code IS NOT NULL
+                  AND f.turnover IS NOT NULL
+                  AND c.nace_text NOT ILIKE '%nenoteikt%'
+                GROUP BY LEFT(c.nace_code, 4)
+                ORDER BY sub_turnover DESC
+                LIMIT 10
+            """
+            sub_industries_rows = conn.execute(text(sub_industries_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchall()
+
+            for row in sub_industries_rows:
+                st = safe_float(row.sub_turnover) or 0
+                share = 0
+                if total_industry_turnover > 0:
+                    share = round((st / total_industry_turnover) * 100, 1)
+                
+                # Use the name from DB, filtering out "Nenoteikta nozare"
+                name = row.sub_name_sample
+                if not name or 'nenoteikt' in name.lower():
+                    name = f"Apakšnozare {row.sub_code}"
+                
+                sub_industries.append({
+                    "code": row.sub_code,
+                    "name": name,
+                    "turnover": st,
+                    "formatted_turnover": format_large_number(st),
+                    "share": share,
+                    "companies": row.company_count or 0
+                })
 
         return {
             "nace_code": nace_code,
