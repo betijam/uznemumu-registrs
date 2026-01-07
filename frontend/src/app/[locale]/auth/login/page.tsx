@@ -131,7 +131,7 @@ export default function LoginPage() {
                     <span className="text-xl font-bold text-gray-900 tracking-tight">Company 360</span>
                 </div>
 
-                <div className="max-w-md w-full mx-auto mt-20 lg:mt-0">
+                <div className="max-w-md w-full mx-auto pt-24 lg:pt-8">
                     {/* Header */}
                     <div className="mb-8">
                         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Laipni lūgti atpakaļ</h1>

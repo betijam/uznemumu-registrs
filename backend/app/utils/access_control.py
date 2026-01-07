@@ -10,7 +10,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_key_change_in_prod")
 ALGORITHM = "HS256"
 
 # Configuration
-ALLOWED_FREE_VIEWS = 5  # First 5 views are free
+ALLOWED_FREE_VIEWS = 5  
 
 async def check_access(request: Request) -> bool:
     """

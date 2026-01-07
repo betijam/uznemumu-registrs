@@ -145,7 +145,7 @@ def search_hint(q: str):
         elif len(name_words) == 0 and len(type_words) > 0:
             # Only type search (e.g., just "SIA")
             type_cond = " OR ".join([f"LOWER(\"type\") = :type{i}" for i in range(len(type_words))])
-            params = {f"type{i}": tw.upper() for i, tw in enumerate(type_words)}
+            params = {f"type{i}": tw.lower() for i, tw in enumerate(type_words)}
             company_sql = f"""
                 SELECT name, name_in_quotes, "type" as company_type, regcode
                 FROM companies 
@@ -184,7 +184,7 @@ def search_hint(q: str):
                 type_cond = " OR ".join([f"LOWER(\"type\") = :type{i}" for i in range(len(type_words))])
                 conditions.append(f"({type_cond})")
                 for i, tw in enumerate(type_words):
-                    params[f"type{i}"] = tw.upper()
+                    params[f"type{i}"] = tw.lower()
             
             where_clause = " AND ".join(conditions)
             company_sql = f"""

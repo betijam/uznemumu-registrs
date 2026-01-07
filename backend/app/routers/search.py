@@ -146,7 +146,7 @@ def search_companies(q: str = "", nace: str = None):
                 type_cond = " OR ".join([f"LOWER(\"type\") = :type{i}" for i in range(len(type_words))])
                 where_conditions.append(f"({type_cond})")
                 for i, tw in enumerate(type_words):
-                    params[f"type{i}"] = tw.upper()
+                    params[f"type{i}"] = tw.lower()
     
     # Industry filter
     if nace:
