@@ -7,18 +7,21 @@ const intlMiddleware = createMiddleware(routing);
 export default function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // 1. Define what counts as a profile page view
-    // Regex: Only /company/digits or /person/code, with optional locale
-    // Does NOT match: /company/.../graph, /api/..., etc.
+    // 1. Define profile pages (company/person detail pages)
     const isProfilePage = /^\/(en|lv|ru)?\/(company|person)\/([a-zA-Z0-9-]+)$/.test(pathname);
 
-    // 2. Check if this is a prefetch/data request (don't count these!)
+    // 2. ENHANCED Prefetch detection
+    // Next.js App Router uses 'next-router-prefetch' and 'purpose' headers
+    // Chrome/Safari sometimes send 'Sec-Purpose: prefetch'
+    const headers = request.headers;
     const isPrefetch =
-        request.headers.get('next-router-prefetch') === 'true' ||
-        request.headers.get('purpose') === 'prefetch' ||
-        request.headers.get('x-middleware-prefetch') === '1';
+        headers.get('next-router-prefetch') === '1' ||
+        headers.get('purpose') === 'prefetch' ||
+        headers.get('sec-purpose') === 'prefetch' ||
+        headers.get('sec-fetch-purpose') === 'prefetch' ||
+        headers.get('x-middleware-prefetch') === '1';
 
-    // 3. Calculate View Count
+    // 3. Read current view count from cookie
     let viewCount = 0;
     const cookie = request.cookies.get('c360_free_views');
     if (cookie?.value) {
@@ -26,13 +29,16 @@ export default function middleware(request: NextRequest) {
         viewCount = isNaN(parsed) ? 0 : parsed;
     }
 
-    // Increment only on actual profile page loads (not prefetch)
+    // 4. Increment ONLY for real page views (not prefetch)
     let newViewCount = viewCount;
     if (isProfilePage && !isPrefetch) {
         newViewCount = viewCount + 1;
+        console.log(`[Middleware] Counting view for ${pathname}. New count: ${newViewCount}`);
+    } else if (isProfilePage && isPrefetch) {
+        console.log(`[Middleware] Ignoring prefetch for ${pathname}`);
     }
 
-    // 4. Prepare headers for Server Components
+    // 5. Prepare headers for Server Components
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('X-View-Count', newViewCount.toString());
 
@@ -47,19 +53,17 @@ export default function middleware(request: NextRequest) {
         headers: requestHeaders,
     });
 
-    // 5. Call next-intl middleware
+    // 6. Call next-intl middleware
     const response = intlMiddleware(newRequest);
 
-    // 6. Set Cookie on Response (if profile page and not prefetch)
+    // 7. Set Cookie on Response (only for real views, not prefetch)
     if (isProfilePage && !isPrefetch) {
         response.cookies.set('c360_free_views', newViewCount.toString(), {
-            maxAge: 60 * 60 * 24 * 30, // 30 days
+            maxAge: 60 * 60 * 24, // 1 day (reset daily)
             path: '/',
-            httpOnly: true,  // Security: not accessible via JS
+            httpOnly: true,
             sameSite: 'lax'
         });
-        // Debug header
-        response.headers.set('X-Debug-View-Count', newViewCount.toString());
     }
 
     return response;

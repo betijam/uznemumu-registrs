@@ -1426,3 +1426,4 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
         </div >
     );
 }
+
