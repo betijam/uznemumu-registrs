@@ -1,11 +1,14 @@
 'use client';
 
+import { Link } from '@/i18n/routing';
+
 interface SubIndustry {
     code: string;
     name: string;
     turnover: number | null;
     formatted_turnover: string | null;
     share: number;
+    companies?: number;
 }
 
 interface Props {
@@ -24,18 +27,27 @@ export default function SubIndustryList({ subIndustries }: Props) {
 
             <div className="space-y-4">
                 {subIndustries.map((item, idx) => (
-                    <div key={item.code} className="group">
+                    <Link
+                        key={item.code}
+                        href={`/industries/${item.code}`}
+                        className="group block hover:bg-gray-50 rounded-lg p-2 -mx-2 transition-colors"
+                    >
                         <div className="flex justify-between items-center mb-1">
                             <div className="flex items-center min-w-0 flex-1 mr-4">
-                                <span className="text-xs font-mono text-gray-400 w-8">{item.code}</span>
+                                <span className="text-xs font-mono text-gray-400 w-10">{item.code}</span>
                                 <span className="text-sm font-medium text-gray-700 truncate group-hover:text-blue-600 transition-colors">
                                     {item.name}
                                 </span>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right flex-shrink-0">
                                 <span className="block text-sm font-bold text-gray-900">
                                     {item.formatted_turnover}
                                 </span>
+                                {item.companies && (
+                                    <span className="text-[10px] text-gray-400">
+                                        {item.companies} uzņ.
+                                    </span>
+                                )}
                             </div>
                         </div>
 
@@ -51,9 +63,10 @@ export default function SubIndustryList({ subIndustries }: Props) {
                                 {item.share}% no kopējā
                             </span>
                         </div>
-                    </div>
+                    </Link>
                 ))}
             </div>
         </div>
     );
 }
+

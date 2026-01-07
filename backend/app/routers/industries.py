@@ -395,26 +395,37 @@ def get_industry_detail(
         return None
 
     try:
-        # Default year selection: find year with sufficient data for this industry
+        # Year selection: validate that selected year has sufficient data for this industry
+        # Find the best year with at least 10 companies reporting data
+        best_year_row = conn.execute(text("""
+            SELECT f.year, COUNT(*) as cnt
+            FROM financial_reports f
+            JOIN companies c ON c.regcode = f.company_regcode
+            WHERE c.nace_section = :code AND f.turnover IS NOT NULL
+            GROUP BY f.year
+            HAVING COUNT(*) >= 10
+            ORDER BY f.year DESC
+            LIMIT 1
+        """), {"code": nace_code}).fetchone()
+        
+        best_year = best_year_row.year if best_year_row else 2024
+        
+        # If no year specified or specified year has insufficient data, use best year
         if not year:
-            # Find the latest year with at least 10 companies reporting data
-            best_year_row = conn.execute(text("""
-                SELECT f.year, COUNT(*) as cnt
+            year = best_year
+        else:
+            # Check if the requested year has enough data
+            year_check = conn.execute(text("""
+                SELECT COUNT(*) as cnt
                 FROM financial_reports f
                 JOIN companies c ON c.regcode = f.company_regcode
-                WHERE c.nace_section = :code AND f.turnover IS NOT NULL
-                GROUP BY f.year
-                HAVING COUNT(*) >= 10
-                ORDER BY f.year DESC
-                LIMIT 1
-            """), {"code": nace_code}).fetchone()
+                WHERE c.nace_section = :code AND f.year = :year AND f.turnover IS NOT NULL
+            """), {"code": nace_code, "year": year}).fetchone()
             
-            if best_year_row:
-                year = best_year_row.year
-            else:
-                # Fallback to max year overall
-                max_year_row = conn.execute(text("SELECT MAX(year) FROM financial_reports WHERE year < 2025")).fetchone()
-                year = max_year_row[0] if max_year_row and max_year_row[0] else 2024
+            # If requested year has very few companies (<10), use best year instead
+            if not year_check or year_check.cnt < 10:
+                logger.info(f"Year {year} has insufficient data ({year_check.cnt if year_check else 0} companies), falling back to {best_year}")
+                year = best_year
 
         # 1. Basic Info & NACE Name - prioritize NACE_DIVISIONS dictionary
         # This ensures proper names even when DB has "Cita nozare"
@@ -646,27 +657,26 @@ def get_industry_detail(
             for row in history_rows
         ]
 
-        # 8. Sub-industry Breakdown (Level 2 NACE)
-        # NACE codes starting with the section code (mapped) or handle standard mapping
-        # Ideally, companies table has `nace_code` (4 digits). We can group by left(nace_code, 2).
-        # Actually, standard NACE: Level 1 is Section (A-U), Level 2 is 2 digits (01-99).
-        # We need to join companies and group by their 2-digit code.
-        # Note: c.nace_code in database is likely the 4-digit code (e.g., 6201). 
-        # So we group by LEFT(nace_code, 2).
-        
+        # 8. Sub-industry Breakdown (Level 4 NACE - 4-digit codes)
+        # Group by 4-digit NACE code to get meaningful sub-industry breakdown
         sub_industries_rows = conn.execute(text("""
             SELECT 
-                LEFT(c.nace_code, 2) as sub_code,
+                LEFT(c.nace_code, 4) as sub_code,
                 MAX(c.nace_text) as sub_name_sample, 
-                SUM(f.turnover) as sub_turnover
+                SUM(f.turnover) as sub_turnover,
+                COUNT(DISTINCT c.regcode) as company_count
             FROM companies c
             LEFT JOIN LATERAL (
-                 SELECT turnover FROM financial_reports WHERE company_regcode = c.regcode AND year = :year ORDER BY year DESC LIMIT 1
+                 SELECT turnover FROM financial_reports 
+                 WHERE company_regcode = c.regcode AND year = :year 
+                   AND turnover IS NOT NULL AND turnover > 0 AND turnover < 1e15
+                 ORDER BY year DESC LIMIT 1
             ) f ON true
             WHERE c.nace_section = :code
               AND c.nace_code IS NOT NULL
               AND f.turnover IS NOT NULL
-            GROUP BY LEFT(c.nace_code, 2)
+              AND c.nace_text NOT ILIKE '%nenoteikt%'
+            GROUP BY LEFT(c.nace_code, 4)
             ORDER BY sub_turnover DESC
             LIMIT 10
         """), {"code": nace_code, "year": year}).fetchall()
@@ -678,17 +688,18 @@ def get_industry_detail(
             if total_industry_turnover > 0:
                 share = round((st / total_industry_turnover) * 100, 1)
             
-            # Simple name cleanup if needed, or fetch official NACE level 2 names if available
-            # For now using max(nace_text) might allow us to get a representative name
-            # Ideally we'd have a NACE dictionary table. 
-            name = row.sub_name_sample or f"Apakšnozare {row.sub_code}"
+            # Use the name from DB, filtering out "Nenoteikta nozare"
+            name = row.sub_name_sample
+            if not name or 'nenoteikt' in name.lower():
+                name = f"Apakšnozare {row.sub_code}"
             
             sub_industries.append({
                 "code": row.sub_code,
                 "name": name,
                 "turnover": st,
                 "formatted_turnover": format_large_number(st),
-                "share": share
+                "share": share,
+                "companies": row.company_count or 0
             })
 
         return {

@@ -2,11 +2,10 @@ from app.routers.industries import get_industry_detail
 from fastapi import Response
 
 r = Response()
-data = get_industry_detail('10', None, r)
+data = get_industry_detail('10', 2024, r)
 
-print('NACE 10 detail:')
-print(f"Name: {data['nace_name']}")
-print(f"Year: {data['year']}")
-print(f"Turnover: {data['stats']['total_turnover_formatted']}")
-print(f"Companies: {data['stats']['active_companies']}")
-print(f"Avg Salary: {data['stats']['avg_salary']}")
+print(f'NACE 10 sub-industries:')
+print(f"Total: {len(data['sub_industries'])} sub-industries\n")
+for i, sub in enumerate(data['sub_industries'], 1):
+    print(f"  {i}. {sub['code']} - {sub['name'][:50]}")
+    print(f"     Turnover: {sub['formatted_turnover']}, Share: {sub['share']}%, Companies: {sub.get('companies', 'N/A')}")
