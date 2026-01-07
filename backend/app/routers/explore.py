@@ -99,6 +99,10 @@ def list_companies(
     # Dynamic Order Clause
     sort_col = SORT_FIELDS.get(sort_by, "s.turnover")
     
+    # Exclude NULL values when sorting by financial columns to avoid showing empty records first
+    if sort_by in ["turnover", "profit", "salary", "tax", "growth"]:
+        where_clauses.append(f"{sort_col} IS NOT NULL")
+    
     # We rely on the Materialized View having pre-cleaned NULLs (instead of 'NaN' strings)
     # The NULLS LAST clause handles the sorting order.
     order_clause = f"{sort_col} {order.upper()} NULLS LAST"

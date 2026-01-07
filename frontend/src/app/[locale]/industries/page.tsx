@@ -197,7 +197,7 @@ export default function IndustriesPage() {
                     <LoadingSpinner size="lg" />
                 </div>
             ) : data ? (
-                <div className="max-w-7xl mx-auto px-4 py-8 -mt-8">
+                <div className="max-w-7xl mx-auto px-4 py-8 pt-12">
 
                     {/* Macro Grid - 4 KPIs */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10 relative z-10">
