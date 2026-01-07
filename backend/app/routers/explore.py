@@ -99,12 +99,16 @@ def list_companies(
     # Dynamic Order Clause
     sort_col = SORT_FIELDS.get(sort_by, "s.turnover")
     
-    # Exclude NULL values when sorting by financial columns to avoid showing empty records first
+    # Exclude NULL and NaN values when sorting by financial columns
+    # NaN is a special float value that IS NOT NULL but should be filtered
     if sort_by in ["turnover", "profit", "salary", "tax", "growth"]:
         where_clauses.append(f"{sort_col} IS NOT NULL")
+        where_clauses.append(f"{sort_col}::text != 'NaN'")
+        # For profit/growth, allow negative values; for turnover/salary/tax require > 0
+        if sort_by in ["turnover", "salary", "tax"]:
+            where_clauses.append(f"{sort_col} > 0")
     
-    # We rely on the Materialized View having pre-cleaned NULLs (instead of 'NaN' strings)
-    # The NULLS LAST clause handles the sorting order.
+    # The NULLS LAST clause handles any remaining edge cases
     order_clause = f"{sort_col} {order.upper()} NULLS LAST"
     
     # Construct Query
