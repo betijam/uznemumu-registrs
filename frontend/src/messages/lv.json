@@ -44,6 +44,9 @@
   },
   "CompanyTabs": {
     "overview": "Pārskats",
+    "reg_no_short": "Reģ. Nr.",
+    "full_name": "Pilns nosaukums",
+    "industry": "Nozare",
     "finances": "Finanses",
     "risks": "Riski",
     "management": "Amatpersonas & Īpašnieki",

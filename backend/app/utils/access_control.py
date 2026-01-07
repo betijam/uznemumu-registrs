@@ -41,6 +41,6 @@ async def check_access(request: Request) -> bool:
     except ValueError:
         view_count = 0
         
-    ALLOWED_FREE_VIEWS = 2
+    ALLOWED_FREE_VIEWS = 6
     
     return view_count < ALLOWED_FREE_VIEWS
