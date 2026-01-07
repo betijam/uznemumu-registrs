@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import hashlib
 from app.routers.auth import get_current_user
 from typing import Optional
+import json
 
 def get_person_hash(person_code: str):
     if not person_code:
@@ -97,10 +98,220 @@ def calculate_company_size(employees: int, turnover: float, assets: float) -> st
         return "Liels"
 
 
+# ==========================
+# REUSABLE SERVICE LOGIC
+# ==========================
+
+def get_financial_history(regcode: int):
+    with engine.connect() as conn:
+        fin_rows = conn.execute(text("""
+            SELECT year, turnover, profit, employees, cash_balance,
+                   current_ratio, quick_ratio, cash_ratio,
+                   net_profit_margin, roe, roa, debt_to_equity, equity_ratio, ebitda
+            FROM financial_reports 
+            WHERE company_regcode = :r 
+            ORDER BY year DESC
+        """), {"r": regcode}).fetchall()
+        
+        history = []
+        prev_turnover = None
+        prev_profit = None
+        
+        fin_list = list(fin_rows)
+        fin_list.reverse()
+        
+        for f in fin_list:
+            row = {
+                "year": f.year,
+                "turnover": safe_float(f.turnover),
+                "profit": safe_float(f.profit),
+                "employees": f.employees,
+                "cash_balance": safe_float(f.cash_balance),
+                "turnover_growth": None,
+                "profit_growth": None,
+                "current_ratio": safe_float(f.current_ratio),
+                "quick_ratio": safe_float(f.quick_ratio),
+                "cash_ratio": safe_float(f.cash_ratio),
+                "net_profit_margin": safe_float(f.net_profit_margin),
+                "roe": safe_float(f.roe),
+                "roa": safe_float(f.roa),
+                "debt_to_equity": safe_float(f.debt_to_equity),
+                "equity_ratio": safe_float(f.equity_ratio),
+                "ebitda": safe_float(f.ebitda)
+            }
+            
+            turnover_val = safe_float(f.turnover)
+            profit_val = safe_float(f.profit)
+            if prev_turnover and turnover_val and prev_turnover != 0:
+                row["turnover_growth"] = round(((turnover_val - prev_turnover) / abs(prev_turnover)) * 100, 1)
+            if prev_profit and profit_val and prev_profit != 0:
+                row["profit_growth"] = round(((profit_val - prev_profit) / abs(prev_profit)) * 100, 1)
+            
+            prev_turnover = turnover_val
+            prev_profit = profit_val
+            history.append(row)
+        
+        history.reverse()
+        return history
+
+def get_tax_history(regcode: int):
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT tp.year, tp.total_tax_paid, tp.labor_tax_iin, tp.social_tax_vsaoi, 
+                   tp.avg_employees, tp.nace_code, cm.avg_gross_salary, cm.avg_net_salary
+            FROM tax_payments tp
+            LEFT JOIN company_computed_metrics cm ON tp.company_regcode = cm.company_regcode AND tp.year = cm.year
+            WHERE tp.company_regcode = :r ORDER BY tp.year DESC
+        """), {"r": regcode}).fetchall()
+        
+        VSAOI_RATE = 0.3409
+        history = []
+        for t in rows:
+            avg_gross = safe_float(t.avg_gross_salary)
+            avg_net = safe_float(t.avg_net_salary)
+            if avg_gross is None and t.social_tax_vsaoi and t.avg_employees and float(t.avg_employees) > 0:
+                vsaoi = float(t.social_tax_vsaoi)
+                employees = float(t.avg_employees)
+                avg_gross = round((vsaoi / VSAOI_RATE) / employees / 12, 2)
+                vsaoi_emp = avg_gross * 0.105
+                iin = (avg_gross - vsaoi_emp) * 0.20
+                avg_net = round(avg_gross - vsaoi_emp - iin, 2)
+            
+            history.append({
+                "year": t.year,
+                "total_tax_paid": safe_float(t.total_tax_paid),
+                "labor_tax_iin": safe_float(t.labor_tax_iin),
+                "social_tax_vsaoi": safe_float(t.social_tax_vsaoi),
+                "avg_employees": safe_float(t.avg_employees),
+                "nace_code": t.nace_code,
+                "avg_gross_salary": avg_gross,
+                "avg_net_salary": avg_net
+            })
+        return history
+
+def get_rating(regcode: int):
+    with engine.connect() as conn:
+        res = conn.execute(text("SELECT rating_grade, rating_explanation, last_evaluated_on FROM company_ratings WHERE company_regcode = :r"), {"r": regcode}).fetchone()
+        if res:
+            return {"grade": res.rating_grade, "explanation": res.rating_explanation, "date": str(res.last_evaluated_on) if res.last_evaluated_on else None}
+        return None
+
+def get_risks(regcode: int):
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT risk_type, description, start_date, risk_score,
+                   sanction_program, sanction_list_text, legal_base_url,
+                   suspension_code, suspension_grounds,
+                   measure_type, institution_name, case_number,
+                   liquidation_type, liquidation_grounds
+            FROM risks WHERE company_regcode = :r AND active = TRUE
+            ORDER BY risk_score DESC, start_date DESC
+        """), {"r": regcode}).fetchall()
+        
+        total_score = sum(r.risk_score or 0 for r in rows)
+        by_type = {'sanctions': [], 'liquidations': [], 'suspensions': [], 'securing_measures': []}
+        for r in rows:
+            risk = {"type": r.risk_type, "description": r.description, "date": str(r.start_date) if r.start_date else None, "score": r.risk_score}
+            if r.risk_type == 'sanction':
+                risk.update({"program": r.sanction_program, "list_text": r.sanction_list_text, "legal_base_url": r.legal_base_url})
+                by_type['sanctions'].append(risk)
+            elif r.risk_type == 'liquidation':
+                risk.update({"liquidation_type": r.liquidation_type, "grounds": r.liquidation_grounds})
+                by_type['liquidations'].append(risk)
+            elif r.risk_type == 'suspension':
+                risk.update({"suspension_code": r.suspension_code, "grounds": r.suspension_grounds})
+                by_type['suspensions'].append(risk)
+            elif r.risk_type == 'securing_measure':
+                risk.update({"measure_type": r.measure_type, "institution": r.institution_name, "case_number": r.case_number})
+                by_type['securing_measures'].append(risk)
+        return by_type, total_score
+
+def get_persons(regcode: int):
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT person_name, role, share_percent, date_from, person_code, birth_date,
+                   position, rights_of_representation, representation_with_at_least,
+                   number_of_shares, share_nominal_value, share_currency, legal_entity_regcode,
+                   nationality, residence
+            FROM persons WHERE company_regcode = :r
+        """), {"r": regcode}).fetchall()
+        
+        total_capital = sum((float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)) for p in rows if p.role == 'member')
+        ubos, members, officers = [], [], []
+        for p in rows:
+            birth_date = str(p.birth_date) if hasattr(p, 'birth_date') and p.birth_date else None
+            if p.role == 'ubo':
+                ubos.append({
+                    "name": p.person_name, "person_code": p.person_code, "nationality": p.nationality, "residence": p.residence,
+                    "registered_on": str(p.date_from) if p.date_from else None, "birth_date": birth_date
+                })
+            elif p.role == 'member':
+                share_value = float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)
+                percent = (share_value / total_capital * 100) if total_capital > 0 else 0
+                members.append({
+                    "name": p.person_name, "person_code": p.person_code,
+                    "legal_entity_regcode": int(p.legal_entity_regcode) if p.legal_entity_regcode else None,
+                    "number_of_shares": int(p.number_of_shares) if p.number_of_shares else None,
+                    "share_value": share_value, "share_currency": p.share_currency or "EUR",
+                    "percent": round(percent, 2), "date_from": str(p.date_from) if p.date_from else None, "birth_date": birth_date
+                })
+            elif p.role == 'officer':
+                officers.append({
+                    "name": p.person_name, "person_code": p.person_code, "position": p.position,
+                    "rights_of_representation": p.rights_of_representation,
+                    "representation_with_at_least": int(p.representation_with_at_least) if p.representation_with_at_least else None,
+                    "registered_on": str(p.date_from) if p.date_from else None, "birth_date": birth_date
+                })
+        return ubos, members, officers, total_capital
+
+def get_procurements(regcode: int):
+    with engine.connect() as conn:
+        rows = conn.execute(text("SELECT authority_name, subject, amount, contract_date FROM procurements WHERE winner_regcode = :r ORDER BY contract_date DESC LIMIT 10"), {"r": regcode}).fetchall()
+        return [{"authority": p.authority_name, "subject": p.subject, "amount": safe_float(p.amount), "date": str(p.contract_date)} for p in rows]
+
+def build_full_profile(regcode: int, base_company_info: dict):
+    # Execute in parallel
+    future_fin = _executor.submit(get_financial_history, regcode)
+    future_tax = _executor.submit(get_tax_history, regcode)
+    f_rate = _executor.submit(get_rating, regcode)
+    f_risk = _executor.submit(get_risks, regcode)
+    f_pers = _executor.submit(get_persons, regcode)
+    f_proc = _executor.submit(get_procurements, regcode)
+    
+    financial_history = future_fin.result()
+    tax_history = future_tax.result()
+    rating = f_rate.result()
+    risks_by_type, total_risk_score = f_risk.result()
+    ubos, members, officers, total_capital = f_pers.result()
+    procurements = f_proc.result()
+
+    full_data = base_company_info.copy()
+    full_data["financial_history"] = financial_history
+    full_data["finances"] = financial_history[0] if financial_history else {
+        "turnover": None, "profit": None, "employees": base_company_info.get("employee_count"), "year": base_company_info.get("tax_data_year")
+    }
+    if financial_history:
+        latest = financial_history[0]
+        full_data["finances"].update({"turnover_growth": latest["turnover_growth"], "profit_growth": latest["profit_growth"]})
+    
+    full_data["tax_history"] = tax_history
+    full_data["rating"] = rating
+    full_data["risks"] = risks_by_type
+    full_data["total_risk_score"] = total_risk_score
+    full_data["risk_level"] = "CRITICAL" if total_risk_score >= 100 else "HIGH" if total_risk_score >= 50 else "MEDIUM" if total_risk_score >= 30 else "LOW" if total_risk_score > 0 else "NONE"
+    
+    full_data["ubos"] = ubos
+    full_data["members"] = members
+    full_data["officers"] = officers
+    full_data["total_capital"] = total_capital
+    full_data["procurements"] = procurements
+    
+    return full_data
+
 @router.get("/companies/{regcode}")
 async def get_company_details(regcode: int, response: Response, request: Request):
-    # Cache for 1 hour
-    response.headers["Cache-Control"] = "public, max-age=3600"
+    # NO HTTP CACHE - Access control must run every time
+    response.headers["Cache-Control"] = "no-store"
     
     # Check Access Level
     has_full_access = await check_access(request)
@@ -138,289 +349,46 @@ async def get_company_details(regcode: int, response: Response, request: Request
             "has_full_access": has_full_access
         }
 
-    # Parallel Data Loading Function Definitions
-    def get_financial_history():
-        with engine.connect() as conn:
-            fin_rows = conn.execute(text("""
-                SELECT year, turnover, profit, employees, cash_balance,
-                       current_ratio, quick_ratio, cash_ratio,
-                       net_profit_margin, roe, roa, debt_to_equity, equity_ratio, ebitda
-                FROM financial_reports 
-                WHERE company_regcode = :r 
-                ORDER BY year DESC
-            """), {"r": regcode}).fetchall()
-            
-            history = []
-            prev_turnover = None
-            prev_profit = None
-            
-            # Process oldest first for growth
-            fin_list = list(fin_rows)
-            fin_list.reverse()
-            
-            for f in fin_list:
-                row = {
-                    "year": f.year,
-                    "turnover": safe_float(f.turnover),
-                    "profit": safe_float(f.profit),
-                    "employees": f.employees,
-                    "cash_balance": safe_float(f.cash_balance),
-                    "turnover_growth": None,
-                    "profit_growth": None,
-                    "current_ratio": safe_float(f.current_ratio),
-                    "quick_ratio": safe_float(f.quick_ratio),
-                    "cash_ratio": safe_float(f.cash_ratio),
-                    "net_profit_margin": safe_float(f.net_profit_margin),
-                    "roe": safe_float(f.roe),
-                    "roa": safe_float(f.roa),
-                    "debt_to_equity": safe_float(f.debt_to_equity),
-                    "equity_ratio": safe_float(f.equity_ratio),
-                    "ebitda": safe_float(f.ebitda)
-                }
-                
-                # Calculate growth %
-                turnover_val = safe_float(f.turnover)
-                profit_val = safe_float(f.profit)
-                if prev_turnover and turnover_val and prev_turnover != 0:
-                    row["turnover_growth"] = round(((turnover_val - prev_turnover) / abs(prev_turnover)) * 100, 1)
-                if prev_profit and profit_val and prev_profit != 0:
-                    row["profit_growth"] = round(((profit_val - prev_profit) / abs(prev_profit)) * 100, 1)
-                
-                prev_turnover = turnover_val
-                prev_profit = profit_val
-                history.append(row)
-            
-            history.reverse() # Newest first
-            return history
+    # Create Cache Table if not exists
+    with engine.connect() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS company_profile_cache (
+                company_regcode BIGINT PRIMARY KEY,
+                profile_data JSONB,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        conn.commit()
 
-    def get_tax_history():
-        with engine.connect() as conn:
-            # Use pre-computed metrics for performance
-            rows = conn.execute(text("""
-                SELECT 
-                    tp.year, 
-                    tp.total_tax_paid, 
-                    tp.labor_tax_iin, 
-                    tp.social_tax_vsaoi, 
-                    tp.avg_employees, 
-                    tp.nace_code,
-                    cm.avg_gross_salary,
-                    cm.avg_net_salary
-                FROM tax_payments tp
-                LEFT JOIN company_computed_metrics cm 
-                    ON tp.company_regcode = cm.company_regcode 
-                    AND tp.year = cm.year
-                WHERE tp.company_regcode = :r 
-                ORDER BY tp.year DESC
-            """), {"r": regcode}).fetchall()
-            
-            VSAOI_RATE = 0.3409
-            history = []
-            for t in rows:
-                avg_gross = safe_float(t.avg_gross_salary)
-                avg_net = safe_float(t.avg_net_salary)
-                
-                # Fallback: calculate salary on-the-fly if not in computed metrics
-                if avg_gross is None and t.social_tax_vsaoi and t.avg_employees and float(t.avg_employees) > 0:
-                    vsaoi = float(t.social_tax_vsaoi)
-                    employees = float(t.avg_employees)
-                    gross_yearly = vsaoi / VSAOI_RATE
-                    avg_gross = round(gross_yearly / employees / 12, 2)
-                    
-                    vsaoi_employee = avg_gross * 0.105
-                    iin = (avg_gross - vsaoi_employee) * 0.20
-                    avg_net = round(avg_gross - vsaoi_employee - iin, 2)
-                
-                row = {
-                    "year": t.year,
-                    "total_tax_paid": safe_float(t.total_tax_paid),
-                    "labor_tax_iin": safe_float(t.labor_tax_iin),
-                    "social_tax_vsaoi": safe_float(t.social_tax_vsaoi),
-                    "avg_employees": safe_float(t.avg_employees),
-                    "nace_code": t.nace_code,
-                    "avg_gross_salary": avg_gross,
-                    "avg_net_salary": avg_net
-                }
-                history.append(row)
-            return history
+    # 2. Try Cache
+    full_profile = None
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT profile_data FROM company_profile_cache WHERE company_regcode = :r AND updated_at > NOW() - INTERVAL '24 HOURS'"), {"r": regcode}).fetchone()
+        if row and row.profile_data:
+            full_profile = row.profile_data
+            full_profile["has_full_access"] = has_full_access
+            logger.info(f"[CACHE] Hit for company profile {regcode}")
 
-    def get_rating():
-        with engine.connect() as conn:
-            res = conn.execute(text("""
-                SELECT rating_grade, rating_explanation, last_evaluated_on
-                FROM company_ratings WHERE company_regcode = :r
-            """), {"r": regcode}).fetchone()
-            
-            if res:
-                return {
-                    "grade": res.rating_grade,
-                    "explanation": res.rating_explanation,
-                    "date": str(res.last_evaluated_on) if res.last_evaluated_on else None
-                }
-            return None
+    if not full_profile:
+        logger.info(f"[CACHE] Miss for company profile {regcode}. Calculating...")
+        full_profile = calculate_full_profile()
+        full_profile["has_full_access"] = has_full_access
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("INSERT INTO company_profile_cache (company_regcode, profile_data, updated_at) VALUES (:r, :d, NOW()) ON CONFLICT (company_regcode) DO UPDATE SET profile_data = :d, updated_at = NOW()"), {"r": regcode, "d": json.dumps(full_profile, default=str)})
+                conn.commit()
+        except Exception as e:
+            logger.error(f"[CACHE] Error saving profile: {e}")
 
-    def get_risks():
-        with engine.connect() as conn:
-            rows = conn.execute(text("""
-                SELECT risk_type, description, start_date, risk_score,
-                       sanction_program, sanction_list_text, legal_base_url,
-                       suspension_code, suspension_grounds,
-                       measure_type, institution_name, case_number,
-                       liquidation_type, liquidation_grounds
-                FROM risks 
-                WHERE company_regcode = :r AND active = TRUE
-                ORDER BY risk_score DESC, start_date DESC
-            """), {"r": regcode}).fetchall()
-            
-            total_score = sum(r.risk_score or 0 for r in rows)
-            
-            by_type = {'sanctions': [], 'liquidations': [], 'suspensions': [], 'securing_measures': []}
-            for r in rows:
-                risk = {
-                    "type": r.risk_type, "description": r.description,
-                    "date": str(r.start_date) if r.start_date else None, "score": r.risk_score
-                }
-                if r.risk_type == 'sanction':
-                    risk.update({"program": r.sanction_program, "list_text": r.sanction_list_text, "legal_base_url": r.legal_base_url})
-                    by_type['sanctions'].append(risk)
-                elif r.risk_type == 'liquidation':
-                    risk.update({"liquidation_type": r.liquidation_type, "grounds": r.liquidation_grounds})
-                    by_type['liquidations'].append(risk)
-                elif r.risk_type == 'suspension':
-                    risk.update({"suspension_code": r.suspension_code, "grounds": r.suspension_grounds})
-                    by_type['suspensions'].append(risk)
-                elif r.risk_type == 'securing_measure':
-                    risk.update({"measure_type": r.measure_type, "institution": r.institution_name, "case_number": r.case_number})
-                    by_type['securing_measures'].append(risk)
-            
-            return by_type, total_score
+    # Access Control Filtering
+    if not has_full_access:
+        full_profile["financial_history"] = []
+        full_profile["ubos"] = []
+        full_profile["members"] = []
+        full_profile["officers"] = []
 
-    def get_persons():
-        with engine.connect() as conn:
-            rows = conn.execute(text("""
-                SELECT person_name, role, share_percent, date_from, person_code, birth_date,
-                       position, rights_of_representation, representation_with_at_least,
-                       number_of_shares, share_nominal_value, share_currency, legal_entity_regcode,
-                       nationality, residence
-                FROM persons WHERE company_regcode = :r
-            """), {"r": regcode}).fetchall()
-            
-            total_capital = sum((float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)) for p in rows if p.role == 'member')
-            ubos, members, officers = [], [], []
-            
-            for p in rows:
-                # Use birth_date from DB if available, valid, otherwise None
-                birth_date = str(p.birth_date) if hasattr(p, 'birth_date') and p.birth_date else None
-                
-                if p.role == 'ubo':
-                    ubos.append({
-                        "name": p.person_name,
-                        "person_code": p.person_code,
-                        "nationality": p.nationality,
-                        "residence": p.residence,
-                        "registered_on": str(p.date_from) if p.date_from else None,
-                        "birth_date": birth_date
-                    })
-                elif p.role == 'member':
-                    share_value = float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)
-                    percent = (share_value / total_capital * 100) if total_capital > 0 else 0
-                    members.append({
-                        "name": p.person_name,
-                        "person_code": p.person_code,
-                        "legal_entity_regcode": int(p.legal_entity_regcode) if p.legal_entity_regcode else None,
-                        "number_of_shares": int(p.number_of_shares) if p.number_of_shares else None,
-                        "share_value": share_value,
-                        "share_currency": p.share_currency or "EUR",
-                        "percent": round(percent, 2),
-                        "date_from": str(p.date_from) if p.date_from else None,
-                        "birth_date": birth_date
-                    })
-                elif p.role == 'officer':
-                    officers.append({
-                        "name": p.person_name,
-                        "person_code": p.person_code,
-                        "position": p.position,
-                        "rights_of_representation": p.rights_of_representation,
-                        "representation_with_at_least": int(p.representation_with_at_least) if p.representation_with_at_least else None,
-                        "registered_on": str(p.date_from) if p.date_from else None,
-                        "birth_date": birth_date
-                    })
-                    
-            return ubos, members, officers, total_capital
+    return full_profile
 
-    def get_procurements():
-        # Procurements are typically public data (A), but let's check if we want to teaser it.
-        # User prompt didn't strictly say procurements are B.
-        # But usually value added data is B.
-        # I'll leave procurements visible as "Public data" usually includes Govt interactions.
-        with engine.connect() as conn:
-            rows = conn.execute(text("""
-                SELECT authority_name, subject, amount, contract_date
-                FROM procurements WHERE winner_regcode = :r
-                ORDER BY contract_date DESC LIMIT 10
-            """), {"r": regcode}).fetchall()
-            
-            return [{
-                "authority": p.authority_name, "subject": p.subject,
-                "amount": safe_float(p.amount), "date": str(p.contract_date)
-            } for p in rows]
-
-    # Execute all queries in parallel
-    future_fin = _executor.submit(get_financial_history)
-    future_tax = _executor.submit(get_tax_history)
-    future_rating = _executor.submit(get_rating)
-    future_risks = _executor.submit(get_risks)
-    future_persons = _executor.submit(get_persons)
-    future_procurements = _executor.submit(get_procurements)
-    
-    # Collect results
-    financial_history = future_fin.result()
-    tax_history = future_tax.result()
-    rating = future_rating.result()
-    risks_by_type, total_risk_score = future_risks.result()
-    ubos, members, officers, total_capital = future_persons.result()
-    procurements = future_procurements.result()
-    
-    # Construct final response
-    company["financial_history"] = financial_history
-    # If no access, show latest year from main company record (which is A data) as teaser
-    # But financial_history is empty list.
-    # main company record has: employee_count, turnover (not currently in A definition in code?)
-    # Wait, in get_company_details SQL "SELECT * FROM companies" usually has turnover/profit columns if they are cached there.
-    # But let's look at `get_company_quick` - it joins.
-    # Here `res` is `SELECT * FROM companies`.
-    
-    # If restricted, we return empty financial_history.
-    # But we want to show "Blur" over data.
-    # Frontend handles empty list -> Blur.
-    
-    company["finances"] = financial_history[0] if financial_history else {
-        "turnover": None, "profit": None, "employees": res.employee_count, "year": res.tax_data_year
-    }
-    
-    if financial_history:
-        latest = financial_history[0]
-        company["finances"].update({"turnover_growth": latest["turnover_growth"], "profit_growth": latest["profit_growth"]})
-        
-    company["tax_history"] = tax_history
-    company["rating"] = rating
-    company["risks"] = risks_by_type
-    company["total_risk_score"] = total_risk_score
-    company["risk_level"] = "CRITICAL" if total_risk_score >= 100 else "HIGH" if total_risk_score >= 50 else "MEDIUM" if total_risk_score >= 30 else "LOW" if total_risk_score > 0 else "NONE"
-    
-    company["ubos"] = ubos
-    company["members"] = members
-    company["officers"] = officers
-    company["total_capital"] = total_capital
-    company["procurements"] = procurements
-    company["company_size"] = res.company_size_badge # Already from main query
-    
-    return company
-
-
-# ================================================================================
-# FAST INITIAL LOAD ENDPOINT (For instant First Contentful Paint)
-# ================================================================================
 
 @router.get("/companies/{regcode}/quick")
 async def get_company_quick(regcode: int, response: Response, request: Request):
@@ -431,7 +399,8 @@ async def get_company_quick(regcode: int, response: Response, request: Request):
     
     Target: <200ms response time (vs 900ms for full /companies/{regcode})
     """
-    response.headers["Cache-Control"] = "public, max-age=3600"
+    # NO CACHE - Access control must run every time
+    response.headers["Cache-Control"] = "no-store"
     
     # Check Access Level
     has_full_access = await check_access(request)

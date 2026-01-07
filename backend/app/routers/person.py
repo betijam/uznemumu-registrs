@@ -169,7 +169,7 @@ async def get_person_profile(identifier: str, response: Response, request: Reque
     - Hashed person_code (SHA256, 16 chars)
     - Person code fragment + slug (DDMMYY-slug)
     """
-    response.headers["Cache-Control"] = "public, max-age=1800"  # 30 min cache
+    response.headers["Cache-Control"] = "no-store"
     
     # Check Access
     has_full_access = await check_access(request)
@@ -497,7 +497,7 @@ def get_person_companies(identifier: str, status: Optional[str] = None, response
     - status: 'active' or 'historical' to filter
     """
     if response:
-        response.headers["Cache-Control"] = "public, max-age=1800"
+        response.headers["Cache-Control"] = "no-store"
     
     with engine.connect() as conn:
         person_code = resolve_person_identifier(conn, identifier)
