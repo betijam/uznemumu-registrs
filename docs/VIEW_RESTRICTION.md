@@ -169,15 +169,9 @@ After Login:
 
 ## Current Status
 
-⚠️ **TEMPORARILY DISABLED** for debugging.
+✅ **ENABLED** - Metered access is active.
 
-In `access_control.py`, there's a `return True` at the start that bypasses all checks. Remove it to re-enable metered access:
-
-```python
-# TEMPORARY: Force full access to debug data issue
-logger.info("[ACCESS] TEMPORARY: Granting full access for debugging")
-return True  # <-- DELETE THIS LINE TO RE-ENABLE
-```
+**Key Fix Applied**: The Server Component now forwards the original browser `User-Agent` to FastAPI. Without this, FastAPI would see "undici" (Node.js fetch library) instead of the real browser UA, which could interfere with bot detection.
 
 ---
 

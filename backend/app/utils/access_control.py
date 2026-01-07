@@ -14,14 +14,11 @@ async def check_access(request: Request) -> bool:
     """
     Determine if user has FULL access to company data.
     
-    TEMPORARY: Always returning True to debug data visibility issue.
-    Re-enable metered access after verifying data shows correctly.
+    Priority:
+    1. Valid JWT -> Full access
+    2. Search engine bot -> Teaser only (for SEO safety)
+    3. Anonymous user -> Check view count (5 free views)
     """
-    # TEMPORARY: Force full access to debug data issue
-    logger.info("[ACCESS] TEMPORARY: Granting full access for debugging")
-    return True
-    
-    # --- ORIGINAL LOGIC BELOW (disabled for debugging) ---
     # 1. Check Login (Authorization Header)
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith("Bearer "):
@@ -34,15 +31,19 @@ async def check_access(request: Request) -> bool:
             logger.warning(f"[ACCESS] Invalid JWT: {e}")
             pass
 
-    # 2. Check Bot
+    # 2. Check Bot (only well-known search engine bots)
     user_agent = request.headers.get('user-agent', '').lower()
-    if 'googlebot' in user_agent or 'bingbot' in user_agent or 'slurp' in user_agent:
-        logger.info("[ACCESS] Denied for bot (Teaser only)")
+    logger.info(f"[ACCESS] User-Agent: {user_agent[:80]}...")
+    
+    # Only block known search engine bots, NOT generic user agents
+    SEARCH_BOTS = ['googlebot', 'bingbot', 'slurp', 'duckduckbot', 'baiduspider', 'yandexbot']
+    if any(bot in user_agent for bot in SEARCH_BOTS):
+        logger.info("[ACCESS] Denied for search bot (Teaser only)")
         return False
 
     # 3. Check Metered Access
     view_count_header = request.headers.get('X-View-Count')
-    logger.info(f"[ACCESS] X-View-Count header value: '{view_count_header}'")
+    logger.info(f"[ACCESS] X-View-Count header: '{view_count_header}'")
     
     if view_count_header is None:
         logger.info("[ACCESS] Granted (no X-View-Count header)")

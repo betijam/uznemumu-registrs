@@ -122,18 +122,20 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
     // The middleware ALREADY incremented this, so we just read the value
     const viewCount = isNaN(viewCountFromCookie) ? 1 : viewCountFromCookie;
 
-    // Also check for auth token
+    // Also check for auth token and User-Agent
     const headersList = await headers();
     const authHeader = headersList.get('Authorization');
+    const userAgent = headersList.get('user-agent') || '';
 
     const apiHeaders: HeadersInit = {
         'X-View-Count': viewCount.toString(),
+        'User-Agent': userAgent,  // Forward original UA so backend bot detection works
     };
     if (authHeader) {
         apiHeaders['Authorization'] = authHeader;
     }
 
-    console.log(`[SC] View count from cookie: ${viewCount}, Auth: ${authHeader ? 'present' : 'none'}`);
+    console.log(`[SC] View count: ${viewCount}, UA: ${userAgent.substring(0, 50)}...`);
 
     const [company, graph, benchmark, competitors] = await Promise.all([
         getCompany(id, apiHeaders),
