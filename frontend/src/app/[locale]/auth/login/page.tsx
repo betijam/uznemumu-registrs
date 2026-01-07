@@ -19,16 +19,14 @@ export default function LoginPage() {
         setError("");
 
         try {
-            const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
-
-            // NOTE: FormData is required by OAuth2PasswordRequestForm in FastAPI
+            // Use local API route to proxy to backend (avoids CORS and missing env vars)
             const formData = new FormData();
             formData.append('username', email);
             formData.append('password', password);
 
-            const res = await fetch(`${API_BASE_URL}/auth/login`, {
+            const res = await fetch('/api/auth/login', {
                 method: 'POST',
-                body: formData, // Automatic Content-Type: multipart/form-data
+                body: formData,
             });
 
             if (!res.ok) {

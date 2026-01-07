@@ -36,11 +36,18 @@ async def check_access(request: Request) -> bool:
 
     # 3. Check Metered Access (Headless/Cookie based)
     # The frontend middleware is responsible for incrementing the cookie and sending the count here.
+    # If no header present, assume first view (give access).
+    view_count_header = request.headers.get('X-View-Count')
+    if view_count_header is None:
+        # No header = first view or header not propagated = give full access
+        return True
+    
     try:
-        view_count = int(request.headers.get('X-View-Count', '0'))
+        view_count = int(view_count_header)
     except ValueError:
         view_count = 0
         
-    ALLOWED_FREE_VIEWS = 6
+    # First 2 views per day should have full access
+    ALLOWED_FREE_VIEWS = 3  # View 1, 2 are free (view_count 1, 2 < 3)
     
     return view_count < ALLOWED_FREE_VIEWS

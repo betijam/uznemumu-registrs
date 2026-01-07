@@ -19,9 +19,8 @@ export default function RegisterPage() {
         setError("");
 
         try {
-            const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
-
-            const res = await fetch(`${API_BASE_URL}/auth/register`, {
+            // Use local API route to proxy to backend (avoids CORS and missing env vars)
+            const res = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
