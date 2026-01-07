@@ -371,7 +371,7 @@ async def get_company_details(regcode: int, response: Response, request: Request
 
     if not full_profile:
         logger.info(f"[CACHE] Miss for company profile {regcode}. Calculating...")
-        full_profile = calculate_full_profile()
+        full_profile = build_full_profile(regcode, company)
         full_profile["has_full_access"] = has_full_access
         try:
             with engine.connect() as conn:
