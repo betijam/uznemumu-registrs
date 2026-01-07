@@ -4,6 +4,7 @@ sqlalchemy
 psycopg2-binary
 pydantic
 pydantic-settings
+pydantic[email]
 pandas
 requests
 apscheduler
@@ -11,3 +12,4 @@ asgi-correlation-id
 passlib[bcrypt]
 python-jose[cryptography]
 python-multipart
+email-validator
