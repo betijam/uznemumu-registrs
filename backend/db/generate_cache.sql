@@ -163,7 +163,15 @@ risk_agg AS (
     GROUP BY company_regcode
 ),
 
--- 4. Persons
+-- 4. Persons (with calculated share percentages)
+person_with_capital AS (
+    SELECT 
+        p.*,
+        (COALESCE(p.number_of_shares,0) * COALESCE(p.share_nominal_value,0)) as share_value,
+        SUM(CASE WHEN p.role = 'member' THEN (COALESCE(p.number_of_shares,0) * COALESCE(p.share_nominal_value,0)) ELSE 0 END) 
+            OVER (PARTITION BY p.company_regcode) as company_total_capital
+    FROM persons p
+),
 person_agg AS (
     SELECT
         company_regcode,
@@ -174,7 +182,7 @@ person_agg AS (
                 'nationality', nationality,
                 'residence', residence,
                 'registered_on', date_from,
-                'birth_date', NULL -- Assuming not in DB or PII
+                'birth_date', NULL
             )
         ) FILTER (WHERE role = 'ubo'), '[]'::jsonb) as ubos,
         
@@ -184,9 +192,12 @@ person_agg AS (
                 'person_code', person_code,
                 'legal_entity_regcode', legal_entity_regcode,
                 'number_of_shares', number_of_shares,
-                'share_value', (COALESCE(number_of_shares,0) * COALESCE(share_nominal_value,0)),
+                'share_value', share_value,
                 'share_currency', COALESCE(share_currency, 'EUR'),
-                'percent', share_percent,
+                'percent', CASE 
+                    WHEN company_total_capital > 0 THEN ROUND((share_value / company_total_capital * 100)::numeric, 2)
+                    ELSE 0 
+                END,
                 'date_from', date_from
             )
         ) FILTER (WHERE role = 'member'), '[]'::jsonb) as members,
@@ -202,9 +213,9 @@ person_agg AS (
             )
         ) FILTER (WHERE role = 'officer'), '[]'::jsonb) as officers,
 
-        SUM(CASE WHEN role = 'member' THEN (COALESCE(number_of_shares,0) * COALESCE(share_nominal_value,0)) ELSE 0 END) as total_capital
+        MAX(company_total_capital) as total_capital
 
-    FROM persons
+    FROM person_with_capital
     GROUP BY company_regcode
 ),
 
