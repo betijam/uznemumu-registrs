@@ -9,18 +9,19 @@ logger = logging.getLogger(__name__)
 SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_key_change_in_prod")
 ALGORITHM = "HS256"
 
+# Configuration
+ALLOWED_FREE_VIEWS = 5  # First 5 views are free
+
 async def check_access(request: Request) -> bool:
     """
     Determine if user has FULL access to company data.
     
-    NOTE: Metered access temporarily disabled. 
-    The issues are:
-    1. Cookie-based counting accumulates incorrectly (values 47, 23 even in incognito)
-    2. Multiple request types (SSR vs browser) getting different access levels
-    
-    TODO: Implement proper session-based or IP-based counting instead of cookies
+    Priority:
+    1. Valid JWT -> Full access (logged in users)
+    2. Search engine bot -> Teaser only (for SEO safety)
+    3. Anonymous user -> Check view count (first N views free)
     """
-    # Check Login (logged in users always get full access)
+    # 1. Check Login (logged in users always get full access)
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith("Bearer "):
         try:
@@ -28,17 +29,30 @@ async def check_access(request: Request) -> bool:
             jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             logger.info("[ACCESS] Granted via JWT")
             return True
-        except Exception:
+        except Exception as e:
+            logger.debug(f"[ACCESS] JWT decode failed: {e}")
             pass
 
-    # Check Bot
+    # 2. Check Bot (only block known search engine bots)
     user_agent = request.headers.get('user-agent', '').lower()
     SEARCH_BOTS = ['googlebot', 'bingbot', 'slurp', 'duckduckbot', 'baiduspider', 'yandexbot']
     if any(bot in user_agent for bot in SEARCH_BOTS):
-        logger.info("[ACCESS] Teaser for search bot")
-        return False  # Search bots get teaser for SEO
+        logger.info(f"[ACCESS] Teaser for search bot: {user_agent[:50]}")
+        return False
 
-    # TEMPORARY: Grant access to all non-bot users
-    # Cookie-based metered access has issues with SSR architecture
-    logger.info("[ACCESS] Granted (metered access disabled)")
-    return True
+    # 3. Check Metered Access (view count from frontend)
+    view_count_header = request.headers.get('X-View-Count')
+    
+    if view_count_header is None or view_count_header == '':
+        # No header = grant access (enables SSR without cookies)
+        logger.info("[ACCESS] Granted (no view count header)")
+        return True
+    
+    try:
+        view_count = int(view_count_header)
+    except ValueError:
+        view_count = 0
+    
+    has_access = view_count < ALLOWED_FREE_VIEWS
+    logger.info(f"[ACCESS] View count: {view_count}, Limit: {ALLOWED_FREE_VIEWS}, Access: {has_access}")
+    return has_access

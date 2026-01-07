@@ -7,45 +7,36 @@ const intlMiddleware = createMiddleware(routing);
 export default function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // Check if path is for Company or Person profile (excluding API/static)
-    // Matches: /en/company/4000300000 or /company/4000300000
-    // But NOT: /en/company/search or /company/123/financials
-    // Current route structure: /[locale]/company/[id]
-    // Regex explanation:
-    // ^ -> Start
-    // (\/[a-z]{2})? -> Optional locale (/en, /lv)
-    // \/(company|person) -> Segment
-    // \/\d+ -> Numeric ID (assuming regcodes are numbers, or hash for persons)
-    // $ -> End of string (Exact match!)
-    const isProfilePage = /^(\/[a-z]{2})?\/(company|person)\/(\d+|P-[a-fA-F0-9]+)$/.test(pathname);
+    // 1. Define what counts as a profile page view
+    // Regex: Only /company/digits or /person/code, with optional locale
+    // Does NOT match: /company/.../graph, /api/..., etc.
+    const isProfilePage = /^\/(en|lv|ru)?\/(company|person)\/([a-zA-Z0-9-]+)$/.test(pathname);
 
-    // Run I18n Middleware first to get the base response
-    // We need to pass the request. If we want SC to see the new count, we might need to modify headers.
-    // However, simplest way for SC to send to Backend is to read the header we set.
+    // 2. Check if this is a prefetch/data request (don't count these!)
+    const isPrefetch =
+        request.headers.get('next-router-prefetch') === 'true' ||
+        request.headers.get('purpose') === 'prefetch' ||
+        request.headers.get('x-middleware-prefetch') === '1';
 
-    // 1. Calculate View Count
+    // 3. Calculate View Count
     let viewCount = 0;
     const cookie = request.cookies.get('c360_free_views');
     if (cookie?.value) {
-        viewCount = parseInt(cookie.value, 10);
-        if (isNaN(viewCount)) viewCount = 0;
+        const parsed = parseInt(cookie.value, 10);
+        viewCount = isNaN(parsed) ? 0 : parsed;
     }
 
-    // Increment only on profile pages
+    // Increment only on actual profile page loads (not prefetch)
     let newViewCount = viewCount;
-    if (isProfilePage) {
-        // Only increment if not already valid auth (optional optimization, but backend checks auth too)
-        // We just increment blindly for simplicity, or check auth token?
-        // Backend logic: "JA view_count < 2 ... Serveris pievieno".
-        // If we do it in middleware, we do it here.
+    if (isProfilePage && !isPrefetch) {
         newViewCount = viewCount + 1;
     }
 
-    // 2. Prepare headers for Server Components
+    // 4. Prepare headers for Server Components
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('X-View-Count', newViewCount.toString());
 
-    // Propagate Auth Token
+    // Propagate Auth Token from cookie to header
     const token = request.cookies.get('token');
     if (token?.value) {
         requestHeaders.set('Authorization', `Bearer ${token.value}`);
@@ -56,22 +47,25 @@ export default function middleware(request: NextRequest) {
         headers: requestHeaders,
     });
 
-    // 3. Call next-intl with new request
+    // 5. Call next-intl middleware
     const response = intlMiddleware(newRequest);
 
-    // 4. Set Cookie on Response (if changed)
-    if (isProfilePage) {
+    // 6. Set Cookie on Response (if profile page and not prefetch)
+    if (isProfilePage && !isPrefetch) {
         response.cookies.set('c360_free_views', newViewCount.toString(), {
             maxAge: 60 * 60 * 24 * 30, // 30 days
             path: '/',
+            httpOnly: true,  // Security: not accessible via JS
             sameSite: 'lax'
         });
+        // Debug header
+        response.headers.set('X-Debug-View-Count', newViewCount.toString());
     }
 
     return response;
 }
 
 export const config = {
-    // Match only internationalized pathnames
-    matcher: ['/((?!api|_next|_vercel|.*\\..*).*)']
+    // Exclude static files and API routes from middleware
+    matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };

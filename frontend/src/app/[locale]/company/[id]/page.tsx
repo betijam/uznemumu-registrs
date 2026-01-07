@@ -112,24 +112,22 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function CompanyPage({ params }: { params: Promise<{ id: string, locale: string }> }) {
     const { id } = await params;
 
-    // Read cookie DIRECTLY - More reliable than middleware headers.
-    // The middleware sets the cookie, but the X-View-Count header doesn't propagate through intlMiddleware.
-    const cookieStore = await cookies();
-    const viewCountCookie = cookieStore.get('c360_free_views');
-    // Calculate the view count the same way middleware does:
-    // Current cookie value + 1 for this view (middleware increments before SC runs)
-    const viewCountFromCookie = viewCountCookie ? parseInt(viewCountCookie.value, 10) : 0;
-    // The middleware ALREADY incremented this, so we just read the value
-    const viewCount = isNaN(viewCountFromCookie) ? 1 : viewCountFromCookie;
-
-    // Also check for auth token and User-Agent
+    // 1. Get browser info from headers
     const headersList = await headers();
-    const authHeader = headersList.get('Authorization');
-    const userAgent = headersList.get('user-agent') || '';
+    const cookieStore = await cookies();
 
+    const userAgent = headersList.get('user-agent') || 'Next.js Server';
+    const authHeader = headersList.get('Authorization');
+
+    // 2. Get view count from cookie (middleware increments it, we just read)
+    const viewCountCookie = cookieStore.get('c360_free_views');
+    const viewCount = viewCountCookie?.value || '0';
+
+    // 3. Prepare headers for Backend API
     const apiHeaders: HeadersInit = {
-        'X-View-Count': viewCount.toString(),
-        'User-Agent': userAgent,  // Forward original UA so backend bot detection works
+        'User-Agent': userAgent,
+        'X-View-Count': viewCount,
+        'Content-Type': 'application/json',
     };
     if (authHeader) {
         apiHeaders['Authorization'] = authHeader;
