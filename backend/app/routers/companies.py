@@ -140,10 +140,6 @@ async def get_company_details(regcode: int, response: Response, request: Request
 
     # Parallel Data Loading Function Definitions
     def get_financial_history():
-        # RESTRICTION: Only return full history if allowed
-        if not has_full_access:
-            return [] # Empty history for Teaser view
-            
         with engine.connect() as conn:
             fin_rows = conn.execute(text("""
                 SELECT year, turnover, profit, employees, cash_balance,
@@ -300,10 +296,6 @@ async def get_company_details(regcode: int, response: Response, request: Request
             return by_type, total_score
 
     def get_persons():
-        # RESTRICTION: Hide person details if no access
-        if not has_full_access:
-            return [], [], [], 0
-
         with engine.connect() as conn:
             rows = conn.execute(text("""
                 SELECT person_name, role, share_percent, date_from, person_code, birth_date,

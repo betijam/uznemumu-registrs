@@ -200,28 +200,6 @@ async def get_person_profile(identifier: str, response: Response, request: Reque
         if not person_info:
             raise HTTPException(status_code=404, detail="Person not found")
 
-        # RESTRICTION: Stop here if limited view
-        if not has_full_access:
-            return {
-                "person_code_masked": mask_person_code(person_code),
-                "person_code_hash": hash_person_code(person_code),
-                "full_name": person_info.person_name,
-                "birth_date": None, # Hide birth date
-                "nationality": person_info.nationality or "LV",
-                "residence": None, # Hide residence
-                "risk_badges": {"tax_debt": False, "insolvency": False, "sanctions": False}, # Hide risk flags
-                "kpi": {
-                    "active_companies_count": 0,
-                    "historical_companies_count": 0,
-                    "total_turnover_managed": 0,
-                    "total_employees_managed": 0,
-                    "capital_share_value": 0
-                },
-                "companies": [], # HIDDEN
-                "collaboration_network": [], # HIDDEN
-                "has_full_access": False
-            }
-
         # Get all related companies
         companies = conn.execute(text("""
             SELECT 
@@ -505,7 +483,8 @@ async def get_person_profile(identifier: str, response: Response, request: Reque
                 "capital_share_value": safe_float(capital_value)
             },
             "companies": companies_list,
-            "collaboration_network": collaboration_network
+            "collaboration_network": collaboration_network,
+            "has_full_access": has_full_access
         }
 
 

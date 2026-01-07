@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 from contextlib import asynccontextmanager
 from asgi_correlation_id import CorrelationIdMiddleware
@@ -38,6 +39,22 @@ async def lifespan(app: FastAPI):
         scheduler.shutdown()
 
 app = FastAPI(title="Uzņēmumu Reģistrs API", version="1.0.0", lifespan=lifespan)
+
+# CORS Configuration - Allow frontend origins
+origins = [
+    "http://localhost:3000",
+    "https://company-360.up.railway.app",  # Railway frontend
+    "https://*.up.railway.app",  # All Railway subdomains
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for now (can be restricted later)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.add_middleware(CorrelationIdMiddleware)
 
 # Include Routers
