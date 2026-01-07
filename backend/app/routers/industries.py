@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query, Response
 from sqlalchemy import text
 from etl.loader import engine
+from app.nace_names import NACE_DIVISIONS, get_nace_name
 import logging
 import math
 
@@ -201,22 +202,23 @@ def _get_overview_from_cache(conn):
             "data_year": macro.data_year
         },
         "top_growth": [
-            {"nace_code": r.nace_code, "name": r.nace_name, "growth_percent": safe_float(r.turnover_growth)}
+            {"nace_code": r.nace_code, "name": NACE_DIVISIONS.get(r.nace_code, r.nace_name), "growth_percent": safe_float(r.turnover_growth)}
             for r in top_growth
         ],
         "top_salary": [
-            {"nace_code": r.nace_code, "name": r.nace_name, "avg_salary": safe_int(r.avg_gross_salary)}
+            {"nace_code": r.nace_code, "name": NACE_DIVISIONS.get(r.nace_code, r.nace_name), "avg_salary": safe_int(r.avg_gross_salary)}
             for r in top_salary
         ],
         "top_turnover": [
-            {"nace_code": r.nace_code, "name": r.nace_name, "turnover": safe_float(r.total_turnover), "turnover_formatted": format_large_number(r.total_turnover)}
+            {"nace_code": r.nace_code, "name": NACE_DIVISIONS.get(r.nace_code, r.nace_name), "turnover": safe_float(r.total_turnover), "turnover_formatted": format_large_number(r.total_turnover)}
             for r in top_turnover
         ],
         "sections": [
             {
                 "nace_code": r.nace_code,
-                "name": NACE_SECTIONS.get(r.nace_code, {}).get("name", r.nace_name),
-                "icon": NACE_SECTIONS.get(r.nace_code, {}).get("icon", "📊"),
+                # Use NACE_DIVISIONS for proper names, fallback to NACE_SECTIONS (letters), then DB name
+                "name": NACE_DIVISIONS.get(r.nace_code) or NACE_SECTIONS.get(r.nace_code, {}).get("name") or r.nace_name,
+                "icon": NACE_SECTIONS.get(r.nace_code, {}).get("icon", "🏭"),
                 "turnover": safe_float(r.total_turnover),
                 "turnover_formatted": format_large_number(r.total_turnover),
                 "turnover_growth": safe_float(r.turnover_growth),
@@ -224,6 +226,7 @@ def _get_overview_from_cache(conn):
                 "companies": safe_int(r.active_companies)
             }
             for r in sections
+            if r.nace_code not in ('00', None) and (not r.nace_name or 'cita nozare' not in r.nace_name.lower())
         ]
     }
 
@@ -392,16 +395,81 @@ def get_industry_detail(
         return None
 
     try:
-        # Default to previous year if not specified (current year usually incomplete)
+        # Default year selection: find year with sufficient data for this industry
         if not year:
-            # simple check for max available year
-            max_year_row = conn.execute(text("SELECT MAX(year) FROM financial_reports")).fetchone()
-            year = max_year_row[0] if max_year_row and max_year_row[0] else 2023
+            # Find the latest year with at least 10 companies reporting data
+            best_year_row = conn.execute(text("""
+                SELECT f.year, COUNT(*) as cnt
+                FROM financial_reports f
+                JOIN companies c ON c.regcode = f.company_regcode
+                WHERE c.nace_section = :code AND f.turnover IS NOT NULL
+                GROUP BY f.year
+                HAVING COUNT(*) >= 10
+                ORDER BY f.year DESC
+                LIMIT 1
+            """), {"code": nace_code}).fetchone()
+            
+            if best_year_row:
+                year = best_year_row.year
+            else:
+                # Fallback to max year overall
+                max_year_row = conn.execute(text("SELECT MAX(year) FROM financial_reports WHERE year < 2025")).fetchone()
+                year = max_year_row[0] if max_year_row and max_year_row[0] else 2024
 
-        # 1. Basic Info & NACE Name
-        nace_info = NACE_SECTIONS.get(nace_code)
-        nace_name = nace_info["name"] if nace_info else f"Sekcija {nace_code}"
-        nace_icon = nace_info["icon"] if nace_info else "🏢"
+        # 1. Basic Info & NACE Name - prioritize NACE_DIVISIONS dictionary
+        # This ensures proper names even when DB has "Cita nozare"
+        nace_name = NACE_DIVISIONS.get(nace_code)
+        
+        # Map 2-digit codes to sections for icons
+        NACE_CODE_TO_SECTION = {
+            "01": "A", "02": "A", "03": "A",  # Agriculture
+            "05": "B", "06": "B", "07": "B", "08": "B", "09": "B",  # Mining
+            "10": "C", "11": "C", "12": "C", "13": "C", "14": "C", "15": "C", "16": "C", "17": "C", "18": "C",
+            "19": "C", "20": "C", "21": "C", "22": "C", "23": "C", "24": "C", "25": "C", "26": "C", "27": "C",
+            "28": "C", "29": "C", "30": "C", "31": "C", "32": "C", "33": "C",  # Manufacturing
+            "35": "D",  # Electricity
+            "36": "E", "37": "E", "38": "E", "39": "E",  # Water/Waste
+            "41": "F", "42": "F", "43": "F",  # Construction
+            "45": "G", "46": "G", "47": "G",  # Trade
+            "49": "H", "50": "H", "51": "H", "52": "H", "53": "H",  # Transport
+            "55": "I", "56": "I",  # Hospitality
+            "58": "J", "59": "J", "60": "J", "61": "J", "62": "J", "63": "J",  # IT/Media
+            "64": "K", "65": "K", "66": "K",  # Finance
+            "68": "L",  # Real Estate
+            "69": "M", "70": "M", "71": "M", "72": "M", "73": "M", "74": "M", "75": "M",  # Professional
+            "77": "N", "78": "N", "79": "N", "80": "N", "81": "N", "82": "N",  # Admin
+            "84": "O",  # Public Admin
+            "85": "P",  # Education
+            "86": "Q", "87": "Q", "88": "Q",  # Health
+            "90": "R", "91": "R", "92": "R", "93": "R",  # Arts
+            "94": "S", "95": "S", "96": "S",  # Other Services
+            "97": "T", "98": "T",  # Households
+            "99": "U",  # Extraterritorial
+        }
+        
+        # Get icon from section mapping
+        section = NACE_CODE_TO_SECTION.get(nace_code[:2])
+        if section and section in NACE_SECTIONS:
+            nace_icon = NACE_SECTIONS[section]["icon"]
+        elif nace_code in NACE_SECTIONS:
+            nace_icon = NACE_SECTIONS[nace_code]["icon"]
+        else:
+            nace_icon = "🏭"
+        
+        # If no NACE name found in dictionary, try database
+        if not nace_name:
+            nace_db = conn.execute(text("""
+                SELECT nace_name FROM industry_stats_materialized 
+                WHERE nace_code = :code AND nace_level = 1
+                LIMIT 1
+            """), {"code": nace_code}).fetchone()
+            
+            if nace_db and nace_db.nace_name and 'cita nozare' not in nace_db.nace_name.lower():
+                nace_name = nace_db.nace_name
+            else:
+                # Last fallback to NACE_SECTIONS dict (for letter codes A-U)
+                nace_info = NACE_SECTIONS.get(nace_code)
+                nace_name = nace_info["name"] if nace_info else f"Nozare {nace_code}"
 
         # 2. Main KPIs for Selected Year
         # We compute this dynamically from companies/financial_reports to be fresh
