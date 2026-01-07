@@ -40,7 +40,7 @@ async def check_access(request: Request) -> bool:
     except ValueError:
         view_count = 0
         
-    # First 2 views per day should have full access
-    ALLOWED_FREE_VIEWS = 3  # View 1 and 2 are < 3.
+    # First 5 views per day should have full access (Increased for testing)
+    ALLOWED_FREE_VIEWS = 5  # View 0, 1, 2, 3, 4 are < 5.
     
     return view_count < ALLOWED_FREE_VIEWS

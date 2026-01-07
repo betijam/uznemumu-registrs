@@ -8,9 +8,16 @@ export default function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // Check if path is for Company or Person profile (excluding API/static)
-    // Matches /en/company/123 or /company/123
-    const isProfilePage = /\/(company|person)\/\d+/.test(pathname) ||
-        /\/(company|person)\/[^\/]+$/.test(pathname); // Handle hashes/slugs
+    // Matches: /en/company/4000300000 or /company/4000300000
+    // But NOT: /en/company/search or /company/123/financials
+    // Current route structure: /[locale]/company/[id]
+    // Regex explanation:
+    // ^ -> Start
+    // (\/[a-z]{2})? -> Optional locale (/en, /lv)
+    // \/(company|person) -> Segment
+    // \/\d+ -> Numeric ID (assuming regcodes are numbers, or hash for persons)
+    // $ -> End of string (Exact match!)
+    const isProfilePage = /^(\/[a-z]{2})?\/(company|person)\/(\d+|P-[a-fA-F0-9]+)$/.test(pathname);
 
     // Run I18n Middleware first to get the base response
     // We need to pass the request. If we want SC to see the new count, we might need to modify headers.

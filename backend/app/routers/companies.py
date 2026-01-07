@@ -382,7 +382,7 @@ async def get_company_details(regcode: int, response: Response, request: Request
 
     # Access Control Filtering
     if not has_full_access:
-        full_profile["financial_history"] = []
+        # full_profile["financial_history"] = [] # Un-comment to hide financials. Kept visible for Overview tab.
         full_profile["ubos"] = []
         full_profile["members"] = []
         full_profile["officers"] = []
