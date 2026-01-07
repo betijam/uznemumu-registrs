@@ -10,7 +10,7 @@ ALGORITHM = "HS256"
 async def check_access(request: Request) -> bool:
     """
     Determine if user has FULL access to company data.
-    
+    """  
     # 1. Check Login (Authorization Header)
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith("Bearer "):
