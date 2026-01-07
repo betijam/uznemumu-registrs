@@ -92,6 +92,7 @@ def get_stats():
 def search_companies(q: str = "", nace: str = None):
     """
     Search companies by name/regcode with optional industry filter.
+    Flexible matching: case/accent insensitive, word order independent.
     
     Args:
         q: Search query (name or registration code)
@@ -100,19 +101,52 @@ def search_companies(q: str = "", nace: str = None):
     if (not q or len(q) < 2) and not nace:
         return []
     
+    # Split query into words for flexible matching
+    query_words = q.strip().split() if q else []
+    
     # Build WHERE clause
     where_conditions = []
     params = {}
     
-    # Text search
-    if q and len(q) >= 2:
-        where_conditions.append("""
-            (name ILIKE :q_pattern OR
-             CAST(regcode AS TEXT) LIKE :q_pattern OR
-             name ILIKE :q_contains)
-        """)
-        params["q_pattern"] = f"{q}%"
-        params["q_contains"] = f"%{q}%"
+    # Ensure unaccent extension
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+            conn.commit()
+        except:
+            pass
+    
+    # Common company type abbreviations
+    TYPE_ABBREVIATIONS = ['sia', 'as', 'ik', 'zs', 'ks', 'ps', 'biedrība', 'nodibinājums']
+    
+    # Separate type words from name words
+    name_words = []
+    type_words = []
+    for word in query_words:
+        word_lower = word.lower()
+        if word_lower in TYPE_ABBREVIATIONS:
+            type_words.append(word_lower)
+        else:
+            name_words.append(word)
+    
+    # Text search - match ALL words in any order, accent-insensitive
+    if query_words:
+        # Check if it's a regcode search (all digits)
+        if query_words[0].isdigit():
+            where_conditions.append("CAST(regcode AS TEXT) LIKE :q_pattern")
+            params["q_pattern"] = f"{query_words[0]}%"
+        else:
+            # Name word conditions
+            for i, word in enumerate(name_words):
+                where_conditions.append(f"unaccent(lower(name)) LIKE unaccent(lower(:word{i}))")
+                params[f"word{i}"] = f"%{word}%"
+            
+            # Type conditions (if any type abbreviations in query)
+            if type_words:
+                type_cond = " OR ".join([f"LOWER(\"type\") = :type{i}" for i in range(len(type_words))])
+                where_conditions.append(f"({type_cond})")
+                for i, tw in enumerate(type_words):
+                    params[f"type{i}"] = tw.upper()
     
     # Industry filter
     if nace:
@@ -121,12 +155,11 @@ def search_companies(q: str = "", nace: str = None):
     
     where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
     
-    # Build ORDER BY
-    if q:
+    # Build ORDER BY - prioritize exact prefix matches
+    if query_words and not query_words[0].isdigit():
+        params["first_word"] = f"{query_words[0]}%"
         order_by = """
-            (CASE WHEN name ILIKE :q_pattern THEN 2 
-                  WHEN CAST(regcode AS TEXT) LIKE :q_pattern THEN 1 
-                  ELSE 0 END) DESC,
+            CASE WHEN unaccent(lower(name)) LIKE unaccent(lower(:first_word)) THEN 0 ELSE 1 END,
             name ASC
         """
     else:
@@ -160,3 +193,4 @@ def search_companies(q: str = "", nace: str = None):
             })
             
     return result_data
+

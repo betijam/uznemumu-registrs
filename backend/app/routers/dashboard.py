@@ -95,57 +95,177 @@ def get_home_dashboard():
 @router.get("/home/search-hint")
 def search_hint(q: str):
     """
-    Fast autocomplete/hint endpoint.
+    Fast autocomplete/hint endpoint with flexible search.
+    - Case insensitive
+    - Accent insensitive (ā=a, ē=e, etc.)
+    - Word order independent ("SIA Animas" finds "Animas, SIA")
     Returns companies and persons separately.
     """
     if not q or len(q) < 2:
         return {"companies": [], "persons": []}
-        
+    
+    # Normalize query: split into words for flexible matching
+    query_words = q.strip().split()
+    
     conn = engine.connect()
     try:
-        # 1. Search Companies
-        companies = conn.execute(text("""
-            SELECT name, regcode, 'company' as type 
-            FROM companies 
-            WHERE name ILIKE :q 
-            LIMIT 5
-        """), {"q": f"%{q}%"}).fetchall()
+        # Ensure unaccent extension exists (run once, cached by PostgreSQL)
+        try:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+            conn.commit()
+        except:
+            pass  # Extension may already exist
         
-        # 2. Search Persons
-        persons = conn.execute(text("""
-            SELECT 
-                p.person_name,
-                p.person_code,
-                p.person_hash,
-                COUNT(DISTINCT p.company_regcode) as company_count
-            FROM persons p
-            WHERE p.person_name ILIKE :q
-                AND p.person_code IS NOT NULL
-            GROUP BY p.person_code, p.person_name, p.person_hash
-            ORDER BY company_count DESC, p.person_name
-            LIMIT 5
-        """), {"q": f"%{q}%"}).fetchall()
+        # 1. Search Companies - flexible matching
+        # Match ALL words in any order, accent-insensitive
+        # Also search in 'type' column for abbreviations (SIA, AS, etc.)
+        
+        # Common company type abbreviations to handle
+        TYPE_ABBREVIATIONS = {
+            'sia': ['sia', 'sabiedrība', 'ierobežotu', 'atbildību'],
+            'as': ['as', 'akciju', 'sabiedrība'],
+            'ik': ['ik', 'individuālais', 'komersants'],
+            'zs': ['zs', 'zemnieku', 'saimniecība'],
+            'ks': ['ks', 'kooperatīvā', 'sabiedrība'],
+            'ps': ['ps', 'pilnsabiedrība'],
+        }
+        
+        # Filter out known abbreviations from search words (will match via type column)
+        name_words = []
+        type_words = []
+        for word in query_words:
+            word_lower = word.lower()
+            if word_lower in TYPE_ABBREVIATIONS:
+                type_words.append(word_lower)
+            else:
+                name_words.append(word)
+        
+        if len(query_words) == 0:
+            companies = []
+        elif len(name_words) == 0 and len(type_words) > 0:
+            # Only type search (e.g., just "SIA")
+            type_cond = " OR ".join([f"LOWER(\"type\") = :type{i}" for i in range(len(type_words))])
+            params = {f"type{i}": tw.upper() for i, tw in enumerate(type_words)}
+            company_sql = f"""
+                SELECT name, name_in_quotes, "type" as company_type, regcode
+                FROM companies 
+                WHERE ({type_cond})
+                ORDER BY name ASC
+                LIMIT 7
+            """
+            companies = conn.execute(text(company_sql), params).fetchall()
+        elif len(name_words) == 1 and len(type_words) == 0:
+            # Simple single-word name search
+            company_sql = """
+                SELECT name, name_in_quotes, "type" as company_type, regcode
+                FROM companies 
+                WHERE unaccent(lower(name)) LIKE unaccent(lower(:q))
+                ORDER BY 
+                    CASE WHEN unaccent(lower(name)) LIKE unaccent(lower(:q_start)) THEN 0 ELSE 1 END,
+                    name ASC
+                LIMIT 7
+            """
+            companies = conn.execute(text(company_sql), {
+                "q": f"%{name_words[0]}%",
+                "q_start": f"{name_words[0]}%"
+            }).fetchall()
+        else:
+            # Multi-word: Match name words + optionally match type
+            conditions = []
+            params = {}
+            
+            # Name word conditions
+            for i, word in enumerate(name_words):
+                conditions.append(f"unaccent(lower(name)) LIKE unaccent(lower(:word{i}))")
+                params[f"word{i}"] = f"%{word}%"
+            
+            # Type conditions (if any type abbreviations in query)
+            if type_words:
+                type_cond = " OR ".join([f"LOWER(\"type\") = :type{i}" for i in range(len(type_words))])
+                conditions.append(f"({type_cond})")
+                for i, tw in enumerate(type_words):
+                    params[f"type{i}"] = tw.upper()
+            
+            where_clause = " AND ".join(conditions)
+            company_sql = f"""
+                SELECT name, name_in_quotes, "type" as company_type, regcode
+                FROM companies 
+                WHERE {where_clause}
+                ORDER BY name ASC
+                LIMIT 7
+            """
+            companies = conn.execute(text(company_sql), params).fetchall()
+        
+        # 2. Search Persons - same flexible matching
+        if len(query_words) == 1:
+            person_sql = """
+                SELECT 
+                    p.person_name,
+                    p.person_code,
+                    p.person_hash,
+                    COUNT(DISTINCT p.company_regcode) as company_count
+                FROM persons p
+                WHERE unaccent(lower(p.person_name)) LIKE unaccent(lower(:q))
+                    AND p.person_code IS NOT NULL
+                GROUP BY p.person_code, p.person_name, p.person_hash
+                ORDER BY company_count DESC, p.person_name
+                LIMIT 5
+            """
+            persons = conn.execute(text(person_sql), {"q": f"%{query_words[0]}%"}).fetchall()
+        else:
+            conditions = []
+            params = {}
+            for i, word in enumerate(query_words):
+                conditions.append(f"unaccent(lower(p.person_name)) LIKE unaccent(lower(:word{i}))")
+                params[f"word{i}"] = f"%{word}%"
+            
+            where_clause = " AND ".join(conditions)
+            person_sql = f"""
+                SELECT 
+                    p.person_name,
+                    p.person_code,
+                    p.person_hash,
+                    COUNT(DISTINCT p.company_regcode) as company_count
+                FROM persons p
+                WHERE {where_clause}
+                    AND p.person_code IS NOT NULL
+                GROUP BY p.person_code, p.person_name, p.person_hash
+                ORDER BY company_count DESC, p.person_name
+                LIMIT 5
+            """
+            persons = conn.execute(text(person_sql), params).fetchall()
         
         # Helper for person hash
         def get_person_hash(code, name, existing_hash):
             if existing_hash:
                 return existing_hash
-            # Compute hash if missing
-            # Normalize name: lowercase -> split -> sort -> join
             normalized_name = " ".join(sorted(name.lower().split()))
-            
-            # Use only first 6 chars of person_code (DDMMYY)
             code_fragment = code[:6] if code else ""
             hash_input = f"{code_fragment}|{normalized_name}"
-            
             hash_val = 0
             for char in hash_input:
                 hash_val = ((hash_val << 5) - hash_val) + ord(char)
                 hash_val = hash_val & 0xFFFFFFFF
             return format(abs(hash_val) & 0xFFFFFFFF, '08x')[:8]
 
+        # Format company names as "Name, Type" for display
+        formatted_companies = []
+        for r in companies:
+            # Use name_in_quotes if available, otherwise full name
+            display_name = r.name_in_quotes if r.name_in_quotes else r.name
+            # Add type suffix if available
+            if r.company_type:
+                display_name = f"{display_name}, {r.company_type}"
+            
+            formatted_companies.append({
+                "name": display_name,
+                "full_name": r.name,  # Keep original for reference
+                "regcode": r.regcode, 
+                "type": "company"
+            })
+
         return {
-            "companies": [{"name": r.name, "regcode": r.regcode, "type": "company"} for r in companies],
+            "companies": formatted_companies,
             "persons": [
                 {
                     "name": p.person_name,
