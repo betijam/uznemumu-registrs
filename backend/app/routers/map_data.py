@@ -2,7 +2,7 @@
 Map Data API - Serves GeoJSON and cities data for the regions map
 """
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 import os
 import json
 
