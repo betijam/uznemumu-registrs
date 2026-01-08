@@ -159,12 +159,12 @@ def search_companies(q: str = "", nace: str = None):
     if query_words and not query_words[0].isdigit():
         params["first_word"] = f"{query_words[0]}%"
         order_by = """
-            CASE WHEN status = 'Aktīvs' THEN 0 ELSE 1 END,
+            CASE WHEN status = 'active' THEN 0 ELSE 1 END,
             CASE WHEN immutable_unaccent(lower(name)) LIKE immutable_unaccent(lower(:first_word)) THEN 0 ELSE 1 END,
             name ASC
         """
     else:
-        order_by = "CASE WHEN status = 'Aktīvs' THEN 0 ELSE 1 END, name ASC"
+        order_by = "CASE WHEN status = 'active' THEN 0 ELSE 1 END, name ASC"
     
     sql = f"""
     SELECT regcode, name, name_in_quotes, "type" as company_type, type_text,
