@@ -1,5 +1,4 @@
 import { Link } from "@/i18n/routing";
-import NextImage from "next/image";
 
 export default function Footer() {
     return (
@@ -33,7 +32,7 @@ export default function Footer() {
                         <span>&copy; {new Date().getFullYear()} Company 360.</span>
                         <span className="ml-1">Powered by</span>
                         <a href="https://animas.lv/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center hover:opacity-80 transition-opacity">
-                            <NextImage src="/api/map/logo" alt="ANIMAS" width={263} height={28} className="h-4 w-auto mb-0.5" />
+                            <img src="/api/map/logo" alt="ANIMAS" width={263} height={28} className="h-4 w-auto mb-0.5" />
                         </a>
                         <span className="mx-1 text-gray-300">|</span>
                         <span>Visas tiesības aizsargātas.</span>
