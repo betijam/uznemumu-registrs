@@ -76,6 +76,16 @@ def load_nace_dictionary(nace_csv_path: str) -> dict:
         # Create code-to-description lookup
         code_lookup = dict(zip(nace_df['Kods_normalized'], nace_df['Nosaukums']))
         
+        # IMPORTANT: Also add 4-digit variants (e.g., 5310 for 531)
+        # VID data sometimes uses 4-digit codes with trailing zero
+        for code, name in list(code_lookup.items()):
+            if len(code) == 3 and code.isdigit():
+                # Add variant with trailing zero (531 → 5310)
+                code_lookup[code + '0'] = name
+            elif len(code) == 1 and code.isalpha():
+                # Keep single-letter codes as is
+                pass
+        
         # Create section lookup (Līmenis = 1 are sections like "A", "C", etc.)
         section_df = nace_df[nace_df['Līmenis'] == 1].copy()
         section_lookup = dict(zip(section_df['Kods_normalized'], section_df['Nosaukums']))
