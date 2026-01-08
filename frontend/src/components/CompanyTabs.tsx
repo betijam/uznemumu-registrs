@@ -47,7 +47,7 @@ export default function CompanyTabs({
         if (!company.financial_history || company.financial_history.length === 0) {
             const fetchDetails = async () => {
                 setIsLoadingDetails(true);
-                const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+                const API_BASE_URL = '/api';
                 try {
                     const headers = { 'Content-Type': 'application/json' };
 

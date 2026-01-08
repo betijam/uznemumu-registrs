@@ -37,6 +37,9 @@
   },
   "CompanyTabs": {
     "overview": "Overview",
+    "reg_no_short": "Reg. No.",
+    "full_name": "Full Name",
+    "industry": "Industry",
     "finances": "Finances",
     "risks": "Risks",
     "management": "Management & Owners",
