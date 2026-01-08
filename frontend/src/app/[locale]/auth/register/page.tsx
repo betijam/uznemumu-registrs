@@ -134,7 +134,11 @@ export default function RegisterPage() {
     };
 
     const handleSocialLogin = (provider: string) => {
-        alert(`${provider} login coming soon!`);
+        if (provider === 'Google') {
+            window.location.href = '/api/auth/google';
+        } else if (provider === 'LinkedIn') {
+            window.location.href = '/api/auth/linkedin';
+        }
     };
 
     if (success) {

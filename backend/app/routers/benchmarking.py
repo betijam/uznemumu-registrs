@@ -135,14 +135,14 @@ def get_top_competitors(regcode: int, limit: int = 5):
     with engine.connect() as conn:
         # Get company info
         company = conn.execute(
-            text("SELECT nace_section, employee_count FROM companies WHERE regcode = :r"),
+            text("SELECT nace_code, nace_text, employee_count FROM companies WHERE regcode = :r"),
             {"r": regcode}
         ).fetchone()
         
-        if not company or not company.nace_section or company.nace_section == '00':
+        if not company or not company.nace_code or len(company.nace_code) < 3:
             return []
         
-        nace_section = company.nace_section
+        nace_prefix = company.nace_code[:3]
         employee_count = company.employee_count or 0
         
         # Calculate size range (±30%)
@@ -162,13 +162,13 @@ def get_top_competitors(regcode: int, limit: int = 5):
             FROM companies c
             LEFT JOIN financial_reports fr ON fr.company_regcode = c.regcode
                 AND fr.year = (SELECT MAX(year) FROM financial_reports WHERE company_regcode = c.regcode)
-            WHERE c.nace_section = :section
+            WHERE c.nace_code LIKE :nace_prefix
                 AND c.regcode != :regcode
                 AND (:min_emp = 0 OR c.employee_count BETWEEN :min_emp AND :max_emp)
             ORDER BY fr.turnover DESC NULLS LAST, c.employee_count DESC
             LIMIT :limit
         """), {
-            "section": nace_section,
+            "nace_prefix": f"{nace_prefix}%",
             "regcode": regcode,
             "min_emp": min_employees,
             "max_emp": max_employees,
