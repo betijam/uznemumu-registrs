@@ -92,9 +92,16 @@ export default function PersonasPage() {
                     <h1 className="text-4xl font-bold text-gray-900 mb-3">
                         Latvijas Biznesa Elite
                     </h1>
-                    <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                    <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
                         Izpēti patiesos labuma guvējus, sērijveida uzņēmējus un ietekmīgākās personas
                     </p>
+                    <Link
+                        href="/personas/search"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-full font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                    >
+                        <span>Atvērt Paplašināto Meklētāju</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </Link>
                 </div>
 
                 {/* Elite Grid - Top 3 Cards */}
@@ -149,7 +156,7 @@ export default function PersonasPage() {
                             <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                                 💰 Top 100 Īpašnieki (pēc Kapitāla)
                             </h2>
-                            <Link href="/personas/wealth" className="text-primary text-sm hover:underline">
+                            <Link href="/personas/search?sort_by=wealth" className="text-primary text-sm hover:underline">
                                 Skatīt visus →
                             </Link>
                         </div>
@@ -186,7 +193,7 @@ export default function PersonasPage() {
                             <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                                 ⚡ Aktīvākie (Sērijveida uzņēmēji)
                             </h2>
-                            <Link href="/personas/active" className="text-primary text-sm hover:underline">
+                            <Link href="/personas/search?sort_by=active" className="text-primary text-sm hover:underline">
                                 Skatīt visus →
                             </Link>
                         </div>

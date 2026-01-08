@@ -131,3 +131,111 @@ async def get_rankings(
             value=float(row.value or 0), main_company=row.main_company_name,
             primary_nace=get_nace_name(row.primary_nace), active_companies=row.active_companies_count
         ) for row in result]
+
+
+@router.get("/search", response_model=dict)
+async def search_people(
+    q: Optional[str] = None,
+    role: Optional[str] = Query(None, description="Filter by role: owner, officer, member"),
+    region: Optional[str] = Query(None, description="Filter by region name"),
+    nace: Optional[str] = Query(None, description="Filter by NACE code or section"),
+    min_wealth: Optional[float] = None,
+    min_turnover: Optional[float] = None,
+    sort_by: str = Query("wealth", pattern="^(wealth|turnover|active)$"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100)
+):
+    """
+    Advanced person search with filtering
+    """
+    offset = (page - 1) * limit
+    
+    # Sort mapping
+    sort_map = {
+        "wealth": "net_worth",
+        "turnover": "managed_turnover",
+        "active": "active_companies_count"
+    }
+    order_col = sort_map.get(sort_by, "net_worth")
+    
+    # Build query
+    conditions = ["1=1"]
+    params = {"limit": limit, "offset": offset}
+    
+    if q:
+        conditions.append("full_name ILIKE :q")
+        params["q"] = f"%{q}%"
+        
+    if role:
+        if role == 'owner':
+             conditions.append("'member' = ANY(roles)") 
+        elif role == 'officer':
+             conditions.append("'officer' = ANY(roles)")
+        else:
+             conditions.append(":role = ANY(roles)")
+             params["role"] = role
+            
+    if region:
+        conditions.append("main_region = :region")
+        params["region"] = region
+        
+    if nace:
+        conditions.append("primary_nace LIKE :nace")
+        params["nace"] = f"{nace}%"
+        
+    if min_wealth:
+        conditions.append("net_worth >= :min_wealth")
+        params["min_wealth"] = min_wealth
+        
+    if min_turnover:
+        conditions.append("managed_turnover >= :min_turnover")
+        params["min_turnover"] = min_turnover
+
+    where_clause = " AND ".join(conditions)
+    
+    with engine.connect() as conn:
+        # Get total count
+        count_sql = f"SELECT COUNT(*) FROM person_analytics_cache WHERE {where_clause}"
+        total = conn.execute(text(count_sql), params).scalar()
+        
+        # Get data
+        sql = f"""
+            SELECT 
+                person_hash, 
+                full_name, 
+                net_worth, 
+                managed_turnover, 
+                active_companies_count,
+                main_company_name, 
+                primary_nace,
+                main_region,
+                roles
+            FROM person_analytics_cache 
+            WHERE {where_clause}
+            ORDER BY {order_col} DESC NULLS LAST
+            LIMIT :limit OFFSET :offset
+        """
+        
+        result = conn.execute(text(sql), params)
+        
+        items = []
+        for row in result:
+            items.append({
+                "person_hash": row.person_hash,
+                "full_name": row.full_name,
+                "net_worth": float(row.net_worth or 0),
+                "managed_turnover": float(row.managed_turnover or 0),
+                "active_companies": row.active_companies_count,
+                "main_company": row.main_company_name,
+                "primary_nace": get_nace_name(row.primary_nace),
+                "nace_code": row.primary_nace,
+                "region": row.main_region,
+                "roles": row.roles
+            })
+            
+        return {
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "items": items
+        }
