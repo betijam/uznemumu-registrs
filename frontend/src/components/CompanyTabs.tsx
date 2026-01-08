@@ -62,7 +62,7 @@ export default function CompanyTabs({
                     ]);
 
                     const [finData, personsData, risksData, graphData, benchData, compData] = await Promise.all([
-                        finHistoryRes.ok ? (await finHistoryRes.json()) || [] : [],
+                        finHistoryRes.ok ? (await finHistoryRes.json().then(d => Array.isArray(d) ? d : [])) : [],
                         personsRes.ok ? personsRes.json() : { officers: [], members: [], ubos: [] },
                         risksRes.ok ? risksRes.json() : {},
                         graphRes.ok ? graphRes.json() : { parents: [], children: [], related: { linked: [], partners: [] } },
