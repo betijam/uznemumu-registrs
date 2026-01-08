@@ -8,6 +8,14 @@ import hashlib
 from app.routers.auth import get_current_user
 from typing import Optional
 import json
+import time
+
+def time_execution(name, func, *args, **kwargs):
+    start = time.time()
+    result = func(*args, **kwargs)
+    logger.info(f"[{name}] took {time.time() - start:.4f}s")
+    return result
+
 
 def get_person_hash(person_code: str):
     if not person_code:
@@ -270,20 +278,56 @@ def get_procurements(regcode: int):
         return [{"authority": p.authority_name, "subject": p.subject, "amount": safe_float(p.amount), "date": str(p.contract_date)} for p in rows]
 
 def build_full_profile(regcode: int, base_company_info: dict):
-    # Execute in parallel
-    future_fin = _executor.submit(get_financial_history, regcode)
-    future_tax = _executor.submit(get_tax_history, regcode)
-    f_rate = _executor.submit(get_rating, regcode)
-    f_risk = _executor.submit(get_risks, regcode)
-    f_pers = _executor.submit(get_persons, regcode)
-    f_proc = _executor.submit(get_procurements, regcode)
+    start_time = time.time()
+
+    # 1. Try to load persons from Cache FIRST to avoid unnecessary DB call
+    cached_graph = None
+    ubos, members, officers, total_capital = [], [], [], 0
+    persons_loaded = False
     
-    financial_history = future_fin.result()
-    tax_history = future_tax.result()
+    try:
+        with engine.connect() as conn:
+             row = conn.execute(text("SELECT graph_data FROM company_graph_cache WHERE company_regcode = :r"), {"r": regcode}).fetchone()
+             if row and row.graph_data:
+                 cached_graph = row.graph_data
+                 # Check if graph has new structure (officers/members/ubos)
+                 if 'officers' in cached_graph:
+                     ubos = cached_graph.get('ubos', [])
+                     members = cached_graph.get('members', [])
+                     officers = cached_graph.get('officers', [])
+                     total_capital = cached_graph.get('total_capital', 0)
+                     persons_loaded = True
+                     # Inject graph into result to avoid another query later if needed
+                     base_company_info['graph'] = cached_graph
+                     logger.info(f"[{regcode}] Cache HIT for persons graph")
+    except Exception as e:
+        logger.error(f"Failed to load generic cache: {e}")
+    
+    # 2. Concurrent fetching of heavy data
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        f_fin = executor.submit(lambda: time_execution("get_financial_history", get_financial_history, regcode))
+        f_risk = executor.submit(lambda: time_execution("get_risks", get_risks, regcode))
+        
+        # Only fetch persons if not in cache
+        if not persons_loaded:
+            f_pers = executor.submit(lambda: time_execution("get_persons", get_persons, regcode))
+        else:
+            f_pers = None
+            
+        f_proc = executor.submit(lambda: time_execution("get_procurements", get_procurements, regcode))
+        f_rate = executor.submit(lambda: time_execution("get_rating", get_rating, regcode))
+        f_tax = executor.submit(lambda: time_execution("get_tax_history", get_tax_history, regcode))
+
+    logger.info(f"[{regcode}] Concurrent execution setup took {time.time() - start_time:.4f}s")
+    
+    financial_history = f_fin.result()
+    tax_history = f_tax.result()
     rating = f_rate.result()
     risks_by_type, total_risk_score = f_risk.result()
-    ubos, members, officers, total_capital = f_pers.result()
     procurements = f_proc.result()
+    
+    if not persons_loaded and f_pers:
+        ubos, members, officers, total_capital = f_pers.result()
 
     full_data = base_company_info.copy()
     full_data["financial_history"] = financial_history

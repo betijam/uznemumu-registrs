@@ -7,8 +7,12 @@ import os
 import json
 from psycopg2.extras import execute_values
 import time
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
+
+# Load .env file
+load_dotenv()
 
 # Create dedicated engine with high pool size for this specific ETL job
 # Standard engine from loader.py has default pool size (5), which bottlenecks 50 threads.
@@ -41,7 +45,7 @@ def precompute_graphs():
             SELECT DISTINCT c.regcode 
             FROM companies c
             JOIN persons p ON p.company_regcode = c.regcode OR p.legal_entity_regcode = c.regcode
-            WHERE p.role = 'member'
+            WHERE p.role IN ('member', 'officer', 'ubo')
         """)
         
         companies = conn.execute(query).fetchall()

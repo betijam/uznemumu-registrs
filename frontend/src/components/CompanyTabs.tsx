@@ -525,6 +525,7 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                             <Link
                                                                 href={generatePersonUrlSync(officer.person_code, officer.name, officer.birth_date)}
                                                                 className="text-primary hover:underline"
+                                                                prefetch={false}
                                                             >
                                                                 {officer.name}
                                                             </Link>
@@ -555,6 +556,7 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                                 <Link
                                                                     href={generatePersonUrlSync(member.person_code, member.name, member.birth_date)}
                                                                     className="text-primary hover:underline"
+                                                                    prefetch={false}
                                                                 >
                                                                     {member.name}
                                                                 </Link>

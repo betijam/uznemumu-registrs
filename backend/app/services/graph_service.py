@@ -107,17 +107,47 @@ def calculate_company_graph(conn, regcode: int, year: int = 2024):
     
     # ===== 1. UPSTREAM: Who owns THIS company (Parents/Owners) =====
     owners = conn.execute(text("""
-        SELECT 
-            p.person_name,
-            p.number_of_shares,
-            p.share_nominal_value,
-            p.legal_entity_regcode,
-            p.person_code,
-            c.name as legal_entity_name
-        FROM persons p
+        SELECT p.person_name, p.person_code, p.legal_entity_regcode, p.number_of_shares, p.share_nominal_value, p.share_currency, c.name as legal_entity_name 
+    FROM persons p
         LEFT JOIN companies c ON c.regcode = p.legal_entity_regcode
         WHERE p.company_regcode = :r AND p.role = 'member'
     """), {"r": regcode}).fetchall()
+
+    # Get Officers and UBOs for cache
+    officers_rows = conn.execute(text("""
+        SELECT person_name, person_code, position, rights_of_representation, 
+               representation_with_at_least, date_from, birth_date
+        FROM persons 
+        WHERE company_regcode = :r AND role = 'officer'
+    """), {"r": regcode}).fetchall()
+
+    ubos_rows = conn.execute(text("""
+        SELECT person_name, person_code, nationality, residence, date_from, birth_date
+        FROM persons 
+        WHERE company_regcode = :r AND role = 'ubo'
+    """), {"r": regcode}).fetchall()
+
+    # Format for cache
+    cached_officers = []
+    for o in officers_rows:
+        cached_officers.append({
+            "name": o.person_name, "person_code": o.person_code, "position": o.position,
+            "rights_of_representation": o.rights_of_representation,
+            "representation_with_at_least": int(o.representation_with_at_least) if o.representation_with_at_least else None,
+            "registered_on": str(o.date_from) if o.date_from else None,
+            "birth_date": str(o.birth_date) if o.birth_date else None
+        })
+
+    cached_ubos = []
+    for u in ubos_rows:
+        cached_ubos.append({
+            "name": u.person_name, "person_code": u.person_code, "nationality": u.nationality,
+            "residence": u.residence, "registered_on": str(u.date_from) if u.date_from else None,
+            "birth_date": str(u.birth_date) if u.birth_date else None
+        })
+
+    cached_members = []
+
     
     # PERFORMANCE: Bulk prefetch financials for all owner legal entities (N+1 fix)
     owner_regcodes = [o.legal_entity_regcode for o in owners if o.legal_entity_regcode]
@@ -140,6 +170,20 @@ def calculate_company_graph(conn, regcode: int, year: int = 2024):
             percent = (owner_value / total_capital) * 100
         else:
             percent = None
+        
+        # Add to all members list
+        cached_members.append({
+            "name": owner.person_name, 
+            "person_code": owner.person_code,
+            "legal_entity_regcode": int(owner.legal_entity_regcode) if owner.legal_entity_regcode else None,
+            "number_of_shares": int(shares) if shares else None,
+            "share_value": owner_value,
+            "share_currency": "EUR", # Default
+            "percent": round(percent, 2) if percent is not None else 0,
+            "date_from": None, # Not selected in original query, acceptable for cache
+            "birth_date": None # Not selected in original query
+        })
+
         
         classification = classify_ownership(percent)
         
@@ -267,7 +311,10 @@ def calculate_company_graph(conn, regcode: int, year: int = 2024):
         "year": year,
         "total_capital": total_capital,
         "partners": partners,
-        "linked": linked
+        "linked": linked,
+        "officers": cached_officers,
+        "members": cached_members,
+        "ubos": cached_ubos
     }
 
     return result
@@ -302,28 +349,41 @@ def calculate_company_graphs_batch(conn, regcodes: list, year: int = 2024) -> di
     if not companies_map:
         return results
 
-    # 2. Bulk Fetch Owners (Upstream)
-    owners_rows = conn.execute(text("""
+    # 2. Bulk Fetch All Persons (Owners, Officers, UBOs)
+    persons_rows = conn.execute(text("""
         SELECT 
             p.company_regcode,
             p.person_name,
             p.number_of_shares,
             p.share_nominal_value,
             p.legal_entity_regcode,
-            p.person_code
+            p.person_code,
+            p.role,
+            p.position,
+            p.rights_of_representation,
+            p.representation_with_at_least,
+            p.date_from,
+            p.birth_date,
+            p.nationality,
+            p.residence,
+            p.share_currency
         FROM persons p
-        WHERE p.company_regcode = ANY(:r) AND p.role = 'member'
+        WHERE p.company_regcode = ANY(:r)
     """), {"r": list(companies_map.keys())}).fetchall()
     
-    # Organize owners by company
-    owners_by_company = {r: [] for r in regcodes}
+    # Organize by company
+    persons_by_company = {r: [] for r in regcodes}
     all_related_regcodes = set()
     
-    for row in owners_rows:
-        if row.company_regcode in owners_by_company:
-            owners_by_company[row.company_regcode].append(row)
-        if row.legal_entity_regcode:
+    for row in persons_rows:
+        if row.company_regcode in persons_by_company:
+            persons_by_company[row.company_regcode].append(row)
+        if row.role == 'member' and row.legal_entity_regcode:
             all_related_regcodes.add(row.legal_entity_regcode)
+            
+    # Keep owners_rows variable for compatibility with downstream logic if needed, 
+    # but we will iterate persons_by_company for main logic
+    owners_rows = [p for p in persons_rows if p.role == 'member']
             
     # 3. Bulk Fetch Subsidiaries (Downstream)
     # 3a. By Legal Entity Regcode
@@ -400,7 +460,37 @@ def calculate_company_graphs_batch(conn, regcodes: list, year: int = 2024) -> di
         company_result = results[regcode]
         
         # --- Process Owners ---
-        owners = owners_by_company.get(regcode, [])
+        # --- Process Persons (Owners, Officers, UBOs) ---
+        all_persons = persons_by_company.get(regcode, [])
+        owners = [p for p in all_persons if p.role == 'member']
+        officers = [p for p in all_persons if p.role == 'officer']
+        ubos = [p for p in all_persons if p.role == 'ubo']
+
+        # Format Officers
+        cached_officers = []
+        for o in officers:
+            cached_officers.append({
+                "name": o.person_name, "person_code": o.person_code, "position": o.position,
+                "rights_of_representation": o.rights_of_representation,
+                "representation_with_at_least": int(o.representation_with_at_least) if o.representation_with_at_least else None,
+                "registered_on": str(o.date_from) if o.date_from else None,
+                "birth_date": str(o.birth_date) if o.birth_date else None
+            })
+        company_result['officers'] = cached_officers
+
+        # Format UBOs
+        cached_ubos = []
+        for u in ubos:
+            cached_ubos.append({
+                "name": u.person_name, "person_code": u.person_code, "nationality": u.nationality,
+                "residence": u.residence, "registered_on": str(u.date_from) if u.date_from else None,
+                "birth_date": str(u.birth_date) if u.birth_date else None
+            })
+        company_result['ubos'] = cached_ubos
+
+        # Process Members (Owners)
+        cached_members = []
+
         total_capital = 0
         for o in owners:
             s = float(o.number_of_shares or 0)
@@ -429,10 +519,26 @@ def calculate_company_graphs_batch(conn, regcodes: list, year: int = 2024) -> di
                     "share_value": val,
                     **fin
                 }
+                
+                # Add to full members list
+                cached_members.append({
+                    "name": owner.person_name, 
+                    "person_code": owner.person_code,
+                    "legal_entity_regcode": int(owner.legal_entity_regcode) if owner.legal_entity_regcode else None,
+                    "number_of_shares": int(s) if s else None,
+                    "share_value": val,
+                    "share_currency": owner.share_currency or "EUR",
+                    "percent": round(percent, 2) if percent is not None else 0,
+                    "date_from": str(owner.date_from) if owner.date_from else None,
+                    "birth_date": str(owner.birth_date) if owner.birth_date else None
+                })
+
                 if classification == "partner":
                     company_result["partners"].append(entry)
                 else:
                     company_result["linked"].append(entry)
+                    
+        company_result['members'] = cached_members
                     
         # --- Process Subsidiaries ---
         subs = subsidiaries_by_company.get(regcode, [])

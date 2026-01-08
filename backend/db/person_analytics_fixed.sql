@@ -1,5 +1,5 @@
--- Person Analytics Materialized View (FIXED - uses number_of_shares)
--- Calculates ownership percentage from share counts, not share_percent column
+-- Person Analytics Materialized View (FIXED - matches person.py logic)
+-- Calculates wealth (nominal + equity), turnover, and employees
 
 -- GDPR Blacklist Table
 CREATE TABLE IF NOT EXISTS hidden_persons (
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS hidden_persons (
 -- Drop existing view
 DROP MATERIALIZED VIEW IF EXISTS person_analytics_cache CASCADE;
 
--- Main Analytics View with correct wealth calculation
+-- Main Analytics View
 CREATE MATERIALIZED VIEW person_analytics_cache AS
 WITH latest_financials AS (
     SELECT DISTINCT ON (company_regcode)
@@ -31,7 +31,8 @@ WITH latest_financials AS (
             WHEN profit IS NOT NULL AND profit = profit AND profit <> 'Infinity'::numeric AND profit <> '-Infinity'::numeric 
             THEN profit 
             ELSE 0 
-        END as profit
+        END as profit,
+        COALESCE(employees, 0) as employees
     FROM financial_reports
     WHERE year >= 2020
     ORDER BY company_regcode, year DESC
@@ -52,9 +53,13 @@ person_companies AS (
         p.company_regcode as regcode,
         c.status,
         c.nace_code,
+        p.number_of_shares,
+        p.share_nominal_value,
+        p.date_to,
         f.equity,
         f.turnover,
         f.profit,
+        f.employees,
         -- Calculate ownership percentage from shares
         CASE 
             WHEN tc.total_capital > 0 AND p.role = 'member'
@@ -72,42 +77,46 @@ SELECT
     person_hash,
     MAX(person_name) as full_name,
     
-    -- Wealth: Equity share value (calculated from ownership_percent)
+    -- Equity Wealth (Estimated Market Value share)
     ROUND(COALESCE(SUM(CASE 
-        WHEN role = 'member' AND status = 'active' AND equity > 0 AND ownership_percent > 0
+        WHEN role = 'member' AND status = 'active' AND date_to IS NULL AND equity > 0 AND ownership_percent > 0
         THEN (ownership_percent / 100.0) * equity
         ELSE 0 
     END), 0)::numeric, 2) as net_worth,
-    
-    -- Power: Total managed turnover
+
+    -- Nominal Wealth (Book Value)
     ROUND(COALESCE(SUM(CASE 
-        WHEN role = 'officer' AND status = 'active' AND turnover > 0
+        WHEN role = 'member' AND status = 'active' AND date_to IS NULL
+        THEN (COALESCE(number_of_shares, 0) * COALESCE(share_nominal_value, 0))
+        ELSE 0 
+    END), 0)::numeric, 2) as total_nominal_value,
+    
+    -- Power: Total managed turnover (Active Officers)
+    ROUND(COALESCE(SUM(CASE 
+        WHEN role != 'member' AND status = 'active' AND date_to IS NULL AND turnover > 0
         THEN turnover
         ELSE 0 
     END), 0)::numeric, 2) as managed_turnover,
     
-    -- Profit under management
-    ROUND(COALESCE(SUM(CASE 
-        WHEN role = 'officer' AND status = 'active' AND profit <> 0
-        THEN profit
+    -- Managed Employees
+    COALESCE(SUM(CASE 
+        WHEN role != 'member' AND status = 'active' AND date_to IS NULL
+        THEN employees
         ELSE 0 
-    END), 0)::numeric, 2) as managed_profit,
+    END), 0) as managed_employees,
     
-    -- Activity: Count of active companies
-    COUNT(DISTINCT CASE WHEN status = 'active' THEN regcode END) as active_companies_count,
+    -- Activity: Count of active companies (Active Role + Active Company)
+    COUNT(DISTINCT CASE WHEN status = 'active' AND date_to IS NULL THEN regcode END) as active_companies_count,
     
-    -- Total companies
-    COUNT(DISTINCT regcode) as total_companies_count,
+    -- Historical: Companies where not active
+    COUNT(DISTINCT regcode) - COUNT(DISTINCT CASE WHEN status = 'active' AND date_to IS NULL THEN regcode END) as historical_companies_count,
     
     -- Primary sector
-    MODE() WITHIN GROUP (ORDER BY LEFT(nace_code, 2)) as primary_nace,
+    MODE() WITHIN GROUP (ORDER BY LEFT(nace_code, 2)) as primary_nace
     
-    -- Placeholder for main_company
-    NULL::text as main_company_name
-
 FROM person_companies
 GROUP BY person_hash
-HAVING COUNT(DISTINCT CASE WHEN status = 'active' THEN regcode END) > 0;
+HAVING COUNT(DISTINCT regcode) > 0;
 
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_pac_net_worth ON person_analytics_cache(net_worth DESC NULLS LAST);
