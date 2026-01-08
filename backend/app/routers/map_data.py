@@ -40,5 +40,5 @@ async def get_logo():
     """Return the ANIMAS logo"""
     filepath = os.path.join(STATIC_DIR, "animas-logo.jpg")
     if os.path.exists(filepath):
-        return FileResponse(filepath, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+        return FileResponse(filepath, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=31536000"})
     return JSONResponse(content={"error": "Logo not found"}, status_code=404)
