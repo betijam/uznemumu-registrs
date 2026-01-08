@@ -441,7 +441,13 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                             </div>
                                         </div>
 
-                                        {financialHistory.length > 0 ? (
+                                        {isLoadingDetails ? (
+                                            <div className="h-64 flex items-end gap-3 px-4 animate-pulse">
+                                                {[1, 2, 3, 4, 5].map(i => (
+                                                    <div key={i} className="flex-1 bg-gray-100 rounded-t-lg" style={{ height: `${Math.random() * 50 + 20}%` }}></div>
+                                                ))}
+                                            </div>
+                                        ) : financialHistory.length > 0 ? (
                                             <div className="h-64 flex items-end gap-3 px-4">
                                                 {(company.financial_history || []).slice(0, 5).reverse().map((f: any, idx: number) => {
                                                     const dataKey = chartMode === 'turnover' ? 'turnover' : 'profit';
@@ -685,76 +691,76 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
 
                                 {/* Detailed Metrics Table */}
                                 <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                    <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                                    <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
                                         <h3 className="text-lg font-semibold text-gray-900">{t('detailed_metrics')}</h3>
                                     </div>
                                     <div className="overflow-x-auto -mx-4 sm:mx-0">
                                         <table className="w-full min-w-[500px]">
                                             <thead className="bg-gray-50 border-b border-gray-200">
                                                 <tr>
-                                                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('metric')}</th>
-                                                    <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('value')}</th>
-                                                    <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('trend')}</th>
-                                                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('norm')}</th>
+                                                    <th className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('metric')}</th>
+                                                    <th className="px-3 sm:px-6 py-2 text-right text-xs font-medium text-gray-500 uppercase">{t('value')}</th>
+                                                    <th className="px-3 sm:px-6 py-2 text-center text-xs font-medium text-gray-500 uppercase">{t('trend')}</th>
+                                                    <th className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('norm')}</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-200">
                                                 <tr className="bg-blue-50/30">
-                                                    <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">💧 {t('liquidity')}</td>
+                                                    <td colSpan={4} className="px-6 py-1.5 text-xs font-semibold text-gray-700">💧 {t('liquidity')}</td>
                                                 </tr>
                                                 <tr>
-                                                    <td className="px-6 py-3 text-sm text-gray-900">Current Ratio</td>
-                                                    <td className="px-6 py-3 text-sm text-right font-semibold">{formatRatio(latest.current_ratio)}</td>
-                                                    <td className="px-6 py-3 text-center"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.current_ratio)} /></td>
-                                                    <td className="px-6 py-3 text-sm text-gray-600">&gt; 1.2</td>
+                                                    <td className="px-6 py-2 text-sm text-gray-900">Current Ratio</td>
+                                                    <td className="px-6 py-2 text-sm text-right font-semibold">{formatRatio(latest.current_ratio)}</td>
+                                                    <td className="px-6 py-2 text-center"><div className="h-6 w-24 mx-auto"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.current_ratio)} /></div></td>
+                                                    <td className="px-6 py-2 text-xs text-gray-500">&gt; 1.2</td>
                                                 </tr>
                                                 <tr>
-                                                    <td className="px-6 py-3 text-sm text-gray-900">Quick Ratio</td>
-                                                    <td className="px-6 py-3 text-sm text-right font-semibold">{formatRatio(latest.quick_ratio)}</td>
-                                                    <td className="px-6 py-3 text-center"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.quick_ratio)} /></td>
-                                                    <td className="px-6 py-3 text-sm text-gray-600">&gt; 0.8</td>
+                                                    <td className="px-6 py-2 text-sm text-gray-900">Quick Ratio</td>
+                                                    <td className="px-6 py-2 text-sm text-right font-semibold">{formatRatio(latest.quick_ratio)}</td>
+                                                    <td className="px-6 py-2 text-center"><div className="h-6 w-24 mx-auto"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.quick_ratio)} /></div></td>
+                                                    <td className="px-6 py-2 text-xs text-gray-500">&gt; 0.8</td>
                                                 </tr>
 
                                                 <tr className="bg-green-50/30">
-                                                    <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">💰 {t('profitability')}</td>
+                                                    <td colSpan={4} className="px-6 py-1.5 text-xs font-semibold text-gray-700">💰 {t('profitability')}</td>
                                                 </tr>
                                                 <tr>
-                                                    <td className="px-6 py-3 text-sm text-gray-900">Net Profit Margin</td>
-                                                    <td className="px-6 py-3 text-sm text-right font-semibold">{formatPercent(latest.net_profit_margin)}</td>
-                                                    <td className="px-6 py-3 text-center"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.net_profit_margin)} /></td>
-                                                    <td className="px-6 py-3 text-sm text-gray-600">{t('depends_on_industry')}</td>
+                                                    <td className="px-6 py-2 text-sm text-gray-900">Net Profit Margin</td>
+                                                    <td className="px-6 py-2 text-sm text-right font-semibold">{formatPercent(latest.net_profit_margin)}</td>
+                                                    <td className="px-6 py-2 text-center"><div className="h-6 w-24 mx-auto"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.net_profit_margin)} /></div></td>
+                                                    <td className="px-6 py-2 text-xs text-gray-500">{t('depends_on_industry')}</td>
                                                 </tr>
                                                 <tr>
-                                                    <td className="px-6 py-3 text-sm text-gray-900">ROE</td>
-                                                    <td className="px-6 py-3 text-sm text-right font-semibold">{formatPercent(latest.roe)}</td>
-                                                    <td className="px-6 py-3 text-center"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.roe)} /></td>
-                                                    <td className="px-6 py-3 text-sm text-gray-600">&gt; 10%</td>
+                                                    <td className="px-6 py-2 text-sm text-gray-900">ROE</td>
+                                                    <td className="px-6 py-2 text-sm text-right font-semibold">{formatPercent(latest.roe)}</td>
+                                                    <td className="px-6 py-2 text-center"><div className="h-6 w-24 mx-auto"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.roe)} /></div></td>
+                                                    <td className="px-6 py-2 text-xs text-gray-500">&gt; 10%</td>
                                                 </tr>
                                                 <tr>
-                                                    <td className="px-6 py-3 text-sm text-gray-900">ROA</td>
-                                                    <td className="px-6 py-3 text-sm text-right font-semibold">{formatPercent(latest.roa)}</td>
-                                                    <td className="px-6 py-3 text-center"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.roa)} /></td>
-                                                    <td className="px-6 py-3 text-sm text-gray-600">&gt; 5%</td>
+                                                    <td className="px-6 py-2 text-sm text-gray-900">ROA</td>
+                                                    <td className="px-6 py-2 text-sm text-right font-semibold">{formatPercent(latest.roa)}</td>
+                                                    <td className="px-6 py-2 text-center"><div className="h-6 w-24 mx-auto"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.roa)} /></div></td>
+                                                    <td className="px-6 py-2 text-xs text-gray-500">&gt; 5%</td>
                                                 </tr>
 
                                                 <tr className="bg-orange-50/30">
-                                                    <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">📈 {t('solvency')}</td>
+                                                    <td colSpan={4} className="px-6 py-1.5 text-xs font-semibold text-gray-700">📈 {t('solvency')}</td>
                                                 </tr>
                                                 <tr>
-                                                    <td className="px-6 py-3 text-sm text-gray-900">Debt-to-Equity</td>
-                                                    <td className="px-6 py-3 text-sm text-right font-semibold">{formatRatio(latest.debt_to_equity)}</td>
-                                                    <td className="px-6 py-3 text-center"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.debt_to_equity)} /></td>
-                                                    <td className="px-6 py-3 text-sm text-gray-600">&lt; 1.5</td>
+                                                    <td className="px-6 py-2 text-sm text-gray-900">Debt-to-Equity</td>
+                                                    <td className="px-6 py-2 text-sm text-right font-semibold">{formatRatio(latest.debt_to_equity)}</td>
+                                                    <td className="px-6 py-2 text-center"><div className="h-6 w-24 mx-auto"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.debt_to_equity)} /></div></td>
+                                                    <td className="px-6 py-2 text-xs text-gray-500">&lt; 1.5</td>
                                                 </tr>
 
                                                 <tr className="bg-purple-50/30">
-                                                    <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">🚀 {t('cash_flow')}</td>
+                                                    <td colSpan={4} className="px-6 py-1.5 text-xs font-semibold text-gray-700">🚀 {t('cash_flow')}</td>
                                                 </tr>
                                                 <tr>
-                                                    <td className="px-6 py-3 text-sm text-gray-900">EBITDA</td>
-                                                    <td className="px-6 py-3 text-sm text-right font-semibold">{formatCurrency(latest.ebitda)}</td>
-                                                    <td className="px-6 py-3 text-center"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.ebitda)} /></td>
-                                                    <td className="px-6 py-3 text-sm text-gray-600">{t('positive')}</td>
+                                                    <td className="px-6 py-2 text-sm text-gray-900">EBITDA</td>
+                                                    <td className="px-6 py-2 text-sm text-right font-semibold">{formatCurrency(latest.ebitda)}</td>
+                                                    <td className="px-6 py-2 text-center"><div className="h-6 w-24 mx-auto"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.ebitda)} /></div></td>
+                                                    <td className="px-6 py-2 text-xs text-gray-500">{t('positive')}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
