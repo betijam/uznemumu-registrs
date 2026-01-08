@@ -30,7 +30,7 @@ import { headers, cookies } from "next/headers";
 async function getCompany(id: string, reqHeaders: HeadersInit = {}) {
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
     try {
-        const res = await fetch(`${API_BASE_URL}/companies/${id}`, {
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/quick`, {
             ...CACHE_CONFIG,
             headers: reqHeaders
         });
@@ -135,12 +135,14 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
 
     console.log(`[SC] View count: ${viewCount}, UA: ${userAgent.substring(0, 50)}...`);
 
-    const [company, graph, benchmark, competitors] = await Promise.all([
-        getCompany(id, apiHeaders),
-        getGraph(id, apiHeaders),
-        getBenchmark(id, apiHeaders),
-        getCompetitors(id, apiHeaders)
+    const [company] = await Promise.all([
+        getCompany(id, apiHeaders)
     ]);
+
+    // Graph, Benchmark, Competitors are now fetched lazily in CompanyTabs
+    const graph = { parents: [], children: [] };
+    const benchmark = null;
+    const competitors: any[] = [];
 
     const t = await getTranslations({ locale: (await params).locale, namespace: 'Company' });
 

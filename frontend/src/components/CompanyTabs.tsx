@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "@/i18n/routing";
 import GaugeChart from './GaugeChart';
 import RisksTab from './RisksTab';
@@ -16,76 +16,100 @@ const formatCurrency = (value: number | null | undefined, decimals = 0) => {
     return `€ ${value.toLocaleString('lv-LV', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 };
 
-// Growth indicator component
-const GrowthIndicator = ({ value }: { value: number | null }) => {
-    if (value === null || value === undefined) return <span className="text-gray-400">-</span>;
-    const isPositive = value >= 0;
-    return (
-        <span className={`inline-flex items-center text-xs font-medium ${isPositive ? 'text-success' : 'text-danger'}`}>
-            <svg className={`w-3 h-3 mr-0.5 ${!isPositive ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-            </svg>
-            {Math.abs(value).toFixed(1)}%
-        </span>
-    );
-};
+// ... existing components ...
 
-// Rating badge component
-const RatingBadge = ({ grade }: { grade: string | null }) => {
+export default function CompanyTabs({
+    company: initialCompany,
+    related: initialRelated,
+    competitors: initialCompetitors = [],
+    benchmark: initialBenchmark = null
+}: {
+    company: any,
+    related: any,
+    competitors?: any[],
+    benchmark?: any
+}) {
     const t = useTranslations('CompanyTabs');
-    if (!grade) return null;
-    const colors: Record<string, string> = {
-        'A': 'bg-success/10 text-success border-success/20',
-        'B': 'bg-blue-50 text-blue-700 border-blue-200',
-        'C': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-        'N': 'bg-gray-50 text-gray-700 border-gray-200',
-    };
-    return (
-        <span className={`inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold border ${colors[grade] || colors['N']}`}>
-            {t('vid_rating')}: {grade}
-        </span>
-    );
-};
+    const [company, setCompany] = useState(initialCompany);
+    const [related, setRelated] = useState(initialRelated);
+    const [competitors, setCompetitors] = useState<any[]>(initialCompetitors);
+    const [benchmark, setBenchmark] = useState(initialBenchmark);
+    const [activeTab, setActiveTab] = useState<string>("overview");
 
-// Sparkline component
-const Sparkline = ({ data }: { data: number[] }) => {
-    const filtered = data.filter(v => v !== null && v !== undefined);
-    if (!filtered || filtered.length === 0) return <span className="text-gray-400">-</span>;
+    // Lazy loading state
+    const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
-    const max = Math.max(...filtered);
-    const min = Math.min(...filtered);
-    const range = max - min || 1;
+    useEffect(() => {
+        // If we only have "quick" data (missing financial hash/history), fetch the rest
+        if (!company.financial_history || company.financial_history.length === 0) {
+            const fetchDetails = async () => {
+                setIsLoadingDetails(true);
+                const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+                try {
+                    const headers = { 'Content-Type': 'application/json' };
 
-    const points = filtered.map((val, idx) => {
-        const x = (idx / Math.max(filtered.length - 1, 1)) * 60;
-        const y = 20 - ((val - min) / range) * 15;
-        return `${x},${y}`;
-    }).join(' ');
+                    // parallel fetch
+                    const [finHistoryRes, personsRes, risksRes, graphRes, benchRes, compRes] = await Promise.all([
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/financial-history`, { headers }),
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/persons`, { headers }),
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/risks`, { headers }),
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/graph`, { headers }),
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/benchmark`, { headers }),
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/competitors`, { headers })
+                    ]);
 
-    return (
-        <svg viewBox="0 0 60 20" className="w-16 h-6 inline-block">
-            <polyline
-                points={points}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                className="text-primary"
-            />
-        </svg>
-    );
-};
+                    const [finData, personsData, risksData, graphData, benchData, compData] = await Promise.all([
+                        finHistoryRes.ok ? finHistoryRes.json() : [],
+                        personsRes.ok ? personsRes.json() : { officers: [], members: [], ubos: [] },
+                        risksRes.ok ? risksRes.json() : {},
+                        graphRes.ok ? graphRes.json() : { parents: [], children: [], related: { linked: [], partners: [] } },
+                        benchRes.ok ? benchRes.json() : null,
+                        compRes.ok ? compRes.json() : []
+                    ]);
 
-export default function CompanyTabs({ company, related, competitors = [], benchmark = null }: { company: any, related: any, competitors?: any[], benchmark?: any }) {
-    const t = useTranslations('CompanyTabs');
+                    // Update company state with new data
+                    setCompany((prev: any) => ({
+                        ...prev,
+                        financial_history: finData,
+                        officers: personsData.officers,
+                        members: personsData.members,
+                        ubos: personsData.ubos,
+                        risk_level: risksData.risk_level || prev.risk_level,
+                        // Merge any other missing fields if necessary
+                    }));
+
+                    setRelated(graphData);
+                    setBenchmark(benchData);
+                    setCompetitors(compData);
+
+                } catch (error) {
+                    console.error("Failed to lazy load company details:", error);
+                } finally {
+                    setIsLoadingDetails(false);
+                }
+            };
+
+            fetchDetails();
+        }
+    }, [company.regcode]);
+
     const signatories = (company.officers || []).filter((o: any) =>
         o.rights_of_representation === 'INDIVIDUALLY' ||
         o.position === 'CHAIR_OF_BOARD' ||
         o.position === 'PROCURATOR'
     );
-    const [activeTab, setActiveTab] = useState<string>("overview");
+
     const [selectedSignatory, setSelectedSignatory] = useState<string>(
         signatories.length > 0 ? signatories[0].name : ""
     );
+
+    // Update selected signatory when officers data arrives
+    useEffect(() => {
+        if (signatories.length > 0 && !selectedSignatory) {
+            setSelectedSignatory(signatories[0].name);
+        }
+    }, [company.officers]);
+
     const [copied, setCopied] = useState(false);
     const [chartMode, setChartMode] = useState<'turnover' | 'profit'>('turnover');
 
