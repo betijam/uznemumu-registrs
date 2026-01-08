@@ -179,7 +179,7 @@ async def login_linkedin():
     
     redirect_uri = f"{os.getenv('BACKEND_URL', 'http://localhost:8000')}/api/auth/linkedin/callback"
     state = secrets.token_urlsafe(16)
-    scope = "openid profile email" 
+    scope = "r_liteprofile r_emailaddress"  # Legacy scopes that work immediately
     
     return RedirectResponse(
         f"https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id={LINKEDIN_CLIENT_ID}&redirect_uri={redirect_uri}&state={state}&scope={scope}"
@@ -209,15 +209,26 @@ async def linkedin_callback(code: str):
         token_data = resp.json()
         access_token = token_data.get("access_token")
         
-        # 2. Get user info (OpenID Connect)
-        user_resp = await client.get("https://api.linkedin.com/v2/userinfo", headers={"Authorization": f"Bearer {access_token}"})
-        if user_resp.status_code != 200:
-             logger.error(f"LinkedIn UserInfo Error: {user_resp.text}")
-             raise HTTPException(status_code=400, detail="Failed to retrieve user info from LinkedIn")
-             
-        user_info = user_resp.json()
-        email = user_info.get("email")
-        full_name = f"{user_info.get('given_name', '')} {user_info.get('family_name', '')}".strip() or user_info.get("name")
+        # 2. Get user info (Legacy v2 API)
+        # Get email
+        email_resp = await client.get("https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))", headers={"Authorization": f"Bearer {access_token}"})
+        if email_resp.status_code != 200:
+             logger.error(f"LinkedIn Email Error: {email_resp.text}")
+             raise HTTPException(status_code=400, detail="Failed to retrieve email from LinkedIn")
+        
+        email_data = email_resp.json()
+        email = email_data.get("elements", [{}])[0].get("handle~", {}).get("emailAddress")
+        
+        # Get profile
+        profile_resp = await client.get("https://api.linkedin.com/v2/me", headers={"Authorization": f"Bearer {access_token}"})
+        if profile_resp.status_code != 200:
+             logger.error(f"LinkedIn Profile Error: {profile_resp.text}")
+             raise HTTPException(status_code=400, detail="Failed to retrieve profile from LinkedIn")
+        
+        profile_data = profile_resp.json()
+        first_name = profile_data.get("localizedFirstName", "")
+        last_name = profile_data.get("localizedLastName", "")
+        full_name = f"{first_name} {last_name}".strip()
         
         return handle_social_login(email, full_name, "linkedin")
 
