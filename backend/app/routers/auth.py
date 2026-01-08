@@ -128,7 +128,7 @@ async def login_google():
     if not GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=500, detail="Google Client ID not configured")
     
-    redirect_uri = f"{os.getenv('BACKEND_URL', 'http://localhost:8000')}/api/auth/google/callback"
+    redirect_uri = f"{os.getenv('BACKEND_URL', 'http://localhost:8000')}/auth/google/callback"
     scope = "openid email profile"
     return RedirectResponse(
         f"https://accounts.google.com/o/oauth2/v2/auth?client_id={GOOGLE_CLIENT_ID}&redirect_uri={redirect_uri}&response_type=code&scope={scope}&access_type=offline&prompt=consent"
@@ -139,7 +139,7 @@ async def google_callback(code: str, request: Request):
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         raise HTTPException(status_code=500, detail="Google config missing")
 
-    redirect_uri = f"{os.getenv('BACKEND_URL', 'http://localhost:8000')}/api/auth/google/callback"
+    redirect_uri = f"{os.getenv('BACKEND_URL', 'http://localhost:8000')}/auth/google/callback"
     
     async with httpx.AsyncClient() as client:
         # 1. Exchange code for token
@@ -177,7 +177,7 @@ async def login_linkedin():
     if not LINKEDIN_CLIENT_ID:
         raise HTTPException(status_code=500, detail="LinkedIn Client ID not configured")
     
-    redirect_uri = f"{os.getenv('BACKEND_URL', 'http://localhost:8000')}/api/auth/linkedin/callback"
+    redirect_uri = f"{os.getenv('BACKEND_URL', 'http://localhost:8000')}/auth/linkedin/callback"
     state = secrets.token_urlsafe(16)
     scope = "openid profile email"
     
@@ -190,7 +190,7 @@ async def linkedin_callback(code: str):
     if not LINKEDIN_CLIENT_ID or not LINKEDIN_CLIENT_SECRET:
         raise HTTPException(status_code=500, detail="LinkedIn config missing")
 
-    redirect_uri = f"{os.getenv('BACKEND_URL', 'http://localhost:8000')}/api/auth/linkedin/callback"
+    redirect_uri = f"{os.getenv('BACKEND_URL', 'http://localhost:8000')}/auth/linkedin/callback"
     
     async with httpx.AsyncClient() as client:
         # 1. Exchange code for token
