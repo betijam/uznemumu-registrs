@@ -59,7 +59,7 @@ export default function RegionsMap({ onRegionClick }: RegionsMapProps) {
 
     // Load GeoJSON data
     useEffect(() => {
-        fetch("/lv-enriched.json")
+        fetch("/api/map/geojson")
             .then((res) => res.json())
             .then((data) => {
                 setGeoData(data);
@@ -71,7 +71,7 @@ export default function RegionsMap({ onRegionClick }: RegionsMapProps) {
             });
 
         // Load cities data
-        fetch("/cities.json")
+        fetch("/api/map/cities")
             .then((res) => res.json())
             .then((data) => setCitiesData(data))
             .catch((err) => console.error("Failed to load cities:", err));

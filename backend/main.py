@@ -6,7 +6,7 @@ from asgi_correlation_id import CorrelationIdMiddleware
 import logging
 import os
 from etl import run_all_etl
-from app.routers import search, companies, benchmarking, industries, dashboard, explore, benchmark, regions, person, locations, people_analytics, auth
+from app.routers import search, companies, benchmarking, industries, dashboard, explore, benchmark, regions, person, locations, people_analytics, auth, map_data
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -70,6 +70,7 @@ app.include_router(dashboard.router)
 app.include_router(regions.router)
 app.include_router(locations.router)
 app.include_router(people_analytics.router)  # Business Elite analytics
+app.include_router(map_data.router)  # Map GeoJSON and cities data
 
 @app.get("/health")
 def health_check():
