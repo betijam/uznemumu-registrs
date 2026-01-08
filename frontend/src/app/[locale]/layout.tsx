@@ -65,14 +65,7 @@ export default async function RootLayout({
         {process.env.NEXT_PUBLIC_API_URL && (
           <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL} />
         )}
-        {/* Preload Inter font to start download early, reducing mobile LCP */}
-        <link
-          rel="preload"
-          href="/_next/static/media/1bffadaabf893a1e.7cd81963.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
+
 
         {/* Critical CSS - inline for instant render (eliminates 160ms blocking on mobile) */}
         <style dangerouslySetInnerHTML={{
