@@ -4,7 +4,7 @@ const withNextIntl = createNextIntlPlugin();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    output: "standalone",
+    // Using standard mode (not standalone) for proper static file serving
 
     // Performance optimizations
     experimental: {
