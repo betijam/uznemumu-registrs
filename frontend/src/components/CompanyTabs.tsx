@@ -74,7 +74,7 @@ export default function CompanyTabs({
                         officers: personsData.officers,
                         members: personsData.members,
                         ubos: personsData.ubos,
-                        risk_level: risksData.risk_level || prev.risk_level,
+                        risk_level: (risksData as any).risk_level || prev.risk_level,
                         // Merge any other missing fields if necessary
                     }));
 
