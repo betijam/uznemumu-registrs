@@ -62,7 +62,7 @@ export default function CompanyTabs({
                     ]);
 
                     const [finData, personsData, risksData, graphData, benchData, compData] = await Promise.all([
-                        finHistoryRes.ok ? finHistoryRes.json() : [],
+                        finHistoryRes.ok ? (await finHistoryRes.json()) || [] : [],
                         personsRes.ok ? personsRes.json() : { officers: [], members: [], ubos: [] },
                         risksRes.ok ? risksRes.json() : {},
                         graphRes.ok ? graphRes.json() : { parents: [], children: [], related: { linked: [], partners: [] } },
@@ -443,13 +443,13 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
 
                                         {financialHistory.length > 0 ? (
                                             <div className="h-64 flex items-end gap-3 px-4">
-                                                {financialHistory.slice(0, 5).reverse().map((f: any, idx: number) => {
+                                                {(company.financial_history || []).slice(0, 5).reverse().map((f: any, idx: number) => {
                                                     const dataKey = chartMode === 'turnover' ? 'turnover' : 'profit';
-                                                    const values = financialHistory.slice(0, 5).map((x: any) => Math.abs(x[dataKey] || 0));
+                                                    const values = (company.financial_history || []).slice(0, 5).map((x: any) => Math.abs(x[dataKey] || 0));
                                                     const maxValue = Math.max(...values, 1);
                                                     const value = f[dataKey] || 0;
                                                     const barHeight = Math.abs(value) ? (Math.abs(value) / maxValue) * 200 : 8;
-                                                    const isLatest = idx === financialHistory.slice(0, 5).length - 1;
+                                                    const isLatest = idx === (company.financial_history || []).slice(0, 5).length - 1;
                                                     const isNegative = value < 0;
                                                     const barColor = chartMode === 'profit'
                                                         ? (isNegative ? 'bg-red-400 hover:bg-red-500' : (isLatest ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-300 hover:bg-emerald-400'))
@@ -506,7 +506,13 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
 
                                             <div className="pt-3 border-t border-gray-100">
                                                 <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">{t('closest_competitors')}</div>
-                                                {competitors && competitors.length > 0 ? (
+                                                {isLoadingDetails ? (
+                                                    <div className="space-y-2 animate-pulse">
+                                                        <div className="h-6 bg-gray-100 rounded"></div>
+                                                        <div className="h-6 bg-gray-100 rounded"></div>
+                                                        <div className="h-6 bg-gray-100 rounded"></div>
+                                                    </div>
+                                                ) : competitors && competitors.length > 0 ? (
                                                     <div className="space-y-2">
                                                         {competitors.slice(0, 3).map((comp: any, idx: number) => (
                                                             <Link
@@ -545,57 +551,70 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
-                                                {/* Officers first */}
-                                                {(company.officers || []).slice(0, 5).map((officer: any, idx: number) => (
-                                                    <tr key={`officer-${idx}`} className="hover:bg-gray-50">
-                                                        <td className="py-3 text-sm font-medium">
-                                                            <Link
-                                                                href={generatePersonUrlSync(officer.person_code, officer.name, officer.birth_date)}
-                                                                className="text-primary hover:underline"
-                                                                prefetch={false}
-                                                            >
-                                                                {officer.name}
-                                                            </Link>
-                                                        </td>
-                                                        <td className="py-3 text-sm text-gray-600">
-                                                            {positionLabels[officer.position] || officer.position}
-                                                            {officer.rights_of_representation === 'INDIVIDUALLY' && (
-                                                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
-                                                                    {t('signing_rights')}
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                        <td className="py-3 text-sm text-gray-500 text-right">{officer.registered_on || '-'}</td>
-                                                    </tr>
-                                                ))}
-                                                {/* Members/Shareholders */}
-                                                {(company.members || []).slice(0, 3).map((member: any, idx: number) => (
-                                                    <tr key={`member-${idx}`} className="hover:bg-gray-50">
-                                                        <td className="py-3 text-sm font-medium">
-                                                            {member.legal_entity_regcode ? (
-                                                                // If it's a legal entity, link to company
-                                                                <a href={`/company/${member.legal_entity_regcode}`} className="text-primary hover:underline flex items-center gap-1">
-                                                                    {member.name}
-                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                                                                </a>
-                                                            ) : (
-                                                                // If it's a person, link to person profile
-                                                                <Link
-                                                                    href={generatePersonUrlSync(member.person_code, member.name, member.birth_date)}
-                                                                    className="text-primary hover:underline"
-                                                                    prefetch={false}
-                                                                >
-                                                                    {member.name}
-                                                                </Link>
-                                                            )}
-                                                        </td>
-                                                        <td className="py-3 text-sm text-gray-600">
-                                                            {t('member')} ({member.percent || 0}%)
-                                                        </td>
-                                                        <td className="py-3 text-sm text-gray-500 text-right">{member.date_from || '-'}</td>
-                                                    </tr>
-                                                ))}
-                                                {(company.officers?.length === 0 && company.members?.length === 0) && (
+                                                {isLoadingDetails ? (
+                                                    // Skeleton rows
+                                                    [1, 2, 3].map((i) => (
+                                                        <tr key={`skeleton-${i}`} className="animate-pulse">
+                                                            <td className="py-3"><div className="h-4 bg-gray-100 rounded w-32"></div></td>
+                                                            <td className="py-3"><div className="h-4 bg-gray-100 rounded w-24"></div></td>
+                                                            <td className="py-3"><div className="h-4 bg-gray-100 rounded w-16 ml-auto"></div></td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <>
+                                                        {/* Officers first */}
+                                                        {(company.officers || []).slice(0, 5).map((officer: any, idx: number) => (
+                                                            <tr key={`officer-${idx}`} className="hover:bg-gray-50">
+                                                                <td className="py-3 text-sm font-medium">
+                                                                    <Link
+                                                                        href={generatePersonUrlSync(officer.person_code, officer.name, officer.birth_date)}
+                                                                        className="text-primary hover:underline"
+                                                                        prefetch={false}
+                                                                    >
+                                                                        {officer.name}
+                                                                    </Link>
+                                                                </td>
+                                                                <td className="py-3 text-sm text-gray-600">
+                                                                    {positionLabels[officer.position] || officer.position}
+                                                                    {officer.rights_of_representation === 'INDIVIDUALLY' && (
+                                                                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                                                                            {t('signing_rights')}
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="py-3 text-sm text-gray-500 text-right">{officer.registered_on || '-'}</td>
+                                                            </tr>
+                                                        ))}
+                                                        {/* Members/Shareholders */}
+                                                        {(company.members || []).slice(0, 3).map((member: any, idx: number) => (
+                                                            <tr key={`member-${idx}`} className="hover:bg-gray-50">
+                                                                <td className="py-3 text-sm font-medium">
+                                                                    {member.legal_entity_regcode ? (
+                                                                        // If it's a legal entity, link to company
+                                                                        <a href={`/company/${member.legal_entity_regcode}`} className="text-primary hover:underline flex items-center gap-1">
+                                                                            {member.name}
+                                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                                        </a>
+                                                                    ) : (
+                                                                        // If it's a person, link to person profile
+                                                                        <Link
+                                                                            href={generatePersonUrlSync(member.person_code, member.name, member.birth_date)}
+                                                                            className="text-primary hover:underline"
+                                                                            prefetch={false}
+                                                                        >
+                                                                            {member.name}
+                                                                        </Link>
+                                                                    )}
+                                                                </td>
+                                                                <td className="py-3 text-sm text-gray-600">
+                                                                    {t('member')} ({member.percent || 0}%)
+                                                                </td>
+                                                                <td className="py-3 text-sm text-gray-500 text-right">{member.date_from || '-'}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </>
+                                                )}
+                                                {(!isLoadingDetails && company.officers?.length === 0 && company.members?.length === 0) && (
                                                     <tr>
                                                         <td colSpan={3} className="py-4 text-center text-sm text-gray-500 italic">{t('no_data')}</td>
                                                     </tr>
@@ -686,13 +705,13 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                 <tr>
                                                     <td className="px-6 py-3 text-sm text-gray-900">Current Ratio</td>
                                                     <td className="px-6 py-3 text-sm text-right font-semibold">{formatRatio(latest.current_ratio)}</td>
-                                                    <td className="px-6 py-3 text-center"><Sparkline data={financialHistory.slice(0, 5).map((f: any) => f.current_ratio)} /></td>
+                                                    <td className="px-6 py-3 text-center"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.current_ratio)} /></td>
                                                     <td className="px-6 py-3 text-sm text-gray-600">&gt; 1.2</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="px-6 py-3 text-sm text-gray-900">Quick Ratio</td>
                                                     <td className="px-6 py-3 text-sm text-right font-semibold">{formatRatio(latest.quick_ratio)}</td>
-                                                    <td className="px-6 py-3 text-center"><Sparkline data={financialHistory.slice(0, 5).map((f: any) => f.quick_ratio)} /></td>
+                                                    <td className="px-6 py-3 text-center"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.quick_ratio)} /></td>
                                                     <td className="px-6 py-3 text-sm text-gray-600">&gt; 0.8</td>
                                                 </tr>
 
@@ -702,19 +721,19 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                 <tr>
                                                     <td className="px-6 py-3 text-sm text-gray-900">Net Profit Margin</td>
                                                     <td className="px-6 py-3 text-sm text-right font-semibold">{formatPercent(latest.net_profit_margin)}</td>
-                                                    <td className="px-6 py-3 text-center"><Sparkline data={financialHistory.slice(0, 5).map((f: any) => f.net_profit_margin)} /></td>
+                                                    <td className="px-6 py-3 text-center"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.net_profit_margin)} /></td>
                                                     <td className="px-6 py-3 text-sm text-gray-600">{t('depends_on_industry')}</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="px-6 py-3 text-sm text-gray-900">ROE</td>
                                                     <td className="px-6 py-3 text-sm text-right font-semibold">{formatPercent(latest.roe)}</td>
-                                                    <td className="px-6 py-3 text-center"><Sparkline data={financialHistory.slice(0, 5).map((f: any) => f.roe)} /></td>
+                                                    <td className="px-6 py-3 text-center"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.roe)} /></td>
                                                     <td className="px-6 py-3 text-sm text-gray-600">&gt; 10%</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="px-6 py-3 text-sm text-gray-900">ROA</td>
                                                     <td className="px-6 py-3 text-sm text-right font-semibold">{formatPercent(latest.roa)}</td>
-                                                    <td className="px-6 py-3 text-center"><Sparkline data={financialHistory.slice(0, 5).map((f: any) => f.roa)} /></td>
+                                                    <td className="px-6 py-3 text-center"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.roa)} /></td>
                                                     <td className="px-6 py-3 text-sm text-gray-600">&gt; 5%</td>
                                                 </tr>
 
@@ -724,7 +743,7 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                 <tr>
                                                     <td className="px-6 py-3 text-sm text-gray-900">Debt-to-Equity</td>
                                                     <td className="px-6 py-3 text-sm text-right font-semibold">{formatRatio(latest.debt_to_equity)}</td>
-                                                    <td className="px-6 py-3 text-center"><Sparkline data={financialHistory.slice(0, 5).map((f: any) => f.debt_to_equity)} /></td>
+                                                    <td className="px-6 py-3 text-center"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.debt_to_equity)} /></td>
                                                     <td className="px-6 py-3 text-sm text-gray-600">&lt; 1.5</td>
                                                 </tr>
 
@@ -734,7 +753,7 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                 <tr>
                                                     <td className="px-6 py-3 text-sm text-gray-900">EBITDA</td>
                                                     <td className="px-6 py-3 text-sm text-right font-semibold">{formatCurrency(latest.ebitda)}</td>
-                                                    <td className="px-6 py-3 text-center"><Sparkline data={financialHistory.slice(0, 5).map((f: any) => f.ebitda)} /></td>
+                                                    <td className="px-6 py-3 text-center"><Sparkline data={(company.financial_history || []).slice(0, 5).map((f: any) => f.ebitda)} /></td>
                                                     <td className="px-6 py-3 text-sm text-gray-600">{t('positive')}</td>
                                                 </tr>
                                             </tbody>
