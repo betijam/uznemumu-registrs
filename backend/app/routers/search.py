@@ -156,6 +156,8 @@ def search_companies(q: str = "", nace: str = None):
     where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
     
     # Build ORDER BY - prioritize exact prefix matches
+    if query_words and not query_words[0].isdigit():
+        params["first_word"] = f"{query_words[0]}%"
         # Improve ranking: 
         # 1. Active companies
         # 2. Exact word match at start of name OR name_in_quotes
