@@ -55,7 +55,7 @@ export default function AdvancedPersonSearch() {
 
     // Load available regions on mount
     useEffect(() => {
-        fetch('http://localhost:8000/api/analytics/people/regions')
+        fetch('/api/analytics/people/regions')
             .then(res => res.json())
             .then(data => setRegions(data))
             .catch(err => console.error('Failed to load regions', err));
