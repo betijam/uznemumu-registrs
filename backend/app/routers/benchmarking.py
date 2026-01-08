@@ -4,7 +4,7 @@ Adds industry comparison and competitor analysis features.
 """
 from fastapi import APIRouter
 from sqlalchemy import text
-from etl.loader import engine
+from app.core.database import engine
 import logging
 
 router = APIRouter()

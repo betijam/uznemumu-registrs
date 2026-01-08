@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Response, Request, Depends
 from sqlalchemy import text
-from etl.loader import engine
+from app.core.database import engine
 import logging
 import math
 from concurrent.futures import ThreadPoolExecutor

@@ -1,7 +1,7 @@
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy import text
-from etl.loader import engine
+from app.core.database import engine
 import logging
 import time
 

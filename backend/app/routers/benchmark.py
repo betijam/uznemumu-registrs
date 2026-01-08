@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Dict, Any
 from sqlalchemy import text
-from etl.loader import engine
+from app.core.database import engine
 import logging
 from uuid import UUID
 import uuid

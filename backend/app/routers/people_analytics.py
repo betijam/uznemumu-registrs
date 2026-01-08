@@ -7,7 +7,7 @@ from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy import text
-from etl.loader import engine
+from app.core.database import engine
 
 router = APIRouter(prefix="/analytics/people", tags=["People Analytics"])
 

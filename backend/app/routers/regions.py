@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException, Response
 from sqlalchemy import text
 from typing import List, Optional
 from pydantic import BaseModel
-from etl.loader import engine
+from app.core.database import engine
 
 router = APIRouter(prefix="/regions", tags=["regions"])
 

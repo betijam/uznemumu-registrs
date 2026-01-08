@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query, Response
 from sqlalchemy import text
-from etl.loader import engine
+from app.core.database import engine
 from app.nace_names import NACE_DIVISIONS, get_nace_name
 import logging
 import math

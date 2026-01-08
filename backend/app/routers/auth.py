@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import text
-from etl.loader import engine
+from app.core.database import engine
 from app.schemas.auth import UserCreate, UserLogin, Token, UserResponse, TokenData
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
