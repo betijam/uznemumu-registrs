@@ -9,6 +9,9 @@ import { parseBirthDateFromPersonCode } from '../utils/parseBirthDate';
 import { generatePersonUrlSync } from '../utils/personUrl';
 import { useTranslations } from "next-intl";
 import TeaserOverlay from './TeaserOverlay';
+import { RatingBadge } from './RatingBadge';
+import { Sparkline } from './Sparkline';
+import { GrowthIndicator } from './GrowthIndicator';
 
 // Helper function for formatting currency
 const formatCurrency = (value: number | null | undefined, decimals = 0) => {
