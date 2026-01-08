@@ -23,8 +23,8 @@ const nextConfig = {
     },
 
     async rewrites() {
-        // Use local backend by default for development
-        const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
+        // Default to production, override with BACKEND_URL env var for local dev
+        const backendUrl = process.env.BACKEND_URL || 'https://uznemumu-registrs-production.up.railway.app';
         return [
             {
                 source: '/api/:path*',

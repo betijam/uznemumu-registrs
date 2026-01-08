@@ -115,8 +115,11 @@ export default function LoginPage() {
     };
 
     const handleSocialLogin = (provider: string) => {
-        // TODO: Implement OAuth flow
-        alert(`${provider} login coming soon!`);
+        if (provider === 'Google') {
+            window.location.href = '/api/auth/google';
+        } else if (provider === 'LinkedIn') {
+            window.location.href = '/api/auth/linkedin';
+        }
     };
 
     return (
