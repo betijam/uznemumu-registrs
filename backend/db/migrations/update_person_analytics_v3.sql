@@ -1,5 +1,5 @@
--- Migration: Update Person Analytics (Fix NaN values)
--- Treats NaN in equity/turnover/profit as 0 to prevent poisoning aggregations.
+-- Migration: Update Person Analytics V3 (Dynamic Wealth Calculation)
+-- Calculates ownership share based on (My Nominal / Total Nominal) if share_percent is missing.
 
 DROP MATERIALIZED VIEW IF EXISTS person_analytics_cache CASCADE;
 
@@ -8,7 +8,7 @@ WITH latest_financials AS (
     SELECT DISTINCT ON (company_regcode)
         company_regcode,
         year,
-        -- Sanitize NaN values here
+        -- Sanitize NaN values
         CASE WHEN equity = 'NaN' THEN 0 ELSE COALESCE(equity, 0) END as equity,
         CASE WHEN turnover = 'NaN' THEN 0 ELSE COALESCE(turnover, 0) END as turnover,
         CASE WHEN profit = 'NaN' THEN 0 ELSE COALESCE(profit, 0) END as profit
@@ -16,12 +16,34 @@ WITH latest_financials AS (
     WHERE year >= 2020
     ORDER BY company_regcode, year DESC
 ),
+company_share_totals AS (
+    SELECT 
+        company_regcode,
+        -- Sum up total nominal capital (shares * nominal)
+        SUM(COALESCE(number_of_shares, 0) * COALESCE(share_nominal_value, 0)) as total_nominal
+    FROM persons
+    WHERE role = 'member'
+    GROUP BY company_regcode
+),
 person_companies AS (
     SELECT 
         p.person_hash,
         p.person_name,
         p.role,
-        p.share_percent,
+        
+        -- Calculate Effective Ownership Fraction (0.0 to 1.0)
+        CASE 
+            -- Priority 1: Explicit share_percent
+            WHEN p.share_percent > 0 THEN p.share_percent / 100.0
+            
+            -- Priority 2: Calculated from nominal capital
+            WHEN cst.total_nominal > 0 THEN 
+                (COALESCE(p.number_of_shares, 0) * COALESCE(p.share_nominal_value, 0)) / cst.total_nominal
+                
+            -- Fallback
+            ELSE 0
+        END as ownership_fraction,
+
         c.regcode,
         c.name as company_name,
         c.status,
@@ -34,6 +56,7 @@ person_companies AS (
     JOIN companies c ON p.company_regcode = c.regcode
     LEFT JOIN latest_financials f ON c.regcode = f.company_regcode
     LEFT JOIN company_territories ct ON c.regcode = ct.company_id
+    LEFT JOIN company_share_totals cst ON c.regcode = cst.company_regcode
     WHERE p.person_hash IS NOT NULL
       AND p.person_hash NOT IN (SELECT person_hash FROM hidden_persons)
 )
@@ -41,10 +64,10 @@ SELECT
     person_hash,
     MAX(person_name) as full_name,
     
-    -- Wealth: Equity share value
+    -- Wealth: Equity * Ownership Fraction
     ROUND(SUM(CASE 
         WHEN role = 'member' AND status = 'active'
-        THEN (COALESCE(share_percent, 0) / 100.0) * equity
+        THEN ownership_fraction * equity
         ELSE 0 
     END)::numeric, 2) as net_worth,
     
@@ -68,7 +91,7 @@ SELECT
     -- Total companies ever
     COUNT(DISTINCT regcode) as total_companies_count,
     
-    -- Primary sector (Using mode of NACE codes)
+    -- Primary sector
     MODE() WITHIN GROUP (ORDER BY LEFT(nace_code, 2)) as primary_nace,
     
     -- Main Company (Highest Turnover)
@@ -84,7 +107,7 @@ FROM person_companies
 GROUP BY person_hash
 HAVING COUNT(DISTINCT CASE WHEN status = 'active' THEN regcode END) > 0;
 
--- Create indexes for fast filtering/sorting
+-- Create indexes
 CREATE INDEX idx_pac_net_worth ON person_analytics_cache(net_worth DESC NULLS LAST);
 CREATE INDEX idx_pac_managed_turnover ON person_analytics_cache(managed_turnover DESC NULLS LAST);
 CREATE INDEX idx_pac_active_count ON person_analytics_cache(active_companies_count DESC);
