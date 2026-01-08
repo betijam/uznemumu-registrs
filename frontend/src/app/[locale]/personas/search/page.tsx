@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 
 // Types
 interface PersonResult {
@@ -33,8 +33,6 @@ const formatMoney = (val: number) => {
     return `€${val}`;
 };
 
-const REGIONS = ["Rīga", "Pierīga", "Vidzeme", "Kurzeme", "Zemgale", "Latgale"];
-
 export default function AdvancedPersonSearch() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -42,14 +40,38 @@ export default function AdvancedPersonSearch() {
     // Filters state
     const [query, setQuery] = useState(searchParams.get("q") || "");
     const [role, setRole] = useState(searchParams.get("role") || "");
-    const [region, setRegion] = useState(searchParams.get("region") || "");
     const [sort, setSort] = useState(searchParams.get("sort_by") || "wealth");
     const [minWealth, setMinWealth] = useState(searchParams.get("min_wealth") || "");
+
+    // Region State
+    const [regions, setRegions] = useState<string[]>([]);
+    const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+    const [isRegionOpen, setIsRegionOpen] = useState(false);
 
     // Data state
     const [data, setData] = useState<SearchResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
+
+    // Load available regions on mount
+    useEffect(() => {
+        fetch('http://localhost:8000/api/analytics/people/regions')
+            .then(res => res.json())
+            .then(data => setRegions(data))
+            .catch(err => console.error('Failed to load regions', err));
+    }, []);
+
+    // Load initial selection from URL
+    useEffect(() => {
+        const regionParam = searchParams.getAll("region");
+        if (regionParam.length > 0) {
+            setSelectedRegions(regionParam);
+        } else {
+            // Check if single param exists (nextjs might treat it differently)
+            const single = searchParams.get("region");
+            if (single) setSelectedRegions([single]);
+        }
+    }, [searchParams]);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -61,7 +83,9 @@ export default function AdvancedPersonSearch() {
 
         if (query) params.append("q", query);
         if (role) params.append("role", role);
-        if (region) params.append("region", region);
+        if (selectedRegions.length > 0) {
+            selectedRegions.forEach(r => params.append("region", r));
+        }
         if (minWealth) params.append("min_wealth", minWealth);
 
         try {
@@ -73,7 +97,7 @@ export default function AdvancedPersonSearch() {
         } finally {
             setLoading(false);
         }
-    }, [page, sort, query, role, region, minWealth]);
+    }, [page, sort, query, role, selectedRegions, minWealth]);
 
     // Debounce search
     useEffect(() => {
@@ -136,19 +160,48 @@ export default function AdvancedPersonSearch() {
                             </div>
                         </div>
 
-                        {/* Region */}
-                        <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Reģions</label>
-                            <select
-                                value={region}
-                                onChange={(e) => setRegion(e.target.value)}
-                                className="w-full border rounded-lg p-2 text-sm"
+                        {/* Region Multi-Select */}
+                        <div className="mb-6 relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Reģions</label>
+                            <button
+                                onClick={() => setIsRegionOpen(!isRegionOpen)}
+                                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-primary/20"
                             >
-                                <option value="">Visi reģioni</option>
-                                {REGIONS.map(r => (
-                                    <option key={r} value={r}>{r}</option>
-                                ))}
-                            </select>
+                                <span className="block truncate text-sm">
+                                    {selectedRegions.length === 0
+                                        ? "Visi reģioni"
+                                        : `${selectedRegions.length} izvēlēti`}
+                                </span>
+                                <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+                            </button>
+
+                            {isRegionOpen && (
+                                <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                    {regions.map((r) => (
+                                        <div
+                                            key={r}
+                                            className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-50 flex items-center"
+                                            onClick={() => {
+                                                if (selectedRegions.includes(r)) {
+                                                    setSelectedRegions(selectedRegions.filter(x => x !== r));
+                                                } else {
+                                                    setSelectedRegions([...selectedRegions, r]);
+                                                }
+                                            }}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedRegions.includes(r)}
+                                                readOnly
+                                                className="h-4 w-4 text-primary border-gray-300 rounded mr-3"
+                                            />
+                                            <span className={`block truncate ${selectedRegions.includes(r) ? 'font-medium' : 'font-normal'}`}>
+                                                {r}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Wealth Slider (Simplified as input for now) */}

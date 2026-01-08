@@ -133,11 +133,24 @@ async def get_rankings(
         ) for row in result]
 
 
+@router.get("/regions", response_model=List[str])
+async def get_regions():
+    """Get list of available regions (municipalities/cities)"""
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT DISTINCT main_region 
+            FROM person_analytics_cache 
+            WHERE main_region IS NOT NULL 
+            ORDER BY main_region
+        """))
+        return [row[0] for row in result]
+
+
 @router.get("/search", response_model=dict)
 async def search_people(
     q: Optional[str] = None,
     role: Optional[str] = Query(None, description="Filter by role: owner, officer, member"),
-    region: Optional[str] = Query(None, description="Filter by region name"),
+    region: Optional[List[str]] = Query(None, description="Filter by region names (multi-select)"),
     nace: Optional[str] = Query(None, description="Filter by NACE code or section"),
     min_wealth: Optional[float] = None,
     min_turnover: Optional[float] = None,
@@ -163,8 +176,11 @@ async def search_people(
     params = {"limit": limit, "offset": offset}
     
     if q:
-        conditions.append("full_name ILIKE :q")
-        params["q"] = f"%{q}%"
+        # Flexible search: match all words in any order
+        keywords = q.strip().split()
+        for i, word in enumerate(keywords):
+            conditions.append(f"full_name ILIKE :q{i}")
+            params[f"q{i}"] = f"%{word}%"
         
     if role:
         if role == 'owner':
@@ -176,8 +192,13 @@ async def search_people(
              params["role"] = role
             
     if region:
-        conditions.append("main_region = :region")
-        params["region"] = region
+        # Handle single value or list
+        if isinstance(region, str):
+            region = [region]
+        
+        # Use IN clause for multiple regions
+        conditions.append("main_region = ANY(:regions)")
+        params["regions"] = region
         
     if nace:
         conditions.append("primary_nace LIKE :nace")
