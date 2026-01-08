@@ -53,3 +53,5 @@ EXPOSE 3000
 
 # Šī ir galvenā izmaiņa - izmantojam npm start
 CMD ["npm", "start"]
+
+# Rebuild trigger v1
