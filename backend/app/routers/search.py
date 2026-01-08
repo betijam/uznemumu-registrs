@@ -138,7 +138,7 @@ def search_companies(q: str = "", nace: str = None):
         else:
             # Name word conditions
             for i, word in enumerate(name_words):
-                where_conditions.append(f"unaccent(lower(name)) LIKE unaccent(lower(:word{i}))")
+                where_conditions.append(f"immutable_unaccent(lower(name)) LIKE immutable_unaccent(lower(:word{i}))")
                 params[f"word{i}"] = f"%{word}%"
             
             # Type conditions (if any type abbreviations in query)
@@ -160,7 +160,7 @@ def search_companies(q: str = "", nace: str = None):
         params["first_word"] = f"{query_words[0]}%"
         order_by = """
             CASE WHEN status = 'Aktīvs' THEN 0 ELSE 1 END,
-            CASE WHEN unaccent(lower(name)) LIKE unaccent(lower(:first_word)) THEN 0 ELSE 1 END,
+            CASE WHEN immutable_unaccent(lower(name)) LIKE immutable_unaccent(lower(:first_word)) THEN 0 ELSE 1 END,
             name ASC
         """
     else:
