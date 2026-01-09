@@ -61,15 +61,15 @@ export default function CareerTimeline({ person_id }: CareerTimelineProps) {
     const getEventIcon = (type: string) => {
         switch (type) {
             case 'active_role':
-                return '●'; // Filled blue dot
+                return '';
             case 'new_role':
-                return '●'; // Filled green dot
+                return '';
             case 'exit':
-                return '✕'; // Red X
+                return '';
             case 'liquidation':
-                return '⬛'; // Black square
+                return '';
             default:
-                return '○'; // Hollow dot
+                return '';
         }
     };
 

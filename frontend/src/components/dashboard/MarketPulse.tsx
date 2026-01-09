@@ -44,7 +44,7 @@ export default function MarketPulse({ data, loading = false }: MarketPulseProps)
         {
             label: t('total_turnover'),
             value: `${(data.total_turnover / 1e9).toFixed(1)} Md €`,
-            sub: "▲ 6%", // Static trend or calculated if we have history
+            sub: "6%", // Static trend or calculated if we have history
             color: "text-gray-900"
         }
     ];

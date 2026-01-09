@@ -44,7 +44,7 @@ export default function RisksTab({ company }: RisksTabProps) {
                 <div className="border-2 border-red-600 rounded-lg overflow-hidden bg-red-50">
                     <div className="bg-red-600 px-6 py-4">
                         <div className="flex items-center gap-3">
-                            <span className="text-3xl">🔴</span>
+
                             <div>
                                 <h3 className="text-xl font-bold text-white">
                                     {t('sanctions_alert_title')}
@@ -97,7 +97,7 @@ export default function RisksTab({ company }: RisksTabProps) {
             ) : (
                 <div className="border border-success rounded-lg p-4 bg-success/5">
                     <div className="flex items-center gap-3">
-                        <span className="text-2xl">✅</span>
+
                         <div>
                             <div className="font-semibold text-success">{t('sanctions_none_title')}</div>
                             <div className="text-sm text-gray-600">{t('sanctions_none_desc')}</div>
@@ -111,7 +111,7 @@ export default function RisksTab({ company }: RisksTabProps) {
                 <div className="border-2 border-gray-800 rounded-lg overflow-hidden">
                     <div className="bg-gray-800 px-6 py-3">
                         <div className="flex items-center gap-3">
-                            <span className="text-2xl">⚫</span>
+
                             <h3 className="text-lg font-bold text-white">
                                 {t('liquidation_title')}
                             </h3>
@@ -151,7 +151,7 @@ export default function RisksTab({ company }: RisksTabProps) {
                 <div className="border border-yellow-500 rounded-lg overflow-hidden">
                     <div className="bg-yellow-500 px-6 py-3">
                         <div className="flex items-center gap-3">
-                            <span className="text-2xl">🟡</span>
+
                             <h3 className="text-lg font-bold text-white">
                                 {t('prohibitions_title')}
                             </h3>
@@ -192,7 +192,7 @@ export default function RisksTab({ company }: RisksTabProps) {
                     <div className="px-6 py-4 bg-orange-50 border-b border-orange-200">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <span className="text-2xl">🟠</span>
+
                                 <h3 className="text-lg font-bold text-gray-900">
                                     {t('security_measures_title')}
                                 </h3>
@@ -246,7 +246,7 @@ export default function RisksTab({ company }: RisksTabProps) {
             {/* No Risks Message */}
             {totalRiskScore === 0 && (
                 <div className="border border-success rounded-lg p-8 bg-success/5 text-center">
-                    <div className="text-6xl mb-4">✅</div>
+
                     <h3 className="text-xl font-bold text-success mb-2">
                         {t('no_risks_title')}
                     </h3>
@@ -259,7 +259,7 @@ export default function RisksTab({ company }: RisksTabProps) {
             {/* Info Box */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex gap-3">
-                    <div className="text-blue-600 text-xl">ℹ️</div>
+
                     <div className="flex-1">
                         <h4 className="text-sm font-semibold text-blue-900 mb-1">
                             {t('risk_assessment_title')}

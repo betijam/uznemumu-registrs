@@ -54,19 +54,19 @@ export default function Navbar() {
                             href="/industries"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
                         >
-                            📊 {t('industries')}
+                            {t('industries')}
                         </Link>
                         <Link
                             href="/regions"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
                         >
-                            🗺️ {t('regions')}
+                            {t('regions')}
                         </Link>
                         <Link
                             href="/explore"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
                         >
-                            📈 {t('analytics')}
+                            {t('analytics')}
                         </Link>
                         <Link
                             href="/personas"
@@ -136,21 +136,21 @@ export default function Navbar() {
                             onClick={() => setIsMenuOpen(false)}
                             className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
                         >
-                            📊 {t('industries')}
+                            {t('industries')}
                         </Link>
                         <Link
                             href="/explore"
                             onClick={() => setIsMenuOpen(false)}
                             className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
                         >
-                            📈 {t('analytics')}
+                            {t('analytics')}
                         </Link>
                         <Link
                             href="/regions"
                             onClick={() => setIsMenuOpen(false)}
                             className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
                         >
-                            🗺️ {t('regions')}
+                            {t('regions')}
                         </Link>
                         <Link
                             href="/mvk-declaration"

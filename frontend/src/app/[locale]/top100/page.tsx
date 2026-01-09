@@ -56,9 +56,6 @@ export default function Top100Page() {
     };
 
     const getRankBadge = (rank: number) => {
-        if (rank === 1) return '🥇';
-        if (rank === 2) return '🥈';
-        if (rank === 3) return '🥉';
         return `#${rank}`;
     };
 
@@ -73,7 +70,7 @@ export default function Top100Page() {
                         ← Sākumlapa
                     </Link>
                     <h1 className="text-4xl font-bold text-primary mb-2">
-                        🏆 TOP 100 Latvijas Uzņēmumi
+                        TOP 100 Latvijas Uzņēmumi
                     </h1>
                     <p className="text-gray-600">
                         Lielākie uzņēmumi Latvijā pēc {sortBy === 'turnover' ? 'apgrozījuma' : 'peļņas'}

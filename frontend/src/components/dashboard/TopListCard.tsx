@@ -60,7 +60,7 @@ export default function TopListCard({ title, subtitle, icon, items, valueFormatt
             {linkTo && (
                 <div className="mt-6 pt-4 border-t border-gray-50 text-center">
                     <Link href={linkTo} className="text-sm font-medium text-purple-600 hover:text-purple-700 transition-colors">
-                        {viewAllLabel} →
+                        {viewAllLabel}
                     </Link>
                 </div>
             )}

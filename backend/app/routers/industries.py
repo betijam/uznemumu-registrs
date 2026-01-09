@@ -10,27 +10,27 @@ logger = logging.getLogger(__name__)
 
 # NACE Section mappings (Level 1 codes A-U)
 NACE_SECTIONS = {
-    "A": {"name": "Lauksaimniecība un Mežsaimniecība", "icon": "🌾"},
-    "B": {"name": "Ieguves Rūpniecība", "icon": "⛏️"},
-    "C": {"name": "Apstrādes Rūpniecība", "icon": "🏭"},
-    "D": {"name": "Elektroenerģija un Gāze", "icon": "⚡"},
-    "E": {"name": "Ūdensapgāde un Atkritumi", "icon": "💧"},
-    "F": {"name": "Būvniecība", "icon": "🏗️"},
-    "G": {"name": "Tirdzniecība (Vairum/Mazum)", "icon": "🛒"},
-    "H": {"name": "Transports un Uzglabāšana", "icon": "🚚"},
-    "I": {"name": "Izmitināšana un Ēdināšana", "icon": "🏨"},
-    "J": {"name": "Informācijas un Komunikācijas pak.", "icon": "💻"},
-    "K": {"name": "Finanšu un Apdrošināšanas pak.", "icon": "🏦"},
-    "L": {"name": "Nekustamais Īpašums", "icon": "🏠"},
-    "M": {"name": "Profesionālie un Zinātniskie pak.", "icon": "🔬"},
-    "N": {"name": "Administratīvie un Atbalsta pak.", "icon": "📋"},
-    "O": {"name": "Valsts Pārvalde un Aizsardzība", "icon": "🏛️"},
-    "P": {"name": "Izglītība", "icon": "🎓"},
-    "Q": {"name": "Veselība un Sociālā Aprūpe", "icon": "🏥"},
-    "R": {"name": "Māksla un Izklaide", "icon": "🎭"},
-    "S": {"name": "Citi Pakalpojumi", "icon": "🔧"},
-    "T": {"name": "Mājsaimniecības", "icon": "🏡"},
-    "U": {"name": "Eksteritoriālās Organizācijas", "icon": "🌐"},
+    "A": {"name": "Lauksaimniecība un Mežsaimniecība", "icon": ""},
+    "B": {"name": "Ieguves Rūpniecība", "icon": ""},
+    "C": {"name": "Apstrādes Rūpniecība", "icon": ""},
+    "D": {"name": "Elektroenerģija un Gāze", "icon": ""},
+    "E": {"name": "Ūdensapgāde un Atkritumi", "icon": ""},
+    "F": {"name": "Būvniecība", "icon": ""},
+    "G": {"name": "Tirdzniecība (Vairum/Mazum)", "icon": ""},
+    "H": {"name": "Transports un Uzglabāšana", "icon": ""},
+    "I": {"name": "Izmitināšana un Ēdināšana", "icon": ""},
+    "J": {"name": "Informācijas un Komunikācijas pak.", "icon": ""},
+    "K": {"name": "Finanšu un Apdrošināšanas pak.", "icon": ""},
+    "L": {"name": "Nekustamais Īpašums", "icon": ""},
+    "M": {"name": "Profesionālie un Zinātniskie pak.", "icon": ""},
+    "N": {"name": "Administratīvie un Atbalsta pak.", "icon": ""},
+    "O": {"name": "Valsts Pārvalde un Aizsardzība", "icon": ""},
+    "P": {"name": "Izglītība", "icon": ""},
+    "Q": {"name": "Veselība un Sociālā Aprūpe", "icon": ""},
+    "R": {"name": "Māksla un Izklaide", "icon": ""},
+    "S": {"name": "Citi Pakalpojumi", "icon": ""},
+    "T": {"name": "Mājsaimniecības", "icon": ""},
+    "U": {"name": "Eksteritoriālās Organizācijas", "icon": ""},
 }
 
 def safe_float(value):
@@ -490,7 +490,7 @@ def get_industry_detail(
         elif nace_code in NACE_SECTIONS:
             nace_icon = NACE_SECTIONS[nace_code]["icon"]
         else:
-            nace_icon = "🏭"
+            nace_icon = ""
         
         # If no NACE name found in dictionary, try database
         if not nace_name:

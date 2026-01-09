@@ -13,35 +13,35 @@ export default function RiskLevelBadge({ level, score, size = 'md' }: RiskLevelB
                 return {
                     bg: 'bg-red-600',
                     text: 'text-white',
-                    icon: '🔴',
+                    icon: '',
                     label: 'KRITISKS'
                 };
             case 'HIGH':
                 return {
                     bg: 'bg-orange-500',
                     text: 'text-white',
-                    icon: '🟠',
+                    icon: '',
                     label: 'AUGSTS'
                 };
             case 'MEDIUM':
                 return {
                     bg: 'bg-yellow-500',
                     text: 'text-white',
-                    icon: '🟡',
+                    icon: '',
                     label: 'VIDĒJS'
                 };
             case 'LOW':
                 return {
                     bg: 'bg-blue-500',
                     text: 'text-white',
-                    icon: '🔵',
+                    icon: '',
                     label: 'ZEMS'
                 };
             case 'NONE':
                 return {
                     bg: 'bg-success',
                     text: 'text-white',
-                    icon: '🟢',
+                    icon: '',
                     label: 'NAV RISKU'
                 };
         }
@@ -57,7 +57,6 @@ export default function RiskLevelBadge({ level, score, size = 'md' }: RiskLevelB
 
     return (
         <div className={`inline-flex items-center gap-2 ${styles.bg} ${styles.text} ${sizeClasses[size]} rounded-full font-semibold`}>
-            <span>{styles.icon}</span>
             <span>{styles.label}</span>
             <span className="opacity-75">({score})</span>
         </div>

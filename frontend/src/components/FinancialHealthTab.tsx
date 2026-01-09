@@ -192,7 +192,7 @@ export default function FinancialHealthTab({ company }: FinancialHealthTabProps)
                             {/* Liquidity Ratios */}
                             <tr className="bg-blue-50/30">
                                 <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">
-                                    💧 Likviditātes Rādītāji
+                                    Likviditātes Rādītāji
                                 </td>
                             </tr>
                             <tr>
@@ -219,7 +219,7 @@ export default function FinancialHealthTab({ company }: FinancialHealthTabProps)
                             {/* Profitability Ratios */}
                             <tr className="bg-green-50/30">
                                 <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">
-                                    💰 Rentabilitātes Rādītāji
+                                    Rentabilitātes Rādītāji
                                 </td>
                             </tr>
                             <tr>
@@ -256,7 +256,7 @@ export default function FinancialHealthTab({ company }: FinancialHealthTabProps)
                             {/* Solvency Ratios */}
                             <tr className="bg-orange-50/30">
                                 <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">
-                                    📈 Maksātspējas Rādītāji
+                                    Maksātspējas Rādītāji
                                 </td>
                             </tr>
                             <tr>
@@ -273,7 +273,7 @@ export default function FinancialHealthTab({ company }: FinancialHealthTabProps)
                             {/* EBITDA */}
                             <tr className="bg-purple-50/30">
                                 <td colSpan={4} className="px-6 py-2 text-sm font-semibold text-gray-700">
-                                    🚀 Naudas Plūsma
+                                    Naudas Plūsma
                                 </td>
                             </tr>
                             <tr>
@@ -294,7 +294,7 @@ export default function FinancialHealthTab({ company }: FinancialHealthTabProps)
             {/* Info Box */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex gap-3">
-                    <div className="text-blue-600 text-xl">ℹ️</div>
+
                     <div className="flex-1">
                         <h4 className="text-sm font-semibold text-blue-900 mb-1">
                             Par Finanšu Rādītājiem
