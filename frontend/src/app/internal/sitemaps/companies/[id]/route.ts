@@ -19,7 +19,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         if (res.ok) {
             const data = await res.json();
             // data.ids is Array<{regcode, updated_at}>
-            companyUrls = data.ids.map((c) => `
+            companyUrls = data.ids.map((c: any) => `
   <url>
     <loc>${baseUrl}/company/${c.regcode}</loc>
     <lastmod>${c.updated_at || new Date().toISOString()}</lastmod>
