@@ -387,11 +387,29 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                 ? `${Math.round(company.tax_history[0].avg_gross_salary).toLocaleString('lv-LV')} €`
                                                 : 'N/A'}
                                         </div>
-                                        <div className="text-xs text-gray-500">
-                                            {company.tax_history?.[0]?.avg_gross_salary && company.nace_text
-                                                ? t('vs_industry')
-                                                : ''}
-                                        </div>
+
+                                        {/* Industry Average Comparison */}
+                                        {company.industry_avg_salary && company.tax_history?.[0]?.avg_gross_salary && (
+                                            <div className="mt-2 pt-2 border-t border-gray-100">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs text-gray-500">
+                                                        Nozare: {Math.round(company.industry_avg_salary).toLocaleString('lv-LV')} €
+                                                    </span>
+                                                    {(() => {
+                                                        const companySalary = company.tax_history[0].avg_gross_salary;
+                                                        const industrySalary = company.industry_avg_salary;
+                                                        const diff = ((companySalary - industrySalary) / industrySalary) * 100;
+                                                        const isAbove = companySalary > industrySalary;
+
+                                                        return (
+                                                            <span className={`text-xs font-medium ${isAbove ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                                {isAbove ? '▲' : '▼'} {Math.abs(Math.round(diff))}%
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* VID Reitings */}

@@ -497,7 +497,8 @@ async def get_company_quick(regcode: int, response: Response, request: Request):
             SELECT 
                 c.*,
                 f.year as fin_year, f.turnover, f.profit, f.employees as fin_employees,
-                r.rating_grade, r.rating_explanation
+                r.rating_grade, r.rating_explanation,
+                ist.avg_gross_salary as industry_avg_salary
             FROM companies c
             LEFT JOIN LATERAL (
                 SELECT year, turnover, profit, employees 
@@ -506,6 +507,9 @@ async def get_company_quick(regcode: int, response: Response, request: Request):
                 ORDER BY year DESC LIMIT 1
             ) f ON true
             LEFT JOIN company_ratings r ON r.company_regcode = c.regcode
+            LEFT JOIN industry_stats_materialized ist ON 
+                ist.nace_code = SUBSTRING(c.nace_code FROM 1 FOR 3)
+                AND ist.nace_level = 3
             WHERE c.regcode = :r
         """), {"r": regcode}).fetchone()
         
@@ -536,6 +540,7 @@ async def get_company_quick(regcode: int, response: Response, request: Request):
             "company_size_badge": res.company_size_badge,
             "pvn_number": res.pvn_number if hasattr(res, 'pvn_number') else None,
             "is_pvn_payer": res.is_pvn_payer if hasattr(res, 'is_pvn_payer') else False,
+            "industry_avg_salary": res.industry_avg_salary if hasattr(res, 'industry_avg_salary') else None,
             # Latest finances (just the most recent year)
             "finances": {
                 "year": res.fin_year,
