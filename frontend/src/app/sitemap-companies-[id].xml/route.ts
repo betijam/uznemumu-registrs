@@ -1,18 +1,26 @@
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const baseUrl = 'https://company360.lv';
-    // params.id will be "1", "2", etc. from the filename sitemap-companies-[id].xml
-    // But strictly, Next.js dynamic routes for [folder] matching "sitemap-companies-[id].xml" 
-    // might struggle if the route parameter isn't cleanly extracted. 
-    // Next.js Route Handlers don't support regex filenames like [name].xml directly easily.
-    // We need to verify if `app/sitemap-companies-[id].xml/route.ts` works or if `app/sitemap-companies/[id]/route.ts` is needed alongside a rewrite.
-    // The user requirement is `/sitemap-companies-1.xml`. 
-    // Standard Next.js pattern: `app/sitemap-companies-[id]/route.ts` (if supported? No, [id] folder means /sitemap-companies-id/...)
-    // Wait, Next.js `sitemap.ts` (generation) supports generating multiple sitemaps via `generateSitemaps`.
-    // BUT valid XML response is needed.
-    // If we assume a Rewrite or strict folder naming, `app/sitemap-companies-[id]/route.ts` would map to `/sitemap-companies-[id]`.
-    // To get `.xml` extension, we typically do `app/sitemap-companies-[id].xml/route.ts` which treats `[id]` as dynamic part.
+
+    // In Next.js 15+, params is a Promise.
+    // However, since we are in a sitemap-companies-[id].xml folder, 
+    // we need to see what params actually captures. 
+    // If the file is `app/sitemap-companies-[id].xml/route.ts`, 
+    // and the URL is `/sitemap-companies-1.xml`, 
+    // Dynamic segments are usually `[folder]`. 
+    // Here the folder name is literal `sitemap-companies-[id].xml`. 
+    // Wait, Next.js doesn't parse square brackets inside a folder name like that as a partial match usually.
+    // Usually you do `app/sitemap-companies/[id]/route.ts` -> `/sitemap-companies/1`.
+    // BUT the user required `/sitemap-companies-1.xml`.
+    // The previous implementation relied on regex on `request.url`.
+    // The previous implementation used `match` on `request.url` which is robust regardless of params.
+    // BUT valid type check requires matching the Next.js signature.
+
+    // We strictly fix the type signature first.
+    const { id } = await params; // although we might not use it if we rely on regex, we must await it to satisfy type check if we destructure it. 
+    // Actually, if we don't define the route with `[id]` folder properly, `params` might be empty.
+    // Let's rely on the regex as implemented before, but fix the signature.
 
     // EXTRACT ID from URL since [id] folder param logic can be tricky with extensions.
     const url = new URL(request.url);

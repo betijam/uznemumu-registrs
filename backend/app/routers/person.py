@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Response, Request, Depends
+from fastapi import APIRouter, HTTPException, Response, Request, Depends, Query
 from sqlalchemy import text
 from app.core.database import engine
 import logging

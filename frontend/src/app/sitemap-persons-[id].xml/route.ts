@@ -1,7 +1,10 @@
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const baseUrl = 'https://company360.lv';
+
+    // Await params to satisfy Next.js 15+ type requirements
+    await params;
 
     // Extract ID/Page from URL pattern "sitemap-persons-1.xml"
     const url = new URL(request.url);
