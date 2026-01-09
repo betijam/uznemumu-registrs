@@ -11,10 +11,15 @@ export async function GET(request: Request) {
         testResult: {}
     };
 
-    const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://company360.lv';
-    msgs.resolvedApiUrl = apiUrl;
+    const internalApi = process.env.INTERNAL_API_URL;
+    const publicApi = process.env.NEXT_PUBLIC_API_URL || 'https://company360.lv';
+    const apiUrl = internalApi || publicApi;
+    const apiPathPrefix = internalApi ? '' : '/api';
 
-    const testUrl = `${apiUrl}/api/companies/sitemap-ids?page=1&limit=5`;
+    msgs.resolvedApiUrl = apiUrl;
+    msgs.apiPathPrefix = apiPathPrefix;
+
+    const testUrl = `${apiUrl}${apiPathPrefix}/companies/sitemap-ids?page=1&limit=5`;
 
     try {
         const start = Date.now();

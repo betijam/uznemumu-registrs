@@ -23,15 +23,24 @@ export async function GET() {
     `${baseUrl}/sitemap-industries.xml`,
   ];
 
-  const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://company360.lv';
+  // Determine API URL and path prefix
+  // If INTERNAL_API_URL is set, we assume it matches the backend directly (no /api prefix)
+  // If not, we fall back to NEXT_PUBLIC_API_URL or default, which are likely frontend proxies (requiring /api)
+  const internalApi = process.env.INTERNAL_API_URL;
+  const publicApi = process.env.NEXT_PUBLIC_API_URL || 'https://company360.lv';
+
+  const apiUrl = internalApi || publicApi;
+  const apiPathPrefix = internalApi ? '' : '/api';
+
   const limit = 50000;
 
-  console.log('[Sitemap Index] Using API URL:', apiUrl);
+  console.log('[Sitemap Index] Using API URL:', apiUrl, 'Prefix:', apiPathPrefix);
 
   // 1) Company sitemaps
   try {
-    console.log('[Sitemap Index] Fetching companies count from:', `${apiUrl}/api/companies/sitemap-info`);
-    const totalCompanies = await fetchTotal(apiUrl, '/api/companies/sitemap-info');
+    const endpoint = `${apiPathPrefix}/companies/sitemap-info`;
+    console.log('[Sitemap Index] Fetching companies count from:', `${apiUrl}${endpoint}`);
+    const totalCompanies = await fetchTotal(apiUrl, endpoint);
     console.log('[Sitemap Index] Total companies:', totalCompanies);
     if (totalCompanies > 0) {
       const pages = Math.ceil(totalCompanies / limit);
@@ -46,8 +55,9 @@ export async function GET() {
 
   // 2) Person sitemaps
   try {
-    console.log('[Sitemap Index] Fetching persons count from:', `${apiUrl}/api/persons/sitemap-info`);
-    const totalPersons = await fetchTotal(apiUrl, '/api/persons/sitemap-info');
+    const endpoint = `${apiPathPrefix}/persons/sitemap-info`;
+    console.log('[Sitemap Index] Fetching persons count from:', `${apiUrl}${endpoint}`);
+    const totalPersons = await fetchTotal(apiUrl, endpoint);
     console.log('[Sitemap Index] Total persons:', totalPersons);
     if (totalPersons > 0) {
       const pages = Math.ceil(totalPersons / limit);
