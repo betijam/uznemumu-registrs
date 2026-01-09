@@ -753,3 +753,49 @@ def get_career_timeline(identifier: str, limit: int = 10, offset: int = 0, respo
             "offset": offset,
             "has_more": (offset + limit) < total
         }
+
+
+# ============================================================================
+# SITEMAP ENDPOINTS
+# ============================================================================
+
+@router.get("/persons/sitemap-info")
+def get_persons_sitemap_info():
+    """
+    Get total count of unique persons for sitemap pagination.
+    """
+    with engine.connect() as conn:
+        count = conn.execute(text("SELECT COUNT(DISTINCT person_code) FROM persons")).scalar()
+        return {"total": count}
+
+@router.get("/persons/sitemap-ids")
+def get_persons_sitemap_ids(page: int = Query(1, ge=1), limit: int = Query(50000, le=50000)):
+    """
+    Get batch of person identifiers for sitemap generation.
+    Returns generated URL identifiers (hash).
+    """
+    offset = (page - 1) * limit
+    
+    with engine.connect() as conn:
+        query = text("""
+            SELECT DISTINCT person_code, person_name
+            FROM persons
+            ORDER BY person_code
+            LIMIT :limit OFFSET :offset
+        """)
+        
+        rows = conn.execute(query, {"limit": limit, "offset": offset}).fetchall()
+        
+        results = []
+        for r in rows:
+            identifier = generate_person_url_id(r.person_code, r.person_name)
+            results.append({
+                "identifier": identifier,
+                "updated_at": None 
+            })
+        
+        return {
+            "page": page,
+            "limit": limit,
+            "ids": results
+        }

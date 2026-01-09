@@ -103,9 +103,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const { id } = await params;
     const company = await getCompany(id);
     if (!company) return { title: "Uzņēmums nav atrasts" };
+
+    const canonicalUrl = `https://company360.lv/company/${company.regcode}`;
+
     return {
         title: `${company.name} (${company.regcode}) - Company 360`,
         description: `Finanšu dati, amatpersonas un riski uzņēmumam ${company.name}.`,
+        metadataBase: new URL('https://company360.lv'),
+        alternates: {
+            canonical: canonicalUrl,
+        }
     };
 }
 
