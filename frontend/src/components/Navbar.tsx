@@ -72,7 +72,7 @@ export default function Navbar() {
                             href="/personas"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
                         >
-                            👤 Personas
+                            Personas
                         </Link>
                         <Link
                             href="/mvk-declaration"
@@ -121,60 +121,62 @@ export default function Navbar() {
             </div>
 
             {/* Mobile Menu Dropdown */}
-            {isMenuOpen && (
-                <div className="sm:hidden bg-white border-t border-gray-100 shadow-lg">
-                    <div className="px-4 py-3 space-y-2">
-                        <Link
-                            href="/"
-                            onClick={() => setIsMenuOpen(false)}
-                            className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
-                        >
-                            {t('home')}
-                        </Link>
-                        <Link
-                            href="/industries"
-                            onClick={() => setIsMenuOpen(false)}
-                            className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
-                        >
-                            {t('industries')}
-                        </Link>
-                        <Link
-                            href="/explore"
-                            onClick={() => setIsMenuOpen(false)}
-                            className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
-                        >
-                            {t('analytics')}
-                        </Link>
-                        <Link
-                            href="/regions"
-                            onClick={() => setIsMenuOpen(false)}
-                            className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
-                        >
-                            {t('regions')}
-                        </Link>
-                        <Link
-                            href="/mvk-declaration"
-                            onClick={() => setIsMenuOpen(false)}
-                            className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
-                        >
-                            {t('mvk')}
-                        </Link>
-
-                        {isLoggedIn ? (
-                            <button
-                                onClick={handleLogout}
-                                className="w-full mt-2 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm"
+            {
+                isMenuOpen && (
+                    <div className="sm:hidden bg-white border-t border-gray-100 shadow-lg">
+                        <div className="px-4 py-3 space-y-2">
+                            <Link
+                                href="/"
+                                onClick={() => setIsMenuOpen(false)}
+                                className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
                             >
-                                Logout
-                            </button>
-                        ) : (
-                            <Link href="/auth/login" className="block w-full mt-2 px-4 py-2.5 border border-transparent rounded-lg text-sm font-medium text-white bg-primary hover:bg-secondary transition-colors shadow-sm text-center">
-                                {t('login')}
+                                {t('home')}
                             </Link>
-                        )}
+                            <Link
+                                href="/industries"
+                                onClick={() => setIsMenuOpen(false)}
+                                className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
+                            >
+                                {t('industries')}
+                            </Link>
+                            <Link
+                                href="/explore"
+                                onClick={() => setIsMenuOpen(false)}
+                                className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
+                            >
+                                {t('analytics')}
+                            </Link>
+                            <Link
+                                href="/regions"
+                                onClick={() => setIsMenuOpen(false)}
+                                className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
+                            >
+                                {t('regions')}
+                            </Link>
+                            <Link
+                                href="/mvk-declaration"
+                                onClick={() => setIsMenuOpen(false)}
+                                className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
+                            >
+                                {t('mvk')}
+                            </Link>
+
+                            {isLoggedIn ? (
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full mt-2 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm"
+                                >
+                                    Logout
+                                </button>
+                            ) : (
+                                <Link href="/auth/login" className="block w-full mt-2 px-4 py-2.5 border border-transparent rounded-lg text-sm font-medium text-white bg-primary hover:bg-secondary transition-colors shadow-sm text-center">
+                                    {t('login')}
+                                </Link>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
-        </nav>
+                )
+            }
+        </nav >
     );
 }

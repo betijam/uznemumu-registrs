@@ -132,7 +132,7 @@ export default function IndustriesPage() {
         const isPositive = value >= 0;
         return (
             <span className={`text-sm font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                {isPositive ? '▲' : '▼'} {Math.abs(value).toFixed(1)}%
+                {isPositive ? '+' : ''} {Math.abs(value).toFixed(1)}%
             </span>
         );
     };
@@ -250,7 +250,6 @@ export default function IndustriesPage() {
                             {/* Fastest Growth */}
                             <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
                                 <div className="flex items-center mb-4 pb-2 border-b border-gray-100">
-                                    <span className="text-2xl mr-2">🚀</span>
                                     <h3 className="font-semibold text-gray-800">{t('fastest_growth')}</h3>
                                 </div>
                                 <div className="space-y-3">
@@ -273,7 +272,6 @@ export default function IndustriesPage() {
                             {/* Highest Salaries */}
                             <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
                                 <div className="flex items-center mb-4 pb-2 border-b border-gray-100">
-                                    <span className="text-2xl mr-2">💰</span>
                                     <h3 className="font-semibold text-gray-800">{t('highest_salaries')}</h3>
                                 </div>
                                 <div className="space-y-3">
@@ -298,7 +296,6 @@ export default function IndustriesPage() {
                             {/* Highest Turnover */}
                             <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
                                 <div className="flex items-center mb-4 pb-2 border-b border-gray-100">
-                                    <span className="text-2xl mr-2">📊</span>
                                     <h3 className="font-semibold text-gray-800">{t('highest_turnover')}</h3>
                                 </div>
                                 <div className="space-y-3">
@@ -398,7 +395,7 @@ export default function IndustriesPage() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <Link href={`/industries/${section.nace_code}`} className="text-blue-600 hover:text-blue-900 font-bold">
-                                                    →
+
                                                 </Link>
                                             </td>
                                         </tr>

@@ -157,9 +157,9 @@
     "daughter": "Meitas",
     "physical_person": "Fiziska persona",
     "status": {
-      "partners": "🤝 PARTNERI",
-      "linked": "🔗 SAISTĪTA",
-      "autonomous": "✅ AUTONOMA",
+      "partners": "PARTNERI",
+      "linked": "SAISTĪTA",
+      "autonomous": "AUTONOMA",
       "expiring": "Beidzas",
       "active": "Aktīvs",
       "closed": "Noslēgts"
@@ -186,7 +186,7 @@
     "not_specified": "Nav norādīts",
     "date": "Datums",
     "list": "Saraksts",
-    "view_official_doc": "Skatīt oficiālo dokumentu →",
+    "view_official_doc": "Skatīt oficiālo dokumentu",
     "sanctions_none_title": "Sankcijas: Nav atrasts",
     "sanctions_none_desc": "Uzņēmums neatrodas sankciju sarakstos",
     "liquidation_title": "LIKVIDĀCIJAS PROCESS",
@@ -223,7 +223,7 @@
   },
   "BentoGrid": {
     "overview_title": "Biznesa Vides Pārskats ({year})",
-    "view_all_analytics": "Skatīt visu analītiku →",
+    "view_all_analytics": "Skatīt visu analītiku",
     "top_turnover": "TOP Apgrozījums",
     "top_profit": "Efektivitāte (Peļņa)",
     "top_salaries": "Top Algas (Bruto)",
@@ -397,7 +397,7 @@
   },
   "IndustryDetail": {
     "not_found": "Nozare nav atrasta",
-    "back_to_industries": "← Atpakaļ uz nozaru pārskatu",
+    "back_to_industries": "Atpakaļ uz nozaru pārskatu",
     "total_turnover": "Kopējais Apgrozījums",
     "total_profit": "Kopējā Peļņa",
     "active_companies": "Aktīvie Uzņēmumi",

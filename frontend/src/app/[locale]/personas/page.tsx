@@ -154,10 +154,10 @@ export default function PersonasPage() {
                     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                         <div className="px-6 py-4 border-b flex items-center justify-between">
                             <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                                💰 Top 100 Īpašnieki (pēc Kapitāla)
+                                Top 100 Īpašnieki (pēc Kapitāla)
                             </h2>
                             <Link href="/personas/search?sort_by=wealth" className="text-primary text-sm hover:underline">
-                                Skatīt visus →
+                                Skatīt visus
                             </Link>
                         </div>
                         <div className="divide-y">
@@ -191,10 +191,10 @@ export default function PersonasPage() {
                     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                         <div className="px-6 py-4 border-b flex items-center justify-between">
                             <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                                ⚡ Aktīvākie (Sērijveida uzņēmēji)
+                                Aktīvākie (Sērijveida uzņēmēji)
                             </h2>
                             <Link href="/personas/search?sort_by=active" className="text-primary text-sm hover:underline">
-                                Skatīt visus →
+                                Skatīt visus
                             </Link>
                         </div>
                         <div className="divide-y">
