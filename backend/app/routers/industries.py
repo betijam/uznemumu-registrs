@@ -879,65 +879,50 @@ def get_top_100(
     sort_by: str = Query("turnover", pattern="^(turnover|profit)$")
 ):
     """
-    Get TOP 100 companies across all industries
-    
-    Args:
-        sort_by: Sort by "turnover" or "profit" (default: turnover)
+    Get TOP 100 companies across all industries.
+    Optimized to use materialized view for instant loading.
     """
     try:
         with engine.connect() as conn:
-            companies = conn.execute(text("""
+            # Check if materialized view exists/has data
+            # If not (e.g. before migration run), fall back might be needed, 
+            # but we assume migration is run as per instructions.
+            
+            sql = f"""
                 SELECT 
-                    c.regcode,
-                    c.name,
-                    c.nace_section,
-                    c.nace_section_text,
-                    c.employee_count,
-                    c.company_size_badge,
-                    c.pvn_number,
-                    c.is_pvn_payer,
-                    f.turnover,
-                    f.profit,
-                    f.employees as fin_employees,
-                    f.year,
-                    CASE WHEN :sort_by = 'turnover' THEN f.turnover ELSE f.profit END as sort_value
-                FROM companies c
-                LEFT JOIN LATERAL (
-                    SELECT turnover, profit, employees, year
-                    FROM financial_reports
-                    WHERE company_regcode = c.regcode
-                      AND turnover IS NOT NULL 
-                      AND turnover > 0
-                      AND turnover < 1e15
-                    ORDER BY year DESC
-                    LIMIT 1
-                ) f ON true
-                WHERE f.turnover IS NOT NULL
-                  AND f.turnover > 0
-                  AND f.turnover < 1e15
-                ORDER BY sort_value DESC
+                    regcode,
+                    name,
+                    nace_section_text as industry,
+                    turnover,
+                    profit,
+                    employees,
+                    data_year as year,
+                    company_size_badge as company_size,
+                    pvn_number,
+                    is_pvn_payer
+                FROM company_stats_materialized
+                WHERE {sort_by} IS NOT NULL 
+                ORDER BY {sort_by} DESC
                 LIMIT 100
-            """), {"sort_by": sort_by}).fetchall()
+            """
+            
+            companies = conn.execute(text(sql)).fetchall()
             
             result_companies = []
             for idx, c in enumerate(companies):
-                try:
-                    result_companies.append({
-                        "rank": idx + 1,
-                        "regcode": c[0],
-                        "name": c[1],
-                        "industry": c[3],
-                        "turnover": safe_float(c[8]),
-                        "profit": safe_float(c[9]),
-                        "employees": c[4] or c[10],
-                        "year": c[11],
-                        "company_size": c[5],
-                        "pvn_number": c[6],
-                        "is_pvn_payer": bool(c[7]) if c[7] is not None else False
-                    })
-                except Exception as row_error:
-                    logger.error(f"Error processing row {idx}: {row_error}, data: {c}")
-                    continue
+                result_companies.append({
+                    "rank": idx + 1,
+                    "regcode": c.regcode,
+                    "name": c.name,
+                    "industry": c.industry,
+                    "turnover": safe_float(c.turnover),
+                    "profit": safe_float(c.profit),
+                    "employees": c.employees,
+                    "year": c.year,
+                    "company_size": c.company_size,
+                    "pvn_number": c.pvn_number,
+                    "is_pvn_payer": c.is_pvn_payer
+                })
             
             return {
                 "sort_by": sort_by,
@@ -946,4 +931,6 @@ def get_top_100(
             }
     except Exception as e:
         logger.error(f"TOP 100 query error: {e}")
+        # Fallback to empty list or re-raise depending on policy
+        # For now, let's re-raise so we know if something is broken
         raise
