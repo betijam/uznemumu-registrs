@@ -66,7 +66,9 @@ def process_single_result_file(url: str, year: int, valid_regcodes: set):
         'Pasutitaja_nosaukums': 'authority_name',
         'Iepirkuma_nosaukums': 'subject',
         'Aktuala_liguma_summa': 'amount',
-        'Hipersaite_EIS_kura_pieejams_zinojums': 'source_link'
+        'Hipersaite_EIS_kura_pieejams_zinojums': 'source_link',
+        'Iepirkuma_identifikacijas_numurs': 'procurement_id',
+        'Iepirkuma_dalas_nr': 'part_number'
     }
     df = df.rename(columns=col_map)
 
@@ -97,12 +99,18 @@ def process_single_result_file(url: str, year: int, valid_regcodes: set):
     df['winner_regcode'] = pd.to_numeric(df['winner_regcode'], errors='coerce')
     df = df.dropna(subset=['winner_regcode'])
 
+    # Iepirkuma ID un daļas tīrīšana
+    if 'procurement_id' in df.columns:
+        df['procurement_id'] = df['procurement_id'].astype(str).str.strip()
+    if 'part_number' in df.columns:
+        df['part_number'] = df['part_number'].astype(str).str.strip()
+
     # Filtrējam tikai tos, kas ir mūsu DB
     df = df[df['winner_regcode'].isin(valid_regcodes)]
 
     # Sagatavojam DB ievadei
     df['year'] = year
-    target_cols = ['winner_regcode', 'contract_date', 'contract_end_date', 'termination_date', 'authority_name', 'subject', 'amount', 'year', 'source_link']
+    target_cols = ['winner_regcode', 'contract_date', 'contract_end_date', 'termination_date', 'authority_name', 'subject', 'amount', 'year', 'source_link', 'procurement_id', 'part_number']
     
     # Pieliekam trūkstošās kolonnas kā nulles
     for c in target_cols:

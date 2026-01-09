@@ -35,8 +35,13 @@ def run_migration():
     ALTER TABLE procurements ADD COLUMN IF NOT EXISTS contract_end_date DATE;
     ALTER TABLE procurements ADD COLUMN IF NOT EXISTS termination_date DATE;
 
+    -- Add deduplication columns
+    ALTER TABLE procurements ADD COLUMN IF NOT EXISTS procurement_id TEXT;
+    ALTER TABLE procurements ADD COLUMN IF NOT EXISTS part_number TEXT;
+
     -- Create index for performance on date filtering
     CREATE INDEX IF NOT EXISTS idx_procurements_end_date ON procurements(contract_end_date);
+    CREATE INDEX IF NOT EXISTS idx_procurements_id ON procurements(procurement_id);
     """
     
     try:

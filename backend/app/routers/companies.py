@@ -626,19 +626,51 @@ def get_procurements_endpoint(regcode: int, response: Response, limit: int = 50)
     
     with engine.connect() as conn:
         rows = conn.execute(text("""
-            SELECT authority_name, subject, amount, contract_date, contract_end_date, termination_date
+            SELECT authority_name, subject, amount, contract_date, contract_end_date, termination_date, procurement_id, part_number
             FROM procurements WHERE winner_regcode = :r
             ORDER BY contract_date DESC LIMIT :limit
         """), {"r": regcode, "limit": limit}).fetchall()
         
-        return {"procurements": [{
-            "authority": p.authority_name, 
-            "subject": p.subject,
-            "amount": safe_float(p.amount), 
-            "date": str(p.contract_date),
-            "end_date": str(p.contract_end_date) if p.contract_end_date else None,
-            "termination_date": str(p.termination_date) if p.termination_date else None
-        } for p in rows]}
+        # Aggregation Logic
+        aggregated = {}
+        history = []
+        
+        for p in rows:
+            # If procurement_id exists, use it for grouping, otherwise use subject+date as fallback key
+            key = p.procurement_id if p.procurement_id else f"{p.subject}_{p.contract_date}"
+            
+            if key in aggregated:
+                # Aggregate
+                existing = aggregated[key]
+                existing["amount"] += safe_float(p.amount)
+                if p.part_number:
+                    existing["parts"].append(p.part_number)
+            else:
+                # New entry
+                entry = {
+                    "authority": p.authority_name, 
+                    "subject": p.subject,
+                    "amount": safe_float(p.amount), 
+                    "date": str(p.contract_date),
+                    "end_date": str(p.contract_end_date) if p.contract_end_date else None,
+                    "termination_date": str(p.termination_date) if p.termination_date else None,
+                    "parts": [p.part_number] if p.part_number else []
+                }
+                aggregated[key] = entry
+                history.append(entry) # Keep order
+
+        # Format subject if multiple parts
+        for entry in history:
+            if len(entry["parts"]) > 0:
+                parts_str = ", ".join(sorted(entry["parts"], key=lambda x: int(x) if x.isdigit() else x))
+                if len(entry["parts"]) > 1:
+                     entry["subject"] = f"{entry['subject']} (Daļas: {parts_str})"
+                elif not entry["subject"].endswith(f"(Daļa {parts_str})"):
+                     # Optional: append part number if single part and not already in text
+                     pass
+            del entry["parts"]
+
+        return {"procurements": history}
 
 
 @router.get("/companies/{regcode}/persons")
