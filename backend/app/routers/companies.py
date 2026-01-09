@@ -375,7 +375,7 @@ def get_sitemap_ids(page: int = Query(1, ge=1), limit: int = Query(50000, le=500
     
     with engine.connect() as conn:
         query = text("""
-            SELECT regcode, matched_at as updated_at
+            SELECT regcode, registration_date as updated_at
             FROM companies 
             WHERE status = 'active'
             ORDER BY regcode

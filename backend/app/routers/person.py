@@ -769,33 +769,30 @@ def get_persons_sitemap_info():
         return {"total": count}
 
 @router.get("/persons/sitemap-ids")
-def get_persons_sitemap_ids(page: int = Query(1, ge=1), limit: int = Query(50000, le=50000)):
+def get_sitemap_ids(page: int = Query(1, ge=1), limit: int = Query(50000, le=50000)):
     """
     Get batch of person identifiers for sitemap generation.
-    Returns generated URL identifiers (hash).
     """
     offset = (page - 1) * limit
     
     with engine.connect() as conn:
         query = text("""
-            SELECT DISTINCT person_code, person_name
-            FROM persons
-            ORDER BY person_code
+            SELECT person_hash as identifier, updated_at
+            FROM person_analytics_fast
+            ORDER BY person_hash
             LIMIT :limit OFFSET :offset
         """)
         
         rows = conn.execute(query, {"limit": limit, "offset": offset}).fetchall()
         
-        results = []
-        for r in rows:
-            identifier = generate_person_url_id(r.person_code, r.person_name)
-            results.append({
-                "identifier": identifier,
-                "updated_at": None 
-            })
-        
         return {
             "page": page,
             "limit": limit,
-            "ids": results
+            "ids": [
+                {
+                    "identifier": r.identifier,
+                    "updated_at": r.updated_at.isoformat() if r.updated_at else None
+                }
+                for r in rows
+            ]
         }

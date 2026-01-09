@@ -393,7 +393,7 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                             <div className="mt-2 pt-2 border-t border-gray-100">
                                                 <div className="flex items-center justify-between">
                                                     <span className="text-xs text-gray-500">
-                                                        Nozare: {Math.round(company.industry_avg_salary).toLocaleString('lv-LV')} €
+                                                        Nozarē: {Math.round(company.industry_avg_salary).toLocaleString('lv-LV')} €
                                                     </span>
                                                     {(() => {
                                                         const companySalary = company.tax_history[0].avg_gross_salary;
