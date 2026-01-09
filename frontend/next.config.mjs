@@ -30,6 +30,14 @@ const nextConfig = {
                 source: '/api/:path*',
                 destination: `${backendUrl}/:path*`,
             },
+            {
+                source: '/sitemap-companies-:id.xml',
+                destination: '/internal/sitemaps/companies/:id',
+            },
+            {
+                source: '/sitemap-persons-:id.xml',
+                destination: '/internal/sitemaps/persons/:id',
+            },
         ];
     },
 };
