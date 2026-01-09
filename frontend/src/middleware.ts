@@ -70,6 +70,6 @@ export default function middleware(request: NextRequest) {
 }
 
 export const config = {
-    // Exclude static files and API routes from middleware
-    matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+    // Exclude API routes, static files, sitemaps, and robots.txt from middleware
+    matcher: ['/((?!api|_next/static|_next/image|favicon.ico|sitemap|robots).*)'],
 };
