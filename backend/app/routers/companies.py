@@ -352,6 +352,50 @@ def build_full_profile(regcode: int, base_company_info: dict):
     
     return full_data
 
+# ============================================================================
+# SITEMAP ENDPOINTS (must be before /{regcode} route)
+# ============================================================================
+
+@router.get("/companies/sitemap-info")
+def get_sitemap_info():
+    """
+    Get total count of active companies for sitemap pagination.
+    """
+    with engine.connect() as conn:
+        count = conn.execute(text("SELECT COUNT(*) FROM companies WHERE status = 'active'")).scalar()
+        return {"total": count}
+
+@router.get("/companies/sitemap-ids")
+def get_sitemap_ids(page: int = Query(1, ge=1), limit: int = Query(50000, le=50000)):
+    """
+    Get batch of company regcodes for sitemap generation.
+    Optimized for minimal data transfer.
+    """
+    offset = (page - 1) * limit
+    
+    with engine.connect() as conn:
+        query = text("""
+            SELECT regcode, matched_at as updated_at
+            FROM companies 
+            WHERE status = 'active'
+            ORDER BY regcode
+            LIMIT :limit OFFSET :offset
+        """)
+        
+        rows = conn.execute(query, {"limit": limit, "offset": offset}).fetchall()
+        
+        return {
+            "page": page,
+            "limit": limit,
+            "ids": [
+                {
+                    "regcode": r.regcode, 
+                    "updated_at": r.updated_at.isoformat() if r.updated_at else None
+                } 
+                for r in rows
+            ]
+        }
+
 @router.get("/companies/{regcode}")
 async def get_company_details(regcode: int, response: Response, request: Request):
     # NO HTTP CACHE - Access control must run every time
@@ -1740,50 +1784,4 @@ def get_mvk_declaration(regcode: int, year: int = 2024):
             )
         }
 
-
-# ============================================================================
-# SITEMAP ENDPOINTS
-# ============================================================================
-
-@router.get("/companies/sitemap-info")
-def get_sitemap_info():
-    """
-    Get total count of active companies for sitemap pagination.
-    """
-    with engine.connect() as conn:
-        count = conn.execute(text("SELECT COUNT(*) FROM companies WHERE status = 'active'")).scalar()
-        return {"total": count}
-
-@router.get("/companies/sitemap-ids")
-def get_sitemap_ids(page: int = Query(1, ge=1), limit: int = Query(50000, le=50000)):
-    """
-    Get batch of company regcodes for sitemap generation.
-    Optimized for minimal data transfer.
-    """
-    offset = (page - 1) * limit
-    
-    with engine.connect() as conn:
-        # Fetch just regcodes and last update time (if available, else null)
-        # Using cursor-based or offset pagination. Offset is fine for sitemap updates (once a week).
-        query = text("""
-            SELECT regcode, matched_at as updated_at
-            FROM companies 
-            WHERE status = 'active'
-            ORDER BY regcode
-            LIMIT :limit OFFSET :offset
-        """)
-        
-        rows = conn.execute(query, {"limit": limit, "offset": offset}).fetchall()
-        
-        return {
-            "page": page,
-            "limit": limit,
-            "ids": [
-                {
-                    "regcode": r.regcode, 
-                    "updated_at": r.updated_at.isoformat() if r.updated_at else None
-                } 
-                for r in rows
-            ]
-        }
 
