@@ -643,7 +643,7 @@ def get_procurements_endpoint(regcode: int, response: Response, limit: int = 50)
                 # Aggregate
                 existing = aggregated[key]
                 existing["amount"] += safe_float(p.amount)
-                if p.part_number:
+                if p.part_number and str(p.part_number).lower() != 'nan':
                     existing["parts"].append(p.part_number)
             else:
                 # New entry
@@ -654,20 +654,22 @@ def get_procurements_endpoint(regcode: int, response: Response, limit: int = 50)
                     "date": str(p.contract_date),
                     "end_date": str(p.contract_end_date) if p.contract_end_date else None,
                     "termination_date": str(p.termination_date) if p.termination_date else None,
-                    "parts": [p.part_number] if p.part_number else []
+                    "parts": [p.part_number] if p.part_number and str(p.part_number).lower() != 'nan' else []
                 }
                 aggregated[key] = entry
                 history.append(entry) # Keep order
 
-        # Format subject if multiple parts
+        # Format parts as string
         for entry in history:
             if len(entry["parts"]) > 0:
-                parts_str = ", ".join(sorted(entry["parts"], key=lambda x: int(x) if x.isdigit() else x))
-                if len(entry["parts"]) > 1:
-                     entry["subject"] = f"{entry['subject']} (Daļas: {parts_str})"
-                elif not entry["subject"].endswith(f"(Daļa {parts_str})"):
-                     # Optional: append part number if single part and not already in text
-                     pass
+                # Numeric sort if possible
+                try:
+                    sorted_parts = sorted(entry["parts"], key=lambda x: float(x) if x.replace('.','',1).isdigit() else x)
+                except:
+                    sorted_parts = sorted(entry["parts"])
+                entry["parts_text"] = ", ".join(sorted_parts)
+            else:
+                entry["parts_text"] = None
             del entry["parts"]
 
         return {"procurements": history}

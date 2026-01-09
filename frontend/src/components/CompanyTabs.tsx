@@ -1394,6 +1394,7 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                             <tr>
                                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('authority')}</th>
                                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('subject')}</th>
+                                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('part_n')}</th>
                                                                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('amount')}</th>
                                                                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('procurement_status')}</th>
                                                                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('deadline')}</th>
@@ -1421,6 +1422,7 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                                     <tr key={idx} className="hover:bg-gray-50">
                                                                         <td className="px-4 py-3 text-sm text-gray-900">{proc.authority}</td>
                                                                         <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" title={proc.subject}>{proc.subject}</td>
+                                                                        <td className="px-4 py-3 text-sm text-gray-500">{proc.parts_text || '-'}</td>
                                                                         <td className="px-4 py-3 text-sm text-right font-semibold text-success">{formatCurrency(proc.amount)}</td>
                                                                         <td className="px-4 py-3 text-right">
                                                                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${status === 'EXPIRING' ? 'bg-orange-100 text-orange-800' :

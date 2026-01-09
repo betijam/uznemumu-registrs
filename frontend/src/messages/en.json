@@ -122,6 +122,7 @@
     "expiring_warning": "Warning: {count} contracts expiring in the next 9 months",
     "authority": "Authority",
     "subject": "Subject",
+    "part_n": "Part No.",
     "end_date": "End Date",
     "remaining": "Remaining",
     "days": "days",

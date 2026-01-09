@@ -129,6 +129,7 @@
     "expiring_warning": "Uzmanību: {count} līgumi beidzas tuvāko 9 mēnešu laikā",
     "authority": "Pasūtītājs",
     "subject": "Priekšmets",
+    "part_n": "Daļa Nr.",
     "end_date": "Beigu Datums",
     "remaining": "Atlicis",
     "days": "dienas",
