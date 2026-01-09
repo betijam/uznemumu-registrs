@@ -52,22 +52,26 @@ export default function CompanyTabs({
                     const headers = { 'Content-Type': 'application/json' };
 
                     // parallel fetch
-                    const [finHistoryRes, personsRes, risksRes, graphRes, benchRes, compRes] = await Promise.all([
+                    const [finHistoryRes, personsRes, risksRes, graphRes, benchRes, compRes, taxRes, procRes] = await Promise.all([
                         fetch(`${API_BASE_URL}/companies/${company.regcode}/financial-history`, { headers }),
                         fetch(`${API_BASE_URL}/companies/${company.regcode}/persons`, { headers }),
                         fetch(`${API_BASE_URL}/companies/${company.regcode}/risks`, { headers }),
                         fetch(`${API_BASE_URL}/companies/${company.regcode}/graph`, { headers }),
                         fetch(`${API_BASE_URL}/companies/${company.regcode}/benchmark`, { headers }),
-                        fetch(`${API_BASE_URL}/companies/${company.regcode}/competitors`, { headers })
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/competitors`, { headers }),
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/tax-history`, { headers }),
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/procurements`, { headers })
                     ]);
 
-                    const [finData, personsData, risksData, graphData, benchData, compData] = await Promise.all([
+                    const [finData, personsData, risksData, graphData, benchData, compData, taxData, procData] = await Promise.all([
                         finHistoryRes.ok ? (await finHistoryRes.json().then(d => d.financial_history || (Array.isArray(d) ? d : []))) : [],
                         personsRes.ok ? personsRes.json() : { officers: [], members: [], ubos: [] },
                         risksRes.ok ? risksRes.json() : {},
                         graphRes.ok ? graphRes.json() : { parents: [], children: [], related: { linked: [], partners: [] } },
                         benchRes.ok ? benchRes.json() : null,
-                        compRes.ok ? compRes.json() : []
+                        compRes.ok ? compRes.json() : [],
+                        taxRes.ok ? (await taxRes.json().then(d => d.tax_history || [])) : [],
+                        procRes.ok ? (await procRes.json().then(d => d.procurements || [])) : []
                     ]);
 
                     // Update company state with new data
@@ -78,7 +82,8 @@ export default function CompanyTabs({
                         members: personsData.members,
                         ubos: personsData.ubos,
                         risk_level: (risksData as any).risk_level || prev.risk_level,
-                        // Merge any other missing fields if necessary
+                        tax_history: taxData,
+                        procurements: procData
                     }));
 
                     setRelated(graphData);
