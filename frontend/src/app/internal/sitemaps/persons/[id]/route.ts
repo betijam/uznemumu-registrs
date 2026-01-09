@@ -8,8 +8,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const page = parseInt(id) || 1;
 
-    const apiUrl = process.env.INTERNAL_API_URL || 'http://backend:8000';
+    const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://company360.lv';
     let personUrls = '';
+
+    console.log('[Persons Sitemap Page', page, '] Fetching from:', `${apiUrl}/api/persons/sitemap-ids`);
 
     try {
         const res = await fetch(`${apiUrl}/api/persons/sitemap-ids?page=${page}&limit=50000`, {
