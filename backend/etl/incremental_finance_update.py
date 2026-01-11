@@ -146,10 +146,10 @@ class OptimizedFinanceETL:
             chunk_num = 0
             total_rows_processed = 0
             
-            for bal_chunk in pd.read_csv(balance_path, sep=';', dtype=str, chunksize=10000):
+            for bal_chunk in pd.read_csv(balance_path, sep=';', dtype=str, chunksize=1000): # Smaller read chunk
                 chunk_num += 1
                 chunk_start = pd.Timestamp.now()
-                logger.info(f"📊 Processing balance chunk {chunk_num} ({len(bal_chunk)} rows)...")
+                # logger.info(f"📊 Processing balance chunk {chunk_num} ({len(bal_chunk)} rows)...") # Too noisy
                 
                 # Extract accounts_receivable column
                 ar_col = None
@@ -159,85 +159,84 @@ class OptimizedFinanceETL:
                         break
                 
                 if not ar_col or 'statement_id' not in bal_chunk.columns:
-                    logger.info(f"  ⚠️  Chunk {chunk_num}: Missing required columns, skipping")
                     continue
                 
                 # OPTIMIZATION: Filter to only statement_ids we care about FIRST
-                logger.info(f"  🔍 Filtering {len(bal_chunk)} rows to relevant statements...")
                 bal_chunk = bal_chunk[bal_chunk['statement_id'].isin(stmt_map.keys())]
-                logger.info(f"  ✅ Filtered to {len(bal_chunk)} relevant rows")
                 
                 if len(bal_chunk) == 0:
-                    logger.info(f"  ⚠️  Chunk {chunk_num}: No relevant rows, skipping")
                     continue
                 
                 # VECTORIZED: Add regcode and year from statement map
-                logger.info(f"  🔄 Mapping statement IDs to regcodes/years...")
                 bal_chunk['regcode'] = bal_chunk['statement_id'].map(lambda x: stmt_map.get(x, {}).get('regcode'))
                 bal_chunk['year'] = bal_chunk['statement_id'].map(lambda x: stmt_map.get(x, {}).get('year'))
                 
                 # Convert accounts_receivable to numeric
-                logger.info(f"  🔢 Converting {ar_col} to numeric...")
                 bal_chunk['accounts_receivable'] = pd.to_numeric(bal_chunk[ar_col], errors='coerce')
                 
                 # Drop rows with missing data
                 bal_chunk = bal_chunk.dropna(subset=['regcode', 'year', 'accounts_receivable'])
-                logger.info(f"  ✅ {len(bal_chunk)} rows with valid data")
                 
                 if len(bal_chunk) == 0:
                     continue
                 
-                # Convert to list of dicts for batch update
-                logger.info(f"  💾 Preparing batch update...")
+                # Buffer updates
                 chunk_updates = bal_chunk[['regcode', 'year', 'accounts_receivable']].to_dict('records')
                 updates.extend(chunk_updates)
                 total_rows_processed += len(bal_chunk)
                 
-                # Batch update every 100 records (smaller for network efficiency)
+                # Process buffer if it gets large enough, OR if we have any updates to prevent memory growth
                 if len(updates) >= BATCH_SIZE:
-                    logger.info(f"  💾 Batch updating {len(updates)} records to database...")
                     self._batch_update(updates)
-                    updates = []
+                    updates = [] # Clear buffer
                 
-                chunk_time = (pd.Timestamp.now() - chunk_start).total_seconds()
-                logger.info(f"  ⏱️  Chunk {chunk_num} completed in {chunk_time:.1f}s (Total processed: {total_rows_processed})")
+                # Show progress every 10 chunks to avoid spam
+                if chunk_num % 10 == 0:
+                    logger.info(f"  ⏱️  Processed {chunk_num} CSV chunks (Total updated: {total_rows_processed})")
             
             # Final batch
             if updates:
-                logger.info(f"💾 Final batch: updating {len(updates)} records...")
                 self._batch_update(updates)
-                logger.info(f"✅ Updated {len(updates)} records")
             
-            logger.info(f"✅ Update complete! Processed {total_rows_processed} total rows")
+            logger.info(f"✅ Update complete! Updated {total_rows_processed} total rows")
             self.update_state('SUCCESS', total_rows_processed)
             
         except Exception as e:
             logger.error(f"❌ ETL failed: {e}")
-            self.update_state('FAILED', error=str(e))
+            self.update_state('FAILED', 0, str(e))
             raise
     
-    def _batch_update(self, updates):
-        """Batch update database - simple and reliable"""
-        if not updates:
+    def _batch_update(self, all_updates):
+        """Batch update database in small slices to avoid timeouts"""
+        if not all_updates:
             return
         
-        batch_start = pd.Timestamp.now()
+        # Slicing the updates list into smaller pieces
+        total = len(all_updates)
         
-        with self.engine.connect() as conn:
-            # Simple UPDATE - works reliably
-            conn.execute(
-                text("""
-                    UPDATE financial_reports 
-                    SET accounts_receivable = :accounts_receivable,
-                        updated_at = NOW()
-                    WHERE company_regcode = :regcode AND year = :year
-                """),
-                updates
-            )
-            conn.commit()
+        # Process in slices of BATCH_SIZE (e.g. 50)
+        for i in range(0, total, BATCH_SIZE):
+            slice_end = min(i + BATCH_SIZE, total)
+            batch = all_updates[i:slice_end]
+            
+            try:
+                with self.engine.connect() as conn:
+                    conn.execute(
+                        text("""
+                            UPDATE financial_reports 
+                            SET accounts_receivable = :accounts_receivable,
+                                updated_at = NOW()
+                            WHERE company_regcode = :regcode AND year = :year
+                        """),
+                        batch
+                    )
+                    conn.commit()
+                # logger.info(f"    💾 Updated records {i+1}-{slice_end}") 
+                print(f".", end="", flush=True) # Visual progress dot
+            except Exception as e:
+                logger.error(f"Failed to update batch {i}-{slice_end}: {e}")
         
-        batch_time = (pd.Timestamp.now() - batch_start).total_seconds()
-        logger.info(f"    💾 Updated {len(updates)} records in {batch_time:.1f}s ({len(updates)/batch_time:.0f} rec/sec)")
+        print("") # Newline after dots
 
 if __name__ == '__main__':
     import argparse

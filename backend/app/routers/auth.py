@@ -3,7 +3,8 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import text
 from app.core.database import engine
-from app.schemas.auth import UserCreate, UserLogin, Token, UserResponse, TokenData
+from app.schemas.auth import UserCreate, UserLogin, Token, UserResponse, TokenData, ForgotPasswordRequest, ResetPasswordRequest
+from app.services.email import send_verification_email, send_reset_password_email
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from typing import Optional
@@ -69,7 +70,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         return user
 
 @router.post("/register", response_model=UserResponse)
-def register(user: UserCreate):
+async def register(user: UserCreate):
     with engine.connect() as conn:
         # Check existing
         existing = conn.execute(text("SELECT id FROM users WHERE email = :email"), {"email": user.email}).fetchone()
@@ -77,21 +78,97 @@ def register(user: UserCreate):
             raise HTTPException(status_code=400, detail="Email already registered")
         
         hashed_pw = get_password_hash(user.password)
+        verification_token = secrets.token_urlsafe(32)
         
         # Insert
         result = conn.execute(text("""
-            INSERT INTO users (email, hashed_password, full_name, auth_provider)
-            VALUES (:email, :pw, :name, 'email')
-            RETURNING id, email, full_name, created_at, auth_provider
+            INSERT INTO users (email, hashed_password, full_name, auth_provider, verification_token, email_verified)
+            VALUES (:email, :pw, :name, 'email', :token, FALSE)
+            RETURNING id, email, full_name, created_at, auth_provider, email_verified
         """), {
             "email": user.email, 
             "pw": hashed_pw, 
-            "name": user.full_name
+            "name": user.full_name,
+            "token": verification_token
         })
         conn.commit()
         new_user = result.fetchone()
         
+        # Send email asynchronously
+        try:
+            await send_verification_email(user.email, verification_token)
+        except Exception as e:
+            logger.error(f"Failed to send email: {e}")
+            # We don't fail registration if email fails, but log it
+        
         return new_user
+
+@router.get("/verify-email")
+def verify_email(token: str):
+    with engine.connect() as conn:
+        user = conn.execute(text("SELECT id FROM users WHERE verification_token = :token"), {"token": token}).fetchone()
+        if not user:
+            raise HTTPException(status_code=400, detail="Invalid token")
+            
+        conn.execute(text("UPDATE users SET email_verified = TRUE, verification_token = NULL WHERE id = :id"), {"id": user.id})
+        conn.commit()
+        
+    return {"message": "Email verified successfully"}
+
+@router.post("/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    with engine.connect() as conn:
+        user = conn.execute(text("SELECT id, email FROM users WHERE email = :email"), {"email": request.email}).fetchone()
+        if not user:
+            # Don't reveal user existence
+            return {"message": "If email exists, reset instructions sent"}
+            
+        reset_token = secrets.token_urlsafe(32)
+        expires = datetime.utcnow() + timedelta(hours=1)
+        
+        conn.execute(text("""
+            UPDATE users 
+            SET reset_token = :token, reset_token_expires = :exp 
+            WHERE id = :id
+        """), {
+            "token": reset_token, 
+            "exp": expires, 
+            "id": user.id
+        })
+        conn.commit()
+        
+        try:
+            await send_reset_password_email(user.email, reset_token)
+        except Exception as e:
+            logger.error(f"Failed to send reset email: {e}")
+            
+    return {"message": "If email exists, reset instructions sent"}
+
+@router.post("/reset-password")
+def reset_password(request: ResetPasswordRequest):
+    with engine.connect() as conn:
+        user = conn.execute(text("""
+            SELECT id FROM users 
+            WHERE reset_token = :token 
+            AND reset_token_expires > NOW()
+        """), {"token": request.token}).fetchone()
+        
+        if not user:
+            raise HTTPException(status_code=400, detail="Invalid or expired token")
+            
+        hashed_pw = get_password_hash(request.new_password)
+        
+        conn.execute(text("""
+            UPDATE users 
+            SET hashed_password = :pw, reset_token = NULL, reset_token_expires = NULL 
+            WHERE id = :id
+        """), {
+            "pw": hashed_pw, 
+            "id": user.id
+        })
+        conn.commit()
+        
+    return {"message": "Password reset successfully"}
 
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends()):

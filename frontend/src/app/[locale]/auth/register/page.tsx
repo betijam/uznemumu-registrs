@@ -151,7 +151,7 @@ export default function RegisterPage() {
                         </svg>
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">Reģistrācija veiksmīga!</h2>
-                    <p className="text-gray-600">Pāradresējam uz pieslēgšanos...</p>
+                    <p className="text-gray-600">Lūdzu, pārbaudiet savu e-pastu, lai verificētu kontu.</p>
                 </div>
             </div>
         );
