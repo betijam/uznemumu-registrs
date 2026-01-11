@@ -6,50 +6,51 @@ import { Link, useRouter } from "@/i18n/routing";
 import Cookies from "js-cookie";
 
 // Reusable promotional panel component
-const PromotionalPanel = () => (
-    <div className="hidden lg:flex w-1/2 bg-[#0f172a] relative overflow-hidden items-center justify-center">
-        {/* Background effects */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-purple-900/20"></div>
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-[#0f172a] to-transparent"></div>
+const PromotionalPanel = () => {
+    const t = useTranslations('Auth');
+    return (
+        <div className="hidden lg:flex w-1/2 bg-[#0f172a] relative overflow-hidden items-center justify-center">
+            {/* Background effects */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-purple-900/20"></div>
+            <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-[#0f172a] to-transparent"></div>
 
-        <div className="relative z-10 max-w-lg px-12 text-center text-white">
-            {/* Chart Mockup Card */}
-            <div className="mx-auto mb-10 w-80 bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/10 shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-500">
-                <div className="flex items-center gap-4 mb-5 border-b border-white/10 pb-4">
-                    <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 font-bold text-sm">Top</div>
-                    <div className="text-left">
-                        <div className="text-sm font-bold text-white">Apgrozījuma dinamika</div>
-                        <div className="text-xs text-gray-400">Pēdējie 5 gadi</div>
+            <div className="relative z-10 max-w-lg px-12 text-center text-white">
+                {/* Chart Mockup Card */}
+                <div className="mx-auto mb-10 w-80 bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/10 shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-500">
+                    <div className="flex items-center gap-4 mb-5 border-b border-white/10 pb-4">
+                        <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 font-bold text-sm">Top</div>
+                        <div className="text-left">
+                            <div className="text-sm font-bold text-white">{t('promo_pnl_title')}</div>
+                            <div className="text-xs text-gray-400">{t('promo_pnl_subtitle')}</div>
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        <div className="flex items-end gap-2 h-24 pb-2 border-b border-white/5">
+                            <div className="w-1/5 bg-white/20 rounded-t h-[40%]"></div>
+                            <div className="w-1/5 bg-white/20 rounded-t h-[60%]"></div>
+                            <div className="w-1/5 bg-white/30 rounded-t h-[50%]"></div>
+                            <div className="w-1/5 bg-white/40 rounded-t h-[75%]"></div>
+                            <div className="w-1/5 bg-green-500 rounded-t h-[90%]"></div>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-gray-400">
+                            <span>2020</span><span>2024</span>
+                        </div>
                     </div>
                 </div>
-                <div className="space-y-3">
-                    <div className="flex items-end gap-2 h-24 pb-2 border-b border-white/5">
-                        <div className="w-1/5 bg-white/20 rounded-t h-[40%]"></div>
-                        <div className="w-1/5 bg-white/20 rounded-t h-[60%]"></div>
-                        <div className="w-1/5 bg-white/30 rounded-t h-[50%]"></div>
-                        <div className="w-1/5 bg-white/40 rounded-t h-[75%]"></div>
-                        <div className="w-1/5 bg-green-500 rounded-t h-[90%]"></div>
-                    </div>
-                    <div className="flex justify-between text-[10px] text-gray-400">
-                        <span>2020</span><span>2024</span>
-                    </div>
+
+                <h2 className="text-3xl font-bold mb-4 tracking-tight">{t('promo_pnl_main_title')}</h2>
+                <p className="text-gray-400 text-lg leading-relaxed mb-8">
+                    {t('promo_pnl_main_desc')}
+                </p>
+
+                {/* Trust signals */}
+                <div className="pt-8 border-t border-white/10 flex justify-center gap-8 text-sm text-gray-400 font-medium">
                 </div>
-            </div>
-
-            <h2 className="text-3xl font-bold mb-4 tracking-tight">Redzi to, ko citi palaiž garām</h2>
-            <p className="text-gray-400 text-lg leading-relaxed mb-8">
-                Pievienojies platformai, kas pārvērš publiskos datus reālā biznesa priekšrocībā. Atklāj slēptos riskus un iespējas.
-            </p>
-
-            {/* Trust signals */}
-            <div className="pt-8 border-t border-white/10 flex justify-center gap-8 text-sm text-gray-400 font-medium">
-
-
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 // Google SVG Icon
 const GoogleIcon = () => (
@@ -121,7 +122,6 @@ export default function LoginPage() {
             {/* Left Side - Form */}
             <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-white relative">
                 {/* Logo */}
-                {/* Logo */}
                 <Link href="/" className="absolute top-8 left-8 lg:left-12 block w-48 hover:opacity-90 transition-opacity">
                     <img
                         src="/Company360_logo_Color_PNG_bez_aizsarglaukumu-.png"
@@ -133,8 +133,8 @@ export default function LoginPage() {
                 <div className="max-w-md w-full mx-auto pt-24 lg:pt-8">
                     {/* Header */}
                     <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Laipni lūgti atpakaļ</h1>
-                        <p className="mt-2 text-sm text-gray-600">Ievadiet savus datus, lai piekļūtu analītikai.</p>
+                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">{t('welcome_back')}</h1>
+                        <p className="mt-2 text-sm text-gray-600">{t('login_subtitle')}</p>
                     </div>
 
                     {/* Social Login Buttons */}
@@ -161,7 +161,7 @@ export default function LoginPage() {
                             <span className="w-full border-t border-gray-200"></span>
                         </div>
                         <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-white px-2 text-gray-500">vai ar e-pastu</span>
+                            <span className="bg-white px-2 text-gray-500">{t('or_with_email')}</span>
                         </div>
                     </div>
 
@@ -175,21 +175,21 @@ export default function LoginPage() {
                     {/* Login Form */}
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">E-pasts</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
                                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition-all"
-                                placeholder="janis@uznemums.lv"
+                                placeholder={t('email_placeholder')}
                             />
                         </div>
                         <div>
                             <div className="flex items-center justify-between mb-1">
-                                <label className="block text-sm font-medium text-gray-700">Parole</label>
+                                <label className="block text-sm font-medium text-gray-700">{t('password')}</label>
                                 <Link href="/auth/forgot-password" className="text-sm font-medium text-blue-600 hover:text-blue-500">
-                                    Aizmirsi?
+                                    {t('forgot_password')}
                                 </Link>
                             </div>
                             <div className="relative">
@@ -208,12 +208,12 @@ export default function LoginPage() {
                                 >
                                     {showPassword ? (
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                                         </svg>
                                     ) : (
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268-2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
                                     )}
                                 </button>
@@ -224,15 +224,15 @@ export default function LoginPage() {
                             disabled={loading}
                             className="w-full py-3 px-4 bg-[#0f172a] hover:bg-[#1e293b] text-white rounded-lg font-semibold shadow-lg shadow-gray-900/10 transition-all transform hover:-translate-y-0.5 disabled:opacity-50"
                         >
-                            {loading ? "Lūdzu uzgaidiet..." : "Pieslēgties"}
+                            {loading ? t('loading') : t('submit_login')}
                         </button>
                     </form>
 
                     {/* Register Link */}
                     <p className="mt-8 text-center text-sm text-gray-600">
-                        Nav konta?{' '}
+                        {t('no_account')}{' '}
                         <Link href="/auth/register" className="font-semibold text-blue-600 hover:underline">
-                            Reģistrējies bez maksas
+                            {t('register_link')}
                         </Link>
                     </p>
                 </div>

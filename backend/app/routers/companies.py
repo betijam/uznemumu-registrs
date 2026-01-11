@@ -117,8 +117,9 @@ def get_financial_history(regcode: int):
                    current_ratio, quick_ratio, cash_ratio,
                    net_profit_margin, roe, roa, debt_to_equity, equity_ratio, ebitda,
                    interest_expenses, depreciation_expenses, provision_for_income_taxes, by_nature_labour_expenses,
-                   accounts_receivable, inventories,
-                   cfo_im_net_operating_cash_flow, cff_net_financing_cash_flow, cfi_acquisition_of_fixed_assets_intangible_assets
+                   accounts_receivable, inventories, current_liabilities, non_current_liabilities, equity, total_assets, total_current_assets,
+                   cfo_im_net_operating_cash_flow, cff_net_financing_cash_flow, cfi_acquisition_of_fixed_assets_intangible_assets,
+                   cfo_im_income_taxes_paid
             FROM financial_reports 
             WHERE company_regcode = :r 
             ORDER BY year DESC
@@ -156,9 +157,15 @@ def get_financial_history(regcode: int):
                 "labour_costs": safe_float(f.by_nature_labour_expenses),
                 "accounts_receivable": safe_float(f.accounts_receivable),
                 "inventories": safe_float(f.inventories),
+                "current_liabilities": safe_float(f.current_liabilities),
+                "non_current_liabilities": safe_float(f.non_current_liabilities),
+                "equity": safe_float(f.equity),
+                "total_assets": safe_float(f.total_assets),
+                "total_current_assets": safe_float(f.total_current_assets),
                 "cfo": safe_float(f.cfo_im_net_operating_cash_flow),
                 "cff": safe_float(f.cff_net_financing_cash_flow),
-                "cfi": safe_float(f.cfi_acquisition_of_fixed_assets_intangible_assets)
+                "cfi": safe_float(f.cfi_acquisition_of_fixed_assets_intangible_assets),
+                "taxes_paid_cf": safe_float(f.cfo_im_income_taxes_paid)
             }
             
             turnover_val = safe_float(f.turnover)
