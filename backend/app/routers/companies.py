@@ -697,16 +697,8 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             # 5. Get risks using existing function
             risks_by_type, total_risk_score = get_risks(regcode)
             
-            # 6. Get graph data (parents, children)
-            parents = conn.execute(text("""
-                SELECT parent_regcode as regcode, parent_name as name, ownership_percentage
-                FROM company_relationships WHERE child_regcode = :r
-            """), {"r": regcode}).fetchall()
-            
-            children = conn.execute(text("""
-                SELECT child_regcode as regcode, child_name as name, ownership_percentage
-                FROM company_relationships WHERE parent_regcode = :r
-            """), {"r": regcode}).fetchall()
+            # 6. Graph data is complex and cached separately - return empty for now
+            # Frontend will fetch via /graph endpoint if needed
             
             # 7. Get tax history
             tax_rows = conn.execute(text("""
@@ -757,8 +749,8 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             "ubos": ubos,
             "risks": risks_by_type,
             "graph": {
-                "parents": [{"regcode": p.regcode, "name": p.name} for p in parents],
-                "children": [{"regcode": c.regcode, "name": c.name} for c in children]
+                "parents": [],
+                "children": []
             },
             "tax_history": [{"year": t.year, "total": safe_float(t.total_taxes)} for t in tax_rows],
             "procurements": [{"authority": p.authority, "amount": safe_float(p.amount)} for p in proc_rows]
