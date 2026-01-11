@@ -31,7 +31,7 @@ export default function FavoriteButton({
 
     const checkFavoriteStatus = async () => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favorites/`, {
+            const res = await fetch('/api/favorites/', {
                 headers: {
                     'Authorization': `Bearer ${Cookies.get('token')}`
                 }
@@ -57,7 +57,7 @@ export default function FavoriteButton({
         setIsLoading(true);
         try {
             if (isFavorite) {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favorites/${entityId}?entity_type=${entityType}`, {
+                const res = await fetch(`/api/favorites/${entityId}?entity_type=${entityType}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${Cookies.get('token')}`
@@ -65,7 +65,7 @@ export default function FavoriteButton({
                 });
                 if (res.ok) setIsFavorite(false);
             } else {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favorites/`, {
+                const res = await fetch('/api/favorites/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

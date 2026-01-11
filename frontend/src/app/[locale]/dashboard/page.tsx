@@ -48,12 +48,12 @@ export default function DashboardPage() {
         try {
             // Load user info, favorites, and recent views
             const [favoritesRes, historyRes] = await Promise.all([
-                fetch(`${process.env.NEXT_PUBLIC_API_URL}/favorites/`, {
+                fetch('/api/favorites/', {
                     headers: {
                         'Authorization': `Bearer ${Cookies.get('token')}`
                     }
                 }),
-                fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/recent?limit=10`, {
+                fetch('/api/history/recent?limit=10', {
                     headers: {
                         'Authorization': `Bearer ${Cookies.get('token')}`
                     }
@@ -71,7 +71,7 @@ export default function DashboardPage() {
             }
 
             // Load real user info
-            const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+            const meRes = await fetch('/api/auth/me', {
                 headers: {
                     'Authorization': `Bearer ${Cookies.get('token')}`
                 }
@@ -107,7 +107,7 @@ export default function DashboardPage() {
 
     const removeFavorite = async (entityId: string) => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favorites/${entityId}?entity_type=company`, {
+            const res = await fetch(`/api/favorites/${entityId}?entity_type=company`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${Cookies.get('token')}`
@@ -124,7 +124,7 @@ export default function DashboardPage() {
 
     const addFavoriteFromSearch = async (company: any) => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favorites/`, {
+            const res = await fetch('/api/favorites/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -139,7 +139,7 @@ export default function DashboardPage() {
 
             if (res.ok) {
                 // Refresh favorites
-                const favRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favorites/`, {
+                const favRes = await fetch('/api/favorites/', {
                     headers: {
                         'Authorization': `Bearer ${Cookies.get('token')}`
                     }
