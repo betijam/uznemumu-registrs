@@ -86,6 +86,84 @@ async function getCompetitors(id: string, reqHeaders: HeadersInit = {}) {
     }
 }
 
+// NEW: Fetch financial history
+async function getFinancialHistory(id: string, reqHeaders: HeadersInit = {}) {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+    try {
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/financial-history`, {
+            ...CACHE_CONFIG,
+            headers: reqHeaders
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.financial_history || (Array.isArray(data) ? data : []);
+    } catch (e) {
+        return [];
+    }
+}
+
+// NEW: Fetch persons (officers, members, ubos)
+async function getPersons(id: string, reqHeaders: HeadersInit = {}) {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+    try {
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/persons`, {
+            ...CACHE_CONFIG,
+            headers: reqHeaders
+        });
+        if (!res.ok) return { officers: [], members: [], ubos: [] };
+        return res.json();
+    } catch (e) {
+        return { officers: [], members: [], ubos: [] };
+    }
+}
+
+// NEW: Fetch risks
+async function getRisks(id: string, reqHeaders: HeadersInit = {}) {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+    try {
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/risks`, {
+            ...CACHE_CONFIG,
+            headers: reqHeaders
+        });
+        if (!res.ok) return {};
+        return res.json();
+    } catch (e) {
+        return {};
+    }
+}
+
+// NEW: Fetch tax history
+async function getTaxHistory(id: string, reqHeaders: HeadersInit = {}) {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+    try {
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/tax-history`, {
+            ...CACHE_CONFIG,
+            headers: reqHeaders
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.tax_history || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+// NEW: Fetch procurements
+async function getProcurements(id: string, reqHeaders: HeadersInit = {}) {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+    try {
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/procurements`, {
+            ...CACHE_CONFIG,
+            headers: reqHeaders
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.procurements || [];
+    } catch (e) {
+        return [];
+    }
+}
+
 // Adaptive currency formatting: M€ for millions, k€ for thousands, € for smaller
 function formatCurrency(value: number | null | undefined): string {
     if (value === null || value === undefined) return '-';
@@ -146,14 +224,30 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
 
     console.log(`[SC] View count: ${viewCount}, UA: ${userAgent.substring(0, 50)}...`);
 
-    const [company] = await Promise.all([
-        getCompany(id, apiHeaders)
+    // Load ALL data in parallel for instant display (no lazy loading)
+    const [company, graph, benchmark, competitors, financialHistory, persons, risks, taxHistory, procurements] = await Promise.all([
+        getCompany(id, apiHeaders),
+        getGraph(id, apiHeaders),
+        getBenchmark(id, apiHeaders),
+        getCompetitors(id, apiHeaders),
+        getFinancialHistory(id, apiHeaders),
+        getPersons(id, apiHeaders),
+        getRisks(id, apiHeaders),
+        getTaxHistory(id, apiHeaders),
+        getProcurements(id, apiHeaders)
     ]);
 
-    // Graph, Benchmark, Competitors are now fetched lazily in CompanyTabs
-    const graph = { parents: [], children: [] };
-    const benchmark = null;
-    const competitors: any[] = [];
+    // Merge all data into company object for CompanyTabs
+    const fullCompanyData = {
+        ...company,
+        financial_history: financialHistory,
+        officers: persons.officers,
+        members: persons.members,
+        ubos: persons.ubos,
+        risks: risks,
+        tax_history: taxHistory,
+        procurements: procurements
+    };
 
     const t = await getTranslations({ locale: (await params).locale, namespace: 'Company' });
 
@@ -276,10 +370,10 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                     </div>
 
                     {/* Risk Alert Bar */}
-                    {company.risks && (
-                        company.risks.sanctions?.length > 0 ||
-                        company.risks.liquidations?.length > 0 ||
-                        company.risks.suspensions?.length > 0
+                    {fullCompanyData.risks && (
+                        fullCompanyData.risks.sanctions?.length > 0 ||
+                        fullCompanyData.risks.liquidations?.length > 0 ||
+                        fullCompanyData.risks.suspensions?.length > 0
                     ) && (
                             <div className="mt-6 bg-danger/10 border-l-4 border-danger rounded-r-lg p-4">
                                 <div className="flex">
@@ -300,7 +394,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
             </div>
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-                <CompanyTabs company={company} related={graph} competitors={competitors} benchmark={benchmark} />
+                <CompanyTabs company={fullCompanyData} related={graph} competitors={competitors} benchmark={benchmark} />
             </main>
         </div>
     );

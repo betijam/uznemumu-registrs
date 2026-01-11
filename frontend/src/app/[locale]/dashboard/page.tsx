@@ -279,15 +279,15 @@ export default function DashboardPage() {
                             <ul className="space-y-2 text-sm text-indigo-100 mb-6">
                                 <li className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
-                                    Vēsturiskie dati (Amatpersonas & Īpašnieki)
+                                    {t('roadmap_item_1')}
                                 </li>
                                 <li className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full"></span>
-                                    Publisko dokumentu arhīvs
+                                    {t('roadmap_item_2')}
                                 </li>
                                 <li className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
-                                    AI ģenerētas biznesa atskaites
+                                    {t('roadmap_item_3')}
                                 </li>
                             </ul>
                             <button

@@ -878,7 +878,10 @@
     "cancel": "Cancel",
     "send_suggestion": "Send Suggestion",
     "sending": "Sending...",
-    "suggestion_success": "Thanks for the suggestion!"
+    "suggestion_success": "Thank you for your suggestion!",
+    "roadmap_item_1": "Historical data (Officers & Owners)",
+    "roadmap_item_2": "Public documents archive",
+    "roadmap_item_3": "AI-generated business reports"
   },
   "FinancialAnalysis": {
     "trustScore": "Trust Score",

@@ -772,7 +772,10 @@
     "cancel": "Atcelt",
     "send_suggestion": "Nosūtīt Ieteikumu",
     "sending": "Sūta...",
-    "suggestion_success": "Paldies par ieteikumu!"
+    "suggestion_success": "Paldies par ieteikumu!",
+    "roadmap_item_1": "Vēsturiskie dati (Amatpersonas & Īpašnieki)",
+    "roadmap_item_2": "Publisko dokumentu arhīvs",
+    "roadmap_item_3": "AI ģenerētas biznesa atskaites"
   },
   "Pricing": {
     "title": "Vienkāršas un godīgas cenas",
