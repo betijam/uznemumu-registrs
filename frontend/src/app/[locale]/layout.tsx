@@ -31,7 +31,11 @@ export async function generateMetadata({
 
   return {
     title: t('title'),
-    description: t('subtitle') // Or a specific metadata description key
+    description: t('subtitle'), // Or a specific metadata description key
+    icons: {
+      icon: '/icon.png',
+      apple: '/apple-icon.png'
+    }
   };
 }
 
