@@ -5,7 +5,6 @@ import { Link, useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import Cookies from "js-cookie";
 
-import Image from "next/image";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Navbar() {
@@ -34,13 +33,10 @@ export default function Navbar() {
                     {/* Logo */}
                     <div className="flex items-center">
                         <Link href="/" className="flex-shrink-0 flex items-center gap-2">
-                            <Image
-                                src="/company360.svg"
+                            <img
+                                src="/company360.png"
                                 alt="Company 360"
-                                width={180}
-                                height={40}
                                 className="h-10 w-auto"
-                                priority
                             />
                         </Link>
                     </div>
