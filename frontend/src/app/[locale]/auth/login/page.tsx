@@ -121,12 +121,14 @@ export default function LoginPage() {
             {/* Left Side - Form */}
             <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-white relative">
                 {/* Logo */}
-                <div className="absolute top-8 left-8 lg:left-12 flex items-center gap-2">
-                    <div className="w-8 h-8 bg-[#0f172a] rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                        360
-                    </div>
-                    <span className="text-xl font-bold text-gray-900 tracking-tight">Company 360</span>
-                </div>
+                {/* Logo */}
+                <Link href="/" className="absolute top-8 left-8 lg:left-12 block w-48 hover:opacity-90 transition-opacity">
+                    <img
+                        src="/Company360_logo_Color_PNG_bez_aizsarglaukumu-.png"
+                        alt="Company 360"
+                        className="w-full h-auto"
+                    />
+                </Link>
 
                 <div className="max-w-md w-full mx-auto pt-24 lg:pt-8">
                     {/* Header */}
