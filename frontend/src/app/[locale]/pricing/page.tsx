@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { useState } from "react";
+import Navbar from "@/components/Navbar";
 
 export default function PricingPage() {
     const t = useTranslations('Pricing');
@@ -36,7 +37,9 @@ export default function PricingPage() {
     };
 
     return (
-        <div className="bg-gray-50 min-h-screen pb-20">
+        <div className="bg-gray-50 min-h-screen">
+            <Navbar />
+
             {/* Hero Section */}
             <div className="bg-white border-b border-gray-200 pt-16 pb-24 px-4 sm:px-6 lg:px-8 text-center">
                 <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl sm:tracking-tight lg:text-6xl">
@@ -48,7 +51,7 @@ export default function PricingPage() {
             </div>
 
             {/* Pricing Cards */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-10">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-10 pb-20">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
 
                     {/* Basic Plan */}

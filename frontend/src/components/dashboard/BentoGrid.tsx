@@ -73,48 +73,20 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                     viewAllLabel={t('view_all')}
                 />
 
-                {/* 3. Latest Registered (Live Feed) */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-full relative overflow-hidden">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-green-50 text-green-600">
-                                <Icons.Lightning />
-                            </div>
-                            <h3 className="font-semibold text-gray-900">{t('just_registered')}</h3>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="relative flex h-3 w-3">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                            </span>
-                            <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded">{t('live_badge')}</span>
-                        </div>
-                    </div>
+                {/* 3. TOP Salaries */}
+                <TopListCard
+                    title={t('top_salaries')}
+                    subtitle={t('top_salaries_sub')}
+                    icon={<Icons.Money />}
+                    items={tops.salaries}
+                    valueFormatter={(v) => formatCurrency(v)}
+                    colorClass="text-yellow-600 bg-yellow-50"
+                    linkTo="/explore?sort_by=salary&order=desc"
+                    viewAllLabel={t('view_all')}
+                />
 
-                    <div className="flex-1 space-y-4">
-                        {latest.map((company, idx) => (
-                            <div key={company.regcode} className="flex justify-between items-start border-b border-gray-100 pb-3 last:border-0 animate-fade-in" style={{ animationDelay: `${idx * 100}ms` }}>
-                                <div className="flex-1">
-                                    <Link href={`/company/${company.regcode}`} className="font-medium text-gray-900 hover:text-green-600 block">
-                                        {formatCompanyName(company)}
-                                    </Link>
-                                    <p className="text-xs text-gray-400 mt-0.5">#{company.regcode}</p>
-                                </div>
-                                <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full ml-2">
-                                    {t('new_badge')}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="mt-6 pt-4 border-t border-gray-50 text-center">
-                        <Link href="/explore?sort_by=reg_date&order=desc" className="text-xs text-green-600 hover:underline font-medium">
-                            {t('view_all')}
-                        </Link>
-                    </div>
-                </div>
-
-                {/* 4. Gazeles */}
-                <div className="lg:col-span-2 bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-8 text-white relative overflow-hidden">
+                {/* 4. Gazeles - Full Width */}
+                <div className="lg:col-span-3 bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-8 text-white relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-32 bg-purple-600 rounded-full blur-3xl opacity-20 -mr-16 -mt-16 pointer-events-none"></div>
 
                     <div className="flex items-center justify-between mb-8 relative z-10">
@@ -156,18 +128,6 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                         ))}
                     </div>
                 </div>
-
-                {/* 5. TOP Salaries */}
-                <TopListCard
-                    title={t('top_salaries')}
-                    subtitle={t('top_salaries_sub')}
-                    icon={<Icons.Money />}
-                    items={tops.salaries}
-                    valueFormatter={(v) => formatCurrency(v)}
-                    colorClass="text-yellow-600 bg-yellow-50"
-                    linkTo="/explore?sort_by=salary&order=desc"
-                    viewAllLabel={t('view_all')}
-                />
 
             </div>
         </div>
