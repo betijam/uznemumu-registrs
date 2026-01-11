@@ -1,9 +1,38 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
 export default function Roadmap() {
     const t = useTranslations('Roadmap');
+    const [email, setEmail] = useState("");
+    const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!email) return;
+
+        setStatus('loading');
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/waitlist/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, source: 'roadmap_newsletter' }),
+            });
+
+            if (response.ok) {
+                setStatus('success');
+                setEmail("");
+            } else {
+                setStatus('error');
+            }
+        } catch (error) {
+            console.error(error);
+            setStatus('error');
+        }
+    };
 
     const roadmapItems = [
         {
@@ -36,9 +65,9 @@ export default function Roadmap() {
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
                     {roadmapItems.map((item) => (
-                        <div key={item.status} className="bg-gray-50 rounded-xl p-6 border border-gray-100 relative overflow-hidden">
+                        <div key={item.status} className="bg-gray-50 rounded-xl p-6 border border-gray-100 relative overflow-hidden hover:shadow-md transition-shadow">
                             <div className="flex items-center gap-3 mb-6">
                                 <span className="text-2xl">{item.icon}</span>
                                 <h3 className="text-xl font-bold text-gray-900">{item.title}</h3>
@@ -60,6 +89,48 @@ export default function Roadmap() {
                             )}
                         </div>
                     ))}
+                </div>
+
+                {/* Newsletter CTA */}
+                <div className="bg-slate-900 rounded-2xl p-8 md:p-12 text-center text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600 rounded-full blur-3xl opacity-20 -mr-32 -mt-32"></div>
+
+                    <div className="relative z-10">
+                        <h3 className="text-2xl md:text-3xl font-bold mb-4">
+                            Vēlies pirmais izmēģināt PRO?
+                        </h3>
+                        <p className="text-slate-300 mb-8 max-w-2xl mx-auto">
+                            Piesakies jaunumiem un saņem īpašu piedāvājumu starta dienā.
+                        </p>
+
+                        {status === 'success' ? (
+                            <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4 max-w-md mx-auto">
+                                <p className="text-green-300 font-semibold">✓ Paldies! Mēs ar jums sazināsimies.</p>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+                                <input
+                                    type="email"
+                                    required
+                                    className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    placeholder="tavs@epasts.lv"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    disabled={status === 'loading'}
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={status === 'loading'}
+                                    className="px-6 py-3 bg-white text-slate-900 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50"
+                                >
+                                    {status === 'loading' ? '...' : 'Pieteikties'}
+                                </button>
+                            </form>
+                        )}
+                        {status === 'error' && (
+                            <p className="mt-2 text-sm text-red-400">Kļūda. Mēģiniet vēlāk.</p>
+                        )}
+                    </div>
                 </div>
             </div>
         </section>

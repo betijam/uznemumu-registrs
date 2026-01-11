@@ -40,6 +40,7 @@ export async function generateMetadata({
 }
 
 import Footer from "@/components/Footer";
+import FeedbackButton from "@/components/FeedbackButton";
 
 // ... existing imports ...
 
@@ -101,6 +102,7 @@ export default async function RootLayout({
             <Footer />
             <ComparisonCart />
             <CookieBanner />
+            <FeedbackButton />
           </ComparisonProvider>
         </NextIntlClientProvider>
       </body>

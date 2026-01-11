@@ -58,11 +58,10 @@ export default function Home() {
       <Navbar />
 
       {/* Hero Section */}
-      <div className="relative pt-20 pb-16 md:pt-32 md:pb-24 overflow-hidden">
-        {/* Background Decor */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-purple-50 to-transparent -z-10"></div>
-        <div className="absolute top-20 right-0 w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute top-20 left-0 w-64 h-64 bg-yellow-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+      <div className="relative pt-20 pb-16 md:pt-32 md:pb-24 overflow-hidden bg-gradient-to-b from-gray-50 to-white">
+        {/* Background Decor - Radial Gradients */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-radial from-purple-200/40 via-purple-100/20 to-transparent rounded-full blur-3xl opacity-60"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-radial from-blue-200/40 via-blue-100/20 to-transparent rounded-full blur-3xl opacity-60"></div>
 
         <div className="container mx-auto px-4 text-center relative z-10">
           <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 mb-6 tracking-tight">

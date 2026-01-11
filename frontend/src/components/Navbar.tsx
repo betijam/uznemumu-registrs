@@ -27,7 +27,7 @@ export default function Navbar() {
     };
 
     return (
-        <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50 shadow-sm">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between h-16">
                     {/* Logo */}
@@ -63,9 +63,12 @@ export default function Navbar() {
                         </Link>
                         <Link
                             href="/pricing"
-                            className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
+                            className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap inline-flex items-center gap-1.5"
                         >
                             {t('pricing')}
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                                Beta
+                            </span>
                         </Link>
                         <Link
                             href="/explore"
@@ -95,7 +98,7 @@ export default function Navbar() {
                                 {t('logout')}
                             </button>
                         ) : (
-                            <Link href="/auth/login" className="inline-flex items-center gap-2 px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-primary hover:bg-secondary transition-colors shadow-sm">
+                            <Link href="/auth/login" className="inline-flex items-center gap-2 px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 transition-colors shadow-sm">
                                 {t('login')}
                             </Link>
                         )}

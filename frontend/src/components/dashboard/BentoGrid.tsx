@@ -77,31 +77,37 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-full relative overflow-hidden">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-orange-50 text-orange-600">
+                            <div className="p-2 rounded-lg bg-green-50 text-green-600">
                                 <Icons.Lightning />
                             </div>
                             <h3 className="font-semibold text-gray-900">{t('just_registered')}</h3>
                         </div>
-                        <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded animate-pulse">{t('live_badge')}</span>
+                        <div className="flex items-center gap-2">
+                            <span className="relative flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                            </span>
+                            <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded">{t('live_badge')}</span>
+                        </div>
                     </div>
 
-                    <div className="flex-1 space-y-5">
+                    <div className="flex-1 space-y-4">
                         {latest.map((company, idx) => (
-                            <div key={company.regcode} className="flex justify-between items-start animate-fade-in" style={{ animationDelay: `${idx * 100}ms` }}>
-                                <div>
-                                    <Link href={`/company/${company.regcode}`} className="font-medium text-gray-900 hover:text-blue-600 block">
+                            <div key={company.regcode} className="flex justify-between items-start border-b border-gray-100 pb-3 last:border-0 animate-fade-in" style={{ animationDelay: `${idx * 100}ms` }}>
+                                <div className="flex-1">
+                                    <Link href={`/company/${company.regcode}`} className="font-medium text-gray-900 hover:text-green-600 block">
                                         {formatCompanyName(company)}
                                     </Link>
-                                    <p className="text-xs text-gray-400 mt-0.5">{company.regcode}</p>
+                                    <p className="text-xs text-gray-400 mt-0.5">#{company.regcode}</p>
                                 </div>
-                                <span className="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
+                                <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full ml-2">
                                     {t('new_badge')}
                                 </span>
                             </div>
                         ))}
                     </div>
                     <div className="mt-6 pt-4 border-t border-gray-50 text-center">
-                        <Link href="/explore?sort_by=reg_date&order=desc" className="text-xs text-purple-600 hover:underline">
+                        <Link href="/explore?sort_by=reg_date&order=desc" className="text-xs text-green-600 hover:underline font-medium">
                             {t('view_all')}
                         </Link>
                     </div>
@@ -113,13 +119,13 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
 
                     <div className="flex items-center justify-between mb-8 relative z-10">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-white/10 text-pink-400">
-                                <Icons.Fire />
+                            <div className="p-2 rounded-lg bg-yellow-500/20 text-yellow-400">
+                                <Icons.Lightning />
                             </div>
                             <div>
                                 <h3 className="font-semibold text-lg">{t('fastest_growth')}</h3>
                                 <p className="text-xs text-slate-400 font-medium">
-                                    Topā iekļauti uzņēmumi ar apgrozījumu virs 100k EUR un izaugsmi virs 30%
+                                    Uzņēmumi ar apgrozījumu virs 100k un izaugsmi \u003e30%
                                 </p>
                             </div>
                         </div>
@@ -132,7 +138,16 @@ export default function BentoGrid({ tops, latest, gazeles, year = 2024 }: BentoG
                         {gazeles.slice(0, 3).map((company) => (
                             <Link key={company.regcode} href={`/company/${company.regcode}`} className="block">
                                 <div className="bg-white/5 rounded-xl p-5 border border-white/10 hover:bg-white/10 transition-colors group cursor-pointer h-full">
-                                    <div className="text-3xl font-bold text-green-400 mb-2">+{company.growth}%</div>
+                                    <div className="text-4xl font-bold text-green-400 mb-3">+{company.growth}%</div>
+
+                                    {/* Progress Bar */}
+                                    <div className="w-full bg-white/10 rounded-full h-2 mb-4 overflow-hidden">
+                                        <div
+                                            className="bg-gradient-to-r from-green-400 to-green-500 h-full rounded-full transition-all duration-500"
+                                            style={{ width: `${Math.min(company.growth / 100, 1) * 100}%` }}
+                                        ></div>
+                                    </div>
+
                                     <h4 className="font-bold text-white mb-1 group-hover:text-blue-300 transition-colors line-clamp-1">{formatCompanyName(company)}</h4>
                                     <p className="text-sm text-slate-400">{t('turnover_reaches', { amount: formatCurrency(company.turnover) })}</p>
                                     {company.industry && <p className="text-xs text-slate-500 mt-2 line-clamp-1">{company.industry}</p>}
