@@ -4,13 +4,13 @@ Favorites router for user watchlist functionality
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, text
-from typing import List
+from typing import List, Any
 from datetime import datetime
 import logging
 
 from app.core.database import engine
 from app.routers.auth import get_current_user
-from app.models.user import User
+# from app.models.user import User  # This module does not exist
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ class FavoriteResponse(BaseModel):
 @router.post("/", response_model=FavoriteResponse, status_code=status.HTTP_201_CREATED)
 async def add_favorite(
     favorite: FavoriteCreate,
-    current_user: User = Depends(get_current_user)
+    current_user: Any = Depends(get_current_user)
 ):
     """Add an entity to user's favorites"""
     try:
@@ -102,7 +102,7 @@ async def add_favorite(
 async def remove_favorite(
     entity_id: str,
     entity_type: str = "company",
-    current_user: User = Depends(get_current_user)
+    current_user: Any = Depends(get_current_user)
 ):
     """Remove an entity from user's favorites"""
     try:
@@ -143,7 +143,7 @@ async def remove_favorite(
 
 @router.get("/", response_model=List[FavoriteResponse])
 async def get_favorites(
-    current_user: User = Depends(get_current_user)
+    current_user: Any = Depends(get_current_user)
 ):
     """Get all user's favorites"""
     try:
@@ -182,7 +182,7 @@ async def get_favorites(
 async def check_favorite(
     entity_id: str,
     entity_type: str = "company",
-    current_user: User = Depends(get_current_user)
+    current_user: Any = Depends(get_current_user)
 ):
     """Check if an entity is in user's favorites"""
     try:
