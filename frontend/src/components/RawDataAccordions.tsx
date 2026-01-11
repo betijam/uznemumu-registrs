@@ -12,14 +12,36 @@ export default function RawDataAccordions({ financialHistory }: RawDataAccordion
     const t = useTranslations('FinancialAnalysis');
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
-    const latest = financialHistory[0] || {};
+    // Limit to 3 latest years
+    const yearsToShow = financialHistory.slice(0, 3);
+
+    // Check if we have any cash flow data at all
+    const hasAnyCashFlow = yearsToShow.some(y =>
+        y.cfo !== null || y.cfi !== null || y.cff !== null || y.taxes_paid_cf !== null
+    );
 
     const toggleSection = (section: string) => {
         setExpandedSection(expandedSection === section ? null : section);
     };
 
+    const renderHeader = () => (
+        <thead className="bg-gray-100 border-b border-gray-200">
+            <tr>
+                <th className="px-6 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('indicator')}</th>
+                {yearsToShow.map(y => (
+                    <th key={y.year} className="px-6 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        {y.year}
+                    </th>
+                ))}
+                {yearsToShow.length === 0 && (
+                    <th className="px-6 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">-</th>
+                )}
+            </tr>
+        </thead>
+    );
+
     return (
-        <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
+        <div className="border border-gray-200 rounded-lg bg-white overflow-hidden shadow-sm">
             <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900">{t('rawData')}</h3>
                 <p className="text-sm text-gray-600 mt-1">
@@ -39,49 +61,66 @@ export default function RawDataAccordions({ financialHistory }: RawDataAccordion
                         </svg>
                         <span className="font-medium text-gray-900">{t('profitLoss')}</span>
                     </div>
-                    <span className="text-sm text-gray-500">{latest.year || '-'}</span>
+                    <span className="text-sm text-gray-500">
+                        {yearsToShow.length > 0 ? `${yearsToShow[yearsToShow.length - 1].year} - ${yearsToShow[0].year}` : '-'}
+                    </span>
                 </button>
 
                 {expandedSection === 'pnl' && (
-                    <div className="px-6 py-4 bg-gray-50">
+                    <div className="overflow-x-auto">
                         <table className="w-full text-sm">
+                            {renderHeader()}
                             <tbody className="divide-y divide-gray-200">
                                 <tr>
-                                    <td className="py-2 text-gray-700">{t('turnover')} / Turnover</td>
-                                    <td className="py-2 text-right font-semibold text-gray-900">{formatCurrency(latest.turnover)}</td>
+                                    <td className="px-6 py-3 text-gray-700">{t('turnover')} / Turnover</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className="px-6 py-3 text-right font-semibold text-gray-900">{formatCurrency(y.turnover)}</td>
+                                    ))}
                                 </tr>
                                 <tr>
-                                    <td className="py-2 text-gray-700">{t('profit')} / Net Profit</td>
-                                    <td className={`py-2 text-right font-semibold ${(latest.profit || 0) >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
-                                        {formatCurrency(latest.profit)}
-                                    </td>
+                                    <td className="px-6 py-3 text-gray-700">{t('profit')} / Net Profit</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className={`px-6 py-3 text-right font-semibold ${(y.profit || 0) >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
+                                            {formatCurrency(y.profit)}
+                                        </td>
+                                    ))}
                                 </tr>
                                 <tr>
-                                    <td className="py-2 text-gray-700">{t('interestExpenses')} / Interest Expenses</td>
-                                    <td className="py-2 text-right text-gray-900">{formatCurrency(latest.interest_payment)}</td>
+                                    <td className="px-6 py-3 text-gray-700">{t('interestExpenses')} / Interest</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className="px-6 py-3 text-right text-gray-900">{formatCurrency(y.interest_payment)}</td>
+                                    ))}
                                 </tr>
                                 <tr>
-                                    <td className="py-2 text-gray-700">{t('depreciation')} / Depreciation</td>
-                                    <td className="py-2 text-right text-gray-900">{formatCurrency(latest.depreciation)}</td>
+                                    <td className="px-6 py-3 text-gray-700">{t('depreciation')} / Deprec.</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className="px-6 py-3 text-right text-gray-900">{formatCurrency(y.depreciation)}</td>
+                                    ))}
                                 </tr>
                                 <tr>
-                                    <td className="py-2 text-gray-700">{t('incomeTaxProvision')} / Income Tax Provision</td>
-                                    <td className="py-2 text-right text-gray-900">{formatCurrency(latest.corporate_income_tax)}</td>
+                                    <td className="px-6 py-3 text-gray-700">{t('incomeTaxProvision')} / Tax Prov.</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className="px-6 py-3 text-right text-gray-900">{formatCurrency(y.corporate_income_tax)}</td>
+                                    ))}
                                 </tr>
                                 <tr>
-                                    <td className="py-2 text-gray-700">{t('labourExpenses')} / Labour Expenses</td>
-                                    <td className="py-2 text-right text-gray-900">{formatCurrency(latest.labour_costs)}</td>
+                                    <td className="px-6 py-3 text-gray-700">{t('labourExpenses')} / Labour</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className="px-6 py-3 text-right text-gray-900">{formatCurrency(y.labour_costs)}</td>
+                                    ))}
                                 </tr>
                                 <tr className="bg-blue-50/50">
-                                    <td className="py-2 font-semibold text-gray-900">{t('ebitda')} / EBITDA</td>
-                                    <td className="py-2 text-right font-bold text-gray-900">
-                                        {formatCurrency(
-                                            (latest.profit || 0) +
-                                            (latest.interest_payment || 0) +
-                                            (latest.corporate_income_tax || 0) +
-                                            (latest.depreciation || 0)
-                                        )}
-                                    </td>
+                                    <td className="px-6 py-3 font-semibold text-gray-900">{t('ebitda')} / EBITDA</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className="px-6 py-3 text-right font-bold text-gray-900">
+                                            {formatCurrency(
+                                                (y.profit || 0) +
+                                                (y.interest_payment || 0) +
+                                                (y.corporate_income_tax || 0) +
+                                                (y.depreciation || 0)
+                                            )}
+                                        </td>
+                                    ))}
                                 </tr>
                             </tbody>
                         </table>
@@ -101,70 +140,83 @@ export default function RawDataAccordions({ financialHistory }: RawDataAccordion
                         </svg>
                         <span className="font-medium text-gray-900">{t('balanceSheet')}</span>
                     </div>
-                    <span className="text-sm text-gray-500">{latest.year || '-'}</span>
+                    <span className="text-sm text-gray-500">
+                        {yearsToShow.length > 0 ? `${yearsToShow[yearsToShow.length - 1].year} - ${yearsToShow[0].year}` : '-'}
+                    </span>
                 </button>
 
                 {expandedSection === 'balance' && (
-                    <div className="px-6 py-4 bg-gray-50">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* Assets */}
-                            <div>
-                                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Aktīvi / Assets</h4>
-                                <table className="w-full text-sm">
-                                    <tbody className="divide-y divide-gray-200">
-                                        <tr>
-                                            <td className="py-2 text-gray-700 font-medium">{t('totalAssets')} / Total Assets</td>
-                                            <td className="py-2 text-right font-semibold text-gray-900">{formatCurrency(latest.total_assets)}</td>
-                                        </tr>
-                                        <tr>
-                                            <td className="py-2 text-gray-700">{t('currentAssets')} / Current Assets</td>
-                                            <td className="py-2 text-right text-gray-900">{formatCurrency(latest.total_current_assets)}</td>
-                                        </tr>
-                                        <tr>
-                                            <td className="py-2 text-gray-700 pl-4 text-xs">↳ {t('cash')} / Cash</td>
-                                            <td className="py-2 text-right text-gray-900">{formatCurrency(latest.cash_balance)}</td>
-                                        </tr>
-                                        <tr>
-                                            <td className="py-2 text-gray-700 pl-4 text-xs">↳ {t('accountsReceivable')} / Receivables</td>
-                                            <td className="py-2 text-right text-gray-900">{formatCurrency(latest.accounts_receivable)}</td>
-                                        </tr>
-                                        <tr>
-                                            <td className="py-2 text-gray-700 pl-4 text-xs">↳ {t('inventories')} / Inventories</td>
-                                            <td className="py-2 text-right text-gray-900">{formatCurrency(latest.inventories)}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            {renderHeader()}
+                            <tbody className="divide-y divide-gray-200">
+                                <tr className="bg-gray-50/50 font-bold">
+                                    <td colSpan={1 + yearsToShow.length} className="px-6 py-2 text-gray-500 text-[10px] uppercase tracking-wider">Aktīvi / Assets</td>
+                                </tr>
+                                <tr>
+                                    <td className="px-6 py-3 text-gray-700 font-medium">{t('totalAssets')}</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className="px-6 py-3 text-right font-semibold text-gray-900">{formatCurrency(y.total_assets)}</td>
+                                    ))}
+                                </tr>
+                                <tr>
+                                    <td className="px-6 py-3 text-gray-700">{t('currentAssets')}</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className="px-6 py-3 text-right text-gray-900">{formatCurrency(y.total_current_assets)}</td>
+                                    ))}
+                                </tr>
+                                <tr className="text-gray-500">
+                                    <td className="px-10 py-2 text-xs italic">↳ {t('cash')}</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className="px-6 py-2 text-right">{formatCurrency(y.cash_balance)}</td>
+                                    ))}
+                                </tr>
+                                <tr className="text-gray-500">
+                                    <td className="px-10 py-2 text-xs italic">↳ {t('accountsReceivable')}</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className="px-6 py-2 text-right">{formatCurrency(y.accounts_receivable)}</td>
+                                    ))}
+                                </tr>
+                                <tr className="text-gray-500">
+                                    <td className="px-10 py-2 text-xs italic">↳ {t('inventories')}</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className="px-6 py-2 text-right">{formatCurrency(y.inventories)}</td>
+                                    ))}
+                                </tr>
 
-                            {/* Liabilities & Equity */}
-                            <div>
-                                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Saistības un kapitāls / Liabilities & Equity</h4>
-                                <table className="w-full text-sm">
-                                    <tbody className="divide-y divide-gray-200">
-                                        <tr>
-                                            <td className="py-2 text-gray-700 font-medium">{t('equity')} / Equity</td>
-                                            <td className={`py-2 text-right font-semibold ${(latest.equity || 0) >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
-                                                {formatCurrency(latest.equity)}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td className="py-2 text-gray-700">{t('currentLiabilities')} / Current Liabilities</td>
-                                            <td className="py-2 text-right text-gray-900">{formatCurrency(latest.current_liabilities)}</td>
-                                        </tr>
-                                        <tr>
-                                            <td className="py-2 text-gray-700">{t('nonCurrentLiabilities')} / Non-Current Liabilities</td>
-                                            <td className="py-2 text-right text-gray-900">{formatCurrency(latest.non_current_liabilities)}</td>
-                                        </tr>
-                                        <tr className="bg-blue-50/50">
-                                            <td className="py-3 font-semibold text-gray-900">{t('totalLiabilities')} / Total Liabilities</td>
-                                            <td className="py-3 text-right font-bold text-gray-900">
-                                                {formatCurrency((latest.current_liabilities || 0) + (latest.non_current_liabilities || 0))}
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                                <tr className="bg-gray-50/50 font-bold border-t border-gray-200">
+                                    <td colSpan={1 + yearsToShow.length} className="px-6 py-2 text-gray-500 text-[10px] uppercase tracking-wider">Saistības & Kapitāls / Liabilities & Equity</td>
+                                </tr>
+                                <tr>
+                                    <td className="px-6 py-3 text-gray-700 font-medium">{t('equity')}</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className={`px-6 py-3 text-right font-semibold ${(y.equity || 0) >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
+                                            {formatCurrency(y.equity)}
+                                        </td>
+                                    ))}
+                                </tr>
+                                <tr>
+                                    <td className="px-6 py-3 text-gray-700">{t('currentLiabilities')}</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className="px-6 py-3 text-right text-gray-900">{formatCurrency(y.current_liabilities)}</td>
+                                    ))}
+                                </tr>
+                                <tr>
+                                    <td className="px-6 py-3 text-gray-700">{t('nonCurrentLiabilities')}</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className="px-6 py-3 text-right text-gray-900">{formatCurrency(y.non_current_liabilities)}</td>
+                                    ))}
+                                </tr>
+                                <tr className="bg-blue-50/50">
+                                    <td className="px-6 py-3 font-semibold text-gray-900">{t('totalLiabilities')}</td>
+                                    {yearsToShow.map(y => (
+                                        <td key={y.year} className="px-6 py-3 text-right font-bold text-gray-900">
+                                            {formatCurrency((y.current_liabilities || 0) + (y.non_current_liabilities || 0))}
+                                        </td>
+                                    ))}
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>
@@ -181,54 +233,53 @@ export default function RawDataAccordions({ financialHistory }: RawDataAccordion
                         </svg>
                         <span className="font-medium text-gray-900">{t('cashFlowStatement')}</span>
                     </div>
-                    <span className="text-sm text-gray-500">{latest.year || '-'}</span>
+                    <span className="text-sm text-gray-500">
+                        {yearsToShow.length > 0 ? `${yearsToShow[yearsToShow.length - 1].year} - ${yearsToShow[0].year}` : '-'}
+                    </span>
                 </button>
 
                 {expandedSection === 'cashflow' && (
-                    <div className="px-6 py-4 bg-gray-50">
-                        {latest.cfo !== null ? (
+                    <div className="overflow-x-auto">
+                        {hasAnyCashFlow ? (
                             <table className="w-full text-sm">
+                                {renderHeader()}
                                 <tbody className="divide-y divide-gray-200">
                                     <tr className="bg-green-50/50">
-                                        <td className="py-2 font-semibold text-gray-900">{t('operatingCashFlow')} / Operating Activities</td>
-                                        <td className="py-2 text-right font-bold text-gray-900">
-                                            {formatCurrency(latest.cfo)}
-                                        </td>
+                                        <td className="px-6 py-3 font-semibold text-gray-900">{t('operatingCashFlow')}</td>
+                                        {yearsToShow.map(y => (
+                                            <td key={y.year} className="px-6 py-3 text-right font-bold text-gray-900">{formatCurrency(y.cfo)}</td>
+                                        ))}
                                     </tr>
-                                    <tr>
-                                        <td className="py-2 text-gray-700 pl-4 text-xs">↳ {t('taxesPaidCf')} / Taxes Paid (CF)</td>
-                                        <td className="py-2 text-right text-gray-900">{formatCurrency(latest.taxes_paid_cf)}</td>
+                                    <tr className="text-gray-500">
+                                        <td className="px-10 py-2 text-xs italic">↳ {t('taxesPaidCf')}</td>
+                                        {yearsToShow.map(y => (
+                                            <td key={y.year} className="px-6 py-2 text-right">{formatCurrency(y.taxes_paid_cf)}</td>
+                                        ))}
                                     </tr>
                                     <tr className="bg-orange-50/50">
-                                        <td className="py-2 font-semibold text-gray-900">{t('investingCashFlow')} / Investing Activities</td>
-                                        <td className="py-2 text-right font-bold text-gray-900">
-                                            {formatCurrency(latest.cfi)}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-2 text-gray-700 pl-4 text-xs">↳ {t('capex')} / CapEx</td>
-                                        <td className="py-2 text-right text-gray-900">{formatCurrency(latest.cfi)}</td>
+                                        <td className="px-6 py-3 font-semibold text-gray-900">{t('investingCashFlow')}</td>
+                                        {yearsToShow.map(y => (
+                                            <td key={y.year} className="px-6 py-3 text-right font-bold text-gray-900">{formatCurrency(y.cfi)}</td>
+                                        ))}
                                     </tr>
                                     <tr className="bg-purple-50/50">
-                                        <td className="py-2 font-semibold text-gray-900">{t('financingCashFlow')} / Financing Activities</td>
-                                        <td className="py-2 text-right font-bold text-gray-900">
-                                            {formatCurrency(latest.cff)}
-                                        </td>
+                                        <td className="px-6 py-3 font-semibold text-gray-900">{t('financingCashFlow')}</td>
+                                        {yearsToShow.map(y => (
+                                            <td key={y.year} className="px-6 py-3 text-right font-bold text-gray-900">{formatCurrency(y.cff)}</td>
+                                        ))}
                                     </tr>
-                                    <tr className="bg-blue-100/50">
-                                        <td className="py-3 font-bold text-gray-900">{t('netCashChange')} / Net Change in Cash</td>
-                                        <td className="py-3 text-right font-bold text-gray-900">
-                                            {formatCurrency(
-                                                (latest.cfo || 0) +
-                                                (latest.cfi || 0) +
-                                                (latest.cff || 0)
-                                            )}
-                                        </td>
+                                    <tr className="bg-blue-100/50 border-t-2 border-blue-200">
+                                        <td className="px-6 py-4 font-bold text-gray-900">{t('netCashChange')}</td>
+                                        {yearsToShow.map(y => (
+                                            <td key={y.year} className="px-6 py-4 text-right font-bold text-gray-900">
+                                                {formatCurrency((y.cfo || 0) + (y.cfi || 0) + (y.cff || 0))}
+                                            </td>
+                                        ))}
                                     </tr>
                                 </tbody>
                             </table>
                         ) : (
-                            <div className="text-center py-8 text-gray-500 text-sm italic">
+                            <div className="text-center py-12 text-gray-500 text-sm italic">
                                 {t('dataUnavailable')}
                             </div>
                         )}

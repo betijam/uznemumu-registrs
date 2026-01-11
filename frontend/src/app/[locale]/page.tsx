@@ -58,7 +58,7 @@ export default function Home() {
       <Navbar />
 
       {/* Hero Section */}
-      <div className="relative pt-20 pb-16 md:pt-32 md:pb-24 overflow-hidden bg-gradient-to-b from-gray-50 to-white">
+      <div className="relative pt-20 pb-16 md:pt-32 md:pb-24 bg-gradient-to-b from-gray-50 to-white z-20">
         {/* Background Decor - Radial Gradients */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-radial from-purple-200/40 via-purple-100/20 to-transparent rounded-full blur-3xl opacity-60"></div>
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-radial from-blue-200/40 via-blue-100/20 to-transparent rounded-full blur-3xl opacity-60"></div>
@@ -86,7 +86,7 @@ export default function Home() {
       </div>
 
       {/* Dashboard Content */}
-      <div className="container mx-auto px-4 pb-20">
+      <div className="container mx-auto px-4 pb-20 relative z-10">
         <MarketPulse data={data ? data.pulse : null} loading={loading} />
 
         {loading ? (
