@@ -13,9 +13,9 @@ export default function Footer() {
                     <div className="col-span-1">
                         <div className="flex items-center gap-2 mb-4">
                             <img
-                                src="/company360.png"
+                                src="/company360.svg"
                                 alt="Company 360"
-                                className="h-8 w-auto brightness-0 invert"
+                                className="h-8 w-auto"
                             />
                         </div>
                         <p className="text-gray-400 text-sm max-w-xs leading-relaxed">
@@ -67,7 +67,7 @@ export default function Footer() {
                         <span>&copy; {new Date().getFullYear()} Company 360.</span>
                         <span>{t('powered_by')}</span>
                         <a href="https://animas.lv/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center hover:opacity-80 transition-opacity">
-                            <img src="/api/map/logo" alt="ANIMAS" className="h-4 w-auto brightness-0 invert opacity-70" />
+                            <img src="/Animas-balts-bez-laukuma.png" alt="ANIMAS" className="h-4 w-auto" />
                         </a>
                     </div>
                     <p className="mt-2 md:mt-0 text-gray-500">{t('data_update')}</p>
