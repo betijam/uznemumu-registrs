@@ -23,8 +23,8 @@ const nextConfig = {
     },
 
     async rewrites() {
-        // Default to production, override with BACKEND_URL env var for local dev
-        const backendUrl = process.env.BACKEND_URL || 'https://uznemumu-registrs-production.up.railway.app';
+        // Default to staging, override with BACKEND_URL env var for local dev
+        const backendUrl = process.env.BACKEND_URL || 'https://uznemumu-registrs-staging.up.railway.app';
         return [
             {
                 source: '/api/:path*',

@@ -768,22 +768,6 @@
     "error_msg": "Error. Please try again later.",
     "no_spam_promise": "No spam. Unsubscribe at any time."
   },
-  "Roadmap": {
-    "section_title": "What are we building?",
-    "section_subtitle": "Currently Company 360 is in public Beta and fully free. In the future we will add PRO tools for deeper analytics.",
-    "status_ready": "Ready",
-    "ready_search": "Company Search",
-    "ready_financials": "Financial Data",
-    "ready_top_lists": "TOP Lists",
-    "status_in_progress": "In Progress",
-    "progress_export": "Data Export",
-    "progress_history": "Historical Charts",
-    "progress_map": "Advanced Map",
-    "status_planned": "Planned",
-    "planned_api": "API Integrations",
-    "planned_risk": "Credit Risk Score",
-    "planned_monitoring": "Monitoring"
-  },
   "ProFeature": {
     "modal_title": "PRO Feature",
     "modal_desc": "The '{feature}' feature is available in the Pro plan only.",
@@ -826,5 +810,24 @@
     "send_suggestion": "Send Suggestion",
     "sending": "Sending...",
     "suggestion_success": "Thanks for the suggestion!"
+  },
+  "Roadmap": {
+    "section_title": "Roadmap",
+    "section_subtitle": "Follow our development and upcoming features",
+    "status_ready": "Ready (Available Now)",
+    "status_in_progress": "In Progress (Coming Soon)",
+    "status_planned": "Planned (Future Vision)",
+    "ready_smart_search": "Smart Search: Company and person search with registry data.",
+    "ready_financial_analytics": "Financial Analytics: Deep financial data analysis, regional and industry trends.",
+    "ready_related_companies": "Related Companies: Selection of related companies and beneficial owners.",
+    "ready_competitor_comparison": "Competitor Comparison: Easy side-by-side indicator comparison.",
+    "ready_personal_dashboard": "Personal Dashboard: Favorites lists and quick access.",
+    "progress_historical_data": "Historical Data: Officer and shareholder history (10+ years).",
+    "progress_doc_archive": "Document Archive: Access to statutes, annual reports, and other public documents.",
+    "progress_mvk_declaration": "SME Declarations: Automated SME status determination and declaration.",
+    "progress_data_export": "Data Export: Ability to download lists and financials in Excel/CSV format.",
+    "planned_ai_reports": "AI Business Reports: Automatically generated reports using AI and web search.",
+    "planned_monitoring_247": "24/7 Monitoring: Email alerts for changes (tax debts, officers, court proceedings).",
+    "planned_reputation_analysis": "Reputation Analysis: Media monitoring and press mentions."
   }
 }

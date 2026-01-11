@@ -1467,7 +1467,7 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                     {t('cta_text', { name: company.name.split('"')[1] || company.name })}
                                                 </p>
                                                 <a
-                                                    href={`https://www.iepirkumi.animas.lv/${company.regcode}`}
+                                                    href={`https://www.tendera.lv`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="inline-flex items-center gap-2 px-6 py-3 bg-white text-primary font-bold rounded-lg hover:bg-gray-100 transition-colors shadow-lg"
@@ -1488,7 +1488,7 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                 {t('no_procurement_desc')}
                                             </p>
                                             <a
-                                                href={`https://www.iepirkumi.animas.lv/${company.regcode}`}
+                                                href={`https://www.tendera.lv`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="inline-flex items-center gap-2 mt-4 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors"

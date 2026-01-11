@@ -53,7 +53,6 @@ export default function FavoriteButton({
             return;
         }
 
-        console.log("FavoriteButton: Toggling favorite. Token exists:", !!Cookies.get('token')); // DEBUG
         setIsLoading(true);
         try {
             if (isFavorite) {
@@ -81,7 +80,6 @@ export default function FavoriteButton({
             }
         } catch (error) {
             console.error("Error toggling favorite:", error);
-            alert("Kļūda saglabājot favorītu. Pārbaudiet konsoli. Error: " + error); // DEBUG
         } finally {
             setIsLoading(false);
         }

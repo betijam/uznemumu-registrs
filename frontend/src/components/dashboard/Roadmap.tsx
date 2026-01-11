@@ -39,19 +39,34 @@ export default function Roadmap() {
             status: "ready",
             icon: "✅",
             title: t('status_ready'),
-            items: [t('ready_search'), t('ready_financials'), t('ready_top_lists')]
+            items: [
+                t('ready_smart_search'),
+                t('ready_financial_analytics'),
+                t('ready_related_companies'),
+                t('ready_competitor_comparison'),
+                t('ready_personal_dashboard')
+            ]
         },
         {
             status: "in_progress",
             icon: "🚧",
             title: t('status_in_progress'),
-            items: [t('progress_export'), t('progress_history'), t('progress_map')]
+            items: [
+                t('progress_historical_data'),
+                t('progress_doc_archive'),
+                t('progress_mvk_declaration'),
+                t('progress_data_export')
+            ]
         },
         {
             status: "planned",
             icon: "🚀",
             title: t('status_planned'),
-            items: [t('planned_api'), t('planned_risk'), t('planned_monitoring')]
+            items: [
+                t('planned_ai_reports'),
+                t('planned_monitoring_247'),
+                t('planned_reputation_analysis')
+            ]
         }
     ];
 
