@@ -38,7 +38,14 @@ async def lifespan(app: FastAPI):
     if ENABLE_ETL_SCHEDULER and scheduler.running:
         scheduler.shutdown()
 
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
+# ... imports ...
+
 app = FastAPI(title="Uzņēmumu Reģistrs API", version="1.0.0", lifespan=lifespan)
+
+# Trust all proxies (Railway load balancer)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 
 # CORS Configuration - Allow frontend origins
 origins = [

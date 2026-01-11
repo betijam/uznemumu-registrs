@@ -47,16 +47,23 @@ export default function DashboardPage() {
     const loadDashboardData = async () => {
         try {
             // Load user info, favorites, and recent views
+            console.log('[DEBUG] Loading dashboard data...');
             const [favoritesRes, historyRes] = await Promise.all([
                 fetch('/api/favorites/', {
                     headers: {
                         'Authorization': `Bearer ${Cookies.get('token')}`
                     }
+                }).then(res => {
+                    console.log('[DEBUG] Favorites status:', res.status, res.url);
+                    return res;
                 }),
                 fetch('/api/history/recent?limit=10', {
                     headers: {
                         'Authorization': `Bearer ${Cookies.get('token')}`
                     }
+                }).then(res => {
+                    console.log('[DEBUG] History status:', res.status, res.url);
+                    return res;
                 })
             ]);
 
@@ -76,6 +83,7 @@ export default function DashboardPage() {
                     'Authorization': `Bearer ${Cookies.get('token')}`
                 }
             });
+            console.log('[DEBUG] Auth check status:', meRes.status, meRes.url);
 
             if (meRes.ok) {
                 const userData = await meRes.json();

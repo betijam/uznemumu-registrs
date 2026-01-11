@@ -31,18 +31,21 @@ export default function FavoriteButton({
 
     const checkFavoriteStatus = async () => {
         try {
+            console.log('[DEBUG] Checking favorite status for:', entityId);
             const res = await fetch('/api/favorites/', {
                 headers: {
                     'Authorization': `Bearer ${Cookies.get('token')}`
                 }
             });
+            console.log('[DEBUG] Favorites response status:', res.status, res.url);
             if (res.ok) {
                 const favorites = await res.json();
                 const found = favorites.some((f: any) => f.entity_id === entityId);
+                console.log('[DEBUG] Is favorite?', found);
                 setIsFavorite(found);
             }
         } catch (error) {
-            console.error("Error checking favorite status:", error);
+            console.error("[DEBUG] Error checking favorite status:", error);
         }
     };
 
