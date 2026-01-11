@@ -5,6 +5,7 @@ import { Link, useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import Cookies from "js-cookie";
 
+import Image from "next/image";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Navbar() {
@@ -33,12 +34,14 @@ export default function Navbar() {
                     {/* Logo */}
                     <div className="flex items-center">
                         <Link href="/" className="flex-shrink-0 flex items-center gap-2">
-                            <div className="w-8 h-8 bg-gradient-to-br from-accent to-primary rounded-lg flex items-center justify-center">
-                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                </svg>
-                            </div>
-                            <span className="text-lg sm:text-xl font-bold text-primary whitespace-nowrap">Company 360</span>
+                            <Image
+                                src="/company360.svg"
+                                alt="Company 360"
+                                width={180}
+                                height={40}
+                                className="h-10 w-auto"
+                                priority
+                            />
                         </Link>
                     </div>
 
