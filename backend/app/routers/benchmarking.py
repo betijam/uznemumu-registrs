@@ -127,75 +127,91 @@ def get_company_benchmark(regcode: int):
 
 
 @router.get("/companies/{regcode}/competitors")
-def get_top_competitors(regcode: int, limit: int = 5):
+def get_top_competitors(regcode: str, limit: int = 5):
     """
-    Find top competitors in the same industry.
-    Matches by NACE section and similar size (employee count ±30%).
+    Find nearest neighbors in the same industry by turnover.
+    Returns 2 bigger and 2 smaller competitors.
     """
     with engine.connect() as conn:
-        # Get company info
-        company = conn.execute(
-            text("SELECT nace_code, nace_text, employee_count FROM companies WHERE regcode = :r"),
-            {"r": regcode}
-        ).fetchone()
+        # 1. Get current company's industry and latest turnover
+        company = conn.execute(text("""
+            SELECT 
+                c.nace_code, 
+                fr.turnover
+            FROM companies c
+            LEFT JOIN financial_reports fr ON fr.company_regcode = c.regcode
+                AND fr.year = (SELECT MAX(year) FROM financial_reports WHERE company_regcode = c.regcode)
+            WHERE c.regcode = :r
+        """), {"r": regcode}).fetchone()
         
         if not company or not company.nace_code or len(company.nace_code) < 3:
             return []
         
         nace_prefix = company.nace_code[:3]
-        employee_count = company.employee_count or 0
+        base_turnover = float(company.turnover) if company.turnover else 0
         
-        # Calculate size range (±30%)
-        min_employees = int(employee_count * 0.7) if employee_count > 0 else 0
-        max_employees = int(employee_count * 1.3) if employee_count > 0 else 999999
+        # 2. Find 2 companies with higher turnover and 2 with lower turnover
+        # Using a UNION to get neighbors
+        query = text("""
+            (
+                SELECT c.regcode, c.name, c.nace_text, fr.turnover, fr.profit, fr.year, 'above' as position
+                FROM companies c
+                JOIN financial_reports fr ON fr.company_regcode = c.regcode
+                    AND fr.year = (SELECT MAX(year) FROM financial_reports WHERE company_regcode = c.regcode)
+                WHERE c.nace_code LIKE :nace_prefix
+                    AND c.regcode != :regcode
+                    AND fr.turnover > :turnover
+                ORDER BY fr.turnover ASC
+                LIMIT 2
+            )
+            UNION ALL
+            (
+                SELECT c.regcode, c.name, c.nace_text, fr.turnover, fr.profit, fr.year, 'below' as position
+                FROM companies c
+                JOIN financial_reports fr ON fr.company_regcode = c.regcode
+                    AND fr.year = (SELECT MAX(year) FROM financial_reports WHERE company_regcode = c.regcode)
+                WHERE c.nace_code LIKE :nace_prefix
+                    AND c.regcode != :regcode
+                    AND (:turnover = 0 OR fr.turnover <= :turnover)
+                    AND fr.turnover > 100
+                ORDER BY fr.turnover DESC
+                LIMIT 3
+            )
+            ORDER BY turnover DESC
+        """)
         
-        # Find competitors
-        competitors = conn.execute(text("""
-            SELECT 
-                c.regcode,
-                c.name,
-                c.employee_count,
-                c.nace_text,
-                fr.turnover,
-                fr.profit,
-                fr.year
-            FROM companies c
-            LEFT JOIN financial_reports fr ON fr.company_regcode = c.regcode
-                AND fr.year = (SELECT MAX(year) FROM financial_reports WHERE company_regcode = c.regcode)
-            WHERE c.nace_code LIKE :nace_prefix
-                AND c.regcode != :regcode
-                AND (:min_emp = 0 OR c.employee_count BETWEEN :min_emp AND :max_emp)
-            ORDER BY fr.turnover DESC NULLS LAST, c.employee_count DESC
-            LIMIT :limit
-        """), {
+        competitors = conn.execute(query, {
             "nace_prefix": f"{nace_prefix}%",
             "regcode": regcode,
-            "min_emp": min_employees,
-            "max_emp": max_employees,
-            "limit": limit
+            "turnover": base_turnover
         }).fetchall()
         
         def safe_json_float(val):
-            if val is None:
-                return None
+            if val is None: return None
             f = float(val)
             import math
-            if math.isnan(f) or math.isinf(f):
-                return None
+            if math.isnan(f) or math.isinf(f): return None
             return f
 
-        return [
-            {
+        results = []
+        for c in competitors:
+            c_turnover = safe_json_float(c.turnover)
+            diff_pct = None
+            if base_turnover > 0 and c_turnover is not None:
+                diff_pct = round(((c_turnover - base_turnover) / base_turnover) * 100, 1)
+            
+            results.append({
                 "regcode": c.regcode,
                 "name": c.name,
-                "employee_count": c.employee_count,
                 "nace_text": c.nace_text,
-                "turnover": safe_json_float(c.turnover),
+                "turnover": c_turnover,
                 "profit": safe_json_float(c.profit),
-                "year": c.year
-            }
-            for c in competitors
-        ]
+                "year": c.year,
+                "diff_pct": diff_pct,
+                "position": c.position
+            })
+            
+        return results[:limit]
 
 
 @router.get("/industries")

@@ -423,7 +423,7 @@ def get_sitemap_ids(page: int = Query(1, ge=1), limit: int = Query(50000, le=500
         }
 
 @router.get("/companies/{regcode}")
-async def get_company_details(regcode: int, response: Response, request: Request, background_tasks: BackgroundTasks):
+async def get_company_details(regcode: str, response: Response, request: Request, background_tasks: BackgroundTasks):
     # NO HTTP CACHE - Access control must run every time
     response.headers["Cache-Control"] = "no-store"
     
@@ -520,7 +520,7 @@ async def get_company_details(regcode: int, response: Response, request: Request
 
 
 @router.get("/companies/{regcode}/quick")
-async def get_company_quick(regcode: int, response: Response, request: Request):
+async def get_company_quick(regcode: str, response: Response, request: Request):
     """
     Ultra-fast endpoint for initial page render.
     Returns: Main info, latest finances, risks, rating.
@@ -609,8 +609,8 @@ async def get_company_quick(regcode: int, response: Response, request: Request):
 # LAZY-LOAD ENDPOINTS (For faster initial page render)
 # ================================================================================
 
-@router.get("/companies/{regcode}/financial-history")
-def get_financial_history_endpoint(regcode: int, response: Response):
+@router.get("/companies/{regcode}/financials")
+async def get_financial_history_endpoint(regcode: str, response: Response):
     """
     Lazy-load endpoint for full financial history.
     Called by frontend AFTER initial page render.
@@ -683,8 +683,8 @@ def get_financial_history_endpoint(regcode: int, response: Response):
         return {"financial_history": history}
 
 
-@router.get("/companies/{regcode}/tax-history")
-def get_tax_history_endpoint(regcode: int, response: Response):
+@router.get("/companies/{regcode}/taxes")
+async def get_tax_history_endpoint(regcode: str, response: Response):
     """Lazy-load endpoint for tax payment history."""
     response.headers["Cache-Control"] = "public, max-age=3600"
     
@@ -728,7 +728,7 @@ def get_tax_history_endpoint(regcode: int, response: Response):
 
 
 @router.get("/companies/{regcode}/procurements")
-def get_procurements_endpoint(regcode: int, response: Response, limit: int = 50):
+async def get_procurements_endpoint(regcode: str, response: Response, limit: int = 50):
     """Lazy-load endpoint for procurement history."""
     response.headers["Cache-Control"] = "public, max-age=3600"
     
@@ -784,7 +784,7 @@ def get_procurements_endpoint(regcode: int, response: Response, limit: int = 50)
 
 
 @router.get("/companies/{regcode}/persons")
-def get_persons_endpoint(regcode: int, response: Response):
+async def get_persons_endpoint(regcode: str, response: Response):
     """Lazy-load endpoint for UBOs, members, and officers."""
     response.headers["Cache-Control"] = "public, max-age=3600"
     
@@ -827,7 +827,7 @@ def get_persons_endpoint(regcode: int, response: Response):
 
 
 @router.get("/companies/{regcode}/risks")
-def get_risks_endpoint(regcode: int, response: Response):
+async def get_risks_endpoint(regcode: str, response: Response):
     """Lazy-load endpoint for risks."""
     response.headers["Cache-Control"] = "public, max-age=3600"
     
