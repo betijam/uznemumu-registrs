@@ -18,7 +18,8 @@
     "personas": "Persons",
     "pricing": "Pricing",
     "login": "Login",
-    "logout": "Logout"
+    "logout": "Logout",
+    "profile": "Profile"
   },
   "Common": {
     "loading": "Loading...",

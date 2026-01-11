@@ -18,7 +18,8 @@
     "personas": "Персоны",
     "pricing": "Цены",
     "login": "Войти",
-    "logout": "Выйти"
+    "logout": "Выйти",
+    "profile": "Профиль"
   },
   "Common": {
     "loading": "Загрузка...",

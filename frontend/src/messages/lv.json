@@ -18,7 +18,8 @@
     "personas": "Personas",
     "pricing": "Cenas",
     "login": "Pieslēgties",
-    "logout": "Izrakstīties"
+    "logout": "Izrakstīties",
+    "profile": "Profils"
   },
   "Common": {
     "loading": "Ielādē...",
