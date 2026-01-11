@@ -14,7 +14,7 @@ export default function Roadmap() {
 
         setStatus('loading');
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/waitlist/`, {
+            const response = await fetch('/api/waitlist/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -40,11 +40,10 @@ export default function Roadmap() {
             icon: "✅",
             title: t('status_ready'),
             items: [
-                t('ready_smart_search'),
-                t('ready_financial_analytics'),
-                t('ready_related_companies'),
-                t('ready_competitor_comparison'),
-                t('ready_personal_dashboard')
+                t('ready_search'),
+                t('ready_analytics'),
+                t('ready_related'),
+                t('ready_competitors')
             ]
         },
         {
@@ -52,10 +51,9 @@ export default function Roadmap() {
             icon: "🚧",
             title: t('status_in_progress'),
             items: [
-                t('progress_historical_data'),
-                t('progress_doc_archive'),
-                t('progress_mvk_declaration'),
-                t('progress_data_export')
+                t('progress_history'),
+                t('progress_archive'),
+                t('progress_mvk')
             ]
         },
         {
@@ -63,9 +61,9 @@ export default function Roadmap() {
             icon: "🚀",
             title: t('status_planned'),
             items: [
-                t('planned_ai_reports'),
-                t('planned_monitoring_247'),
-                t('planned_reputation_analysis')
+                t('planned_ai'),
+                t('planned_monitoring'),
+                t('planned_reputation')
             ]
         }
     ];

@@ -15,7 +15,7 @@ export default function FeedbackButton() {
 
         setStatus('loading');
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/waitlist/`, {
+            const response = await fetch('/api/waitlist/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

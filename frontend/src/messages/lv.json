@@ -862,20 +862,18 @@
   "Roadmap": {
     "section_title": "Ceļa karte",
     "section_subtitle": "Sekojiet līdzi mūsu attīstībai un gaidāmajām funkcijām",
-    "status_ready": "Gatavs (Pieejams tūlīt)",
-    "status_in_progress": "Procesā (Būs pieejams drīzumā)",
-    "status_planned": "Plānots (Nākotnes vīzija)",
-    "ready_smart_search": "Gudrā meklēšana: Uzņēmumu un personu meklētājs ar reģistru datiem.",
-    "ready_financial_analytics": "Finanšu analītika: Dziļā finanšu datu analīze, reģionu un nozaru tendences.",
-    "ready_related_companies": "Saistītie uzņēmumi: Saistīto uzņēmumu un patieso labuma guvēju atlase.",
-    "ready_competitor_comparison": "Konkurentu salīdzināšana: Ērta rādītāju salīdzināšana blakus.",
-    "ready_personal_dashboard": "Personīgais darbagalds: Favorītu saraksti un ātrā piekļuve.",
-    "progress_historical_data": "Vēsturiskie dati: Amatpersonu un dalībnieku vēsture (10+ gadi).",
-    "progress_doc_archive": "Dokumentu arhīvs: Piekļuve statūtiem, gada pārskatiem un citiem publiskiem dokumentiem.",
-    "progress_mvk_declaration": "MVK Deklarācijas: Automatizēta MVK (Mazo un vidējo komersantu) statusa noteikšana un deklarācija.",
-    "progress_data_export": "Datu eksports: Iespēja lejupielādēt sarakstus un finanses Excel/CSV formātā.",
-    "planned_ai_reports": "AI Biznesa Atskaites: Automātiski ģenerēti ziņojumi, izmantojot mākslīgo intelektu un tīmekļa meklēšanu.",
-    "planned_monitoring_247": "Monitorings 24/7: E-pasta brīdinājumi par izmaiņām (nodokļu parādi, amatpersonas, tiesu procesi).",
-    "planned_reputation_analysis": "Reputācijas analīze: Mediju monitorings un pieminējumi presē."
+    "status_ready": "Gatavs",
+    "status_in_progress": "Procesā",
+    "status_planned": "Plānots",
+    "ready_search": "Uzņēmumu un personu meklētājs",
+    "ready_analytics": "Finanšu, nozaru un reģionu analītika",
+    "ready_related": "Saistītie uzņēmumi un PLG",
+    "ready_competitors": "Konkurentu salīdzināšana un Favorīti",
+    "progress_history": "Vēsturiskie dati (Amatpersonas/Īpašnieki)",
+    "progress_archive": "Publisko dokumentu arhīvs",
+    "progress_mvk": "MVK statusa deklarācijas rīks",
+    "planned_ai": "AI ģenerētas atskaites (+Web Search)",
+    "planned_monitoring": "Monitorings un brīdinājumi",
+    "planned_reputation": "Mediju un reputācijas analīze"
   }
 }
