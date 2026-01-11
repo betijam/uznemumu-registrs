@@ -595,7 +595,12 @@ def get_financial_history_endpoint(regcode: int, response: Response):
         fin_rows = conn.execute(text("""
             SELECT year, turnover, profit, employees, cash_balance,
                    current_ratio, quick_ratio, cash_ratio,
-                   net_profit_margin, roe, roa, debt_to_equity, equity_ratio, ebitda
+                   net_profit_margin, roe, roa, debt_to_equity, equity_ratio, ebitda,
+                   -- Extended fields for advanced financial analysis
+                   total_assets, equity, current_liabilities, total_current_assets,
+                   accounts_receivable, by_nature_labour_expenses,
+                   cfo_im_net_operating_cash_flow, cfo_im_income_taxes_paid,
+                   cfi_acquisition_of_fixed_assets_intangible_assets, cff_net_financing_cash_flow
             FROM financial_reports 
             WHERE company_regcode = :r 
             ORDER BY year DESC
@@ -625,7 +630,18 @@ def get_financial_history_endpoint(regcode: int, response: Response):
                 "roa": safe_float(f.roa),
                 "debt_to_equity": safe_float(f.debt_to_equity),
                 "equity_ratio": safe_float(f.equity_ratio),
-                "ebitda": safe_float(f.ebitda)
+                "ebitda": safe_float(f.ebitda),
+                # Extended fields
+                "total_assets": safe_float(f.total_assets),
+                "equity": safe_float(f.equity),
+                "current_liabilities": safe_float(f.current_liabilities),
+                "total_current_assets": safe_float(f.total_current_assets),
+                "accounts_receivable": safe_float(f.accounts_receivable),
+                "by_nature_labour_expenses": safe_float(f.by_nature_labour_expenses),
+                "cfo_im_net_operating_cash_flow": safe_float(f.cfo_im_net_operating_cash_flow),
+                "cfo_im_income_taxes_paid": safe_float(f.cfo_im_income_taxes_paid),
+                "cfi_acquisition_of_fixed_assets_intangible_assets": safe_float(f.cfi_acquisition_of_fixed_assets_intangible_assets),
+                "cff_net_financing_cash_flow": safe_float(f.cff_net_financing_cash_flow)
             }
             
             if prev_turnover and f.turnover and prev_turnover != 0:

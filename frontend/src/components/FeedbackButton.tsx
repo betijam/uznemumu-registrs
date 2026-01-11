@@ -15,14 +15,15 @@ export default function FeedbackButton() {
 
         setStatus('loading');
         try {
-            const response = await fetch('/api/waitlist/', {
+            const response = await fetch('/api/waitlist/feedback', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    email: email || 'anonymous@feedback.com',
-                    source: `feedback: ${feedback.substring(0, 100)}`
+                    feedback_text: feedback,
+                    email: email || null,
+                    source: 'feedback_button'
                 }),
             });
 
