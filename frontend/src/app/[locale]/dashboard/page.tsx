@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import { useComparison } from "@/contexts/ComparisonContext";
 import CompanySearchBar from "@/components/CompanySearchBar";
+import Navbar from "@/components/Navbar";
 
 interface Favorite {
     id: string;
@@ -47,23 +48,16 @@ export default function DashboardPage() {
     const loadDashboardData = async () => {
         try {
             // Load user info, favorites, and recent views
-            console.log('[DEBUG] Loading dashboard data...');
             const [favoritesRes, historyRes] = await Promise.all([
                 fetch('/api/favorites', {
                     headers: {
                         'Authorization': `Bearer ${Cookies.get('token')}`
                     }
-                }).then(res => {
-                    console.log('[DEBUG] Favorites status:', res.status, res.url);
-                    return res;
                 }),
                 fetch('/api/history/recent?limit=10', {
                     headers: {
                         'Authorization': `Bearer ${Cookies.get('token')}`
                     }
-                }).then(res => {
-                    console.log('[DEBUG] History status:', res.status, res.url);
-                    return res;
                 })
             ]);
 
@@ -83,7 +77,6 @@ export default function DashboardPage() {
                     'Authorization': `Bearer ${Cookies.get('token')}`
                 }
             });
-            console.log('[DEBUG] Auth check status:', meRes.status, meRes.url);
 
             if (meRes.ok) {
                 const userData = await meRes.json();
@@ -188,14 +181,18 @@ export default function DashboardPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-gray-500">Ielādē...</div>
+            <div className="min-h-screen bg-gray-50">
+                <Navbar />
+                <div className="flex items-center justify-center py-20">
+                    <div className="text-gray-500">Ielādē...</div>
+                </div>
             </div>
         );
     }
 
     return (
         <div className="min-h-screen bg-gray-50">
+            <Navbar />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
                 {/* Header */}
