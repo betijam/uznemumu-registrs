@@ -4,6 +4,7 @@ import "@/app/globals.css";
 import "leaflet/dist/leaflet.css";
 import { ComparisonProvider } from "@/contexts/ComparisonContext";
 import ComparisonCart from "@/components/benchmark/ComparisonCart";
+import CookieBanner from "@/components/CookieBanner";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
@@ -95,6 +96,7 @@ export default async function RootLayout({
             {children}
             <Footer />
             <ComparisonCart />
+            <CookieBanner />
           </ComparisonProvider>
         </NextIntlClientProvider>
       </body>

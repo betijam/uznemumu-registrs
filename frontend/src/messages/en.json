@@ -425,5 +425,192 @@
     "show_more": "Show more",
     "no_data": "No career data available",
     "current": "Current"
+  },
+  "Privacy": {
+    "title": "Privacy Policy",
+    "last_updated": "Last updated",
+    "general_info": {
+      "title": "General Information",
+      "p1": "This privacy policy describes how SIA \"Animas\" (hereinafter - \"We\", \"Controller\" or \"Company 360\") collects, processes and protects your personal data when you use our website company360.lv (hereinafter - \"Platform\").",
+      "p2": "We are committed to protecting your privacy and ensuring fair and transparent data processing in accordance with the General Data Protection Regulation (GDPR) and the laws of the Republic of Latvia.",
+      "controller_title": "Data Controller Details:",
+      "name": "Name: SIA \"Animas\"",
+      "reg_no": "Registration No.: [Registration Number]",
+      "address": "Legal Address: [Address]",
+      "email": "Contact Email: info@company360.lv"
+    },
+    "data_we_collect": {
+      "title": "What Data We Collect?",
+      "intro": "We process two types of data: (A) data you provide to us, and (B) data collected automatically.",
+      "section_a_title": "A. Data You Provide When Registering",
+      "section_a_desc": "To provide access to extended analytics, we ask you to create a user profile.",
+      "list_email": "<strong>Registration with Email:</strong> Name, Surname, Email Address, Password (stored encrypted).",
+      "list_social": "<strong>Registration with Google or LinkedIn:</strong> If you choose \"Sign in with Google/LinkedIn\", we receive your name, surname, email address and profile picture from the respective service provider.",
+      "important_note": "<strong>Important:</strong> We do not receive or store your Google or LinkedIn passwords.",
+      "section_b_title": "B. Automatically Collected Data (Cookies and Logs)",
+      "section_b_desc": "When you visit the Platform, we automatically record technical information:",
+      "list_tech_1": "IP address and device type;",
+      "list_tech_2": "Browser version;",
+      "list_tech_3": "Number of companies and persons viewed (see section \"Free View Limit\")."
+    },
+    "purpose": {
+      "title": "For What Purpose and On What Basis Do We Process Data?",
+      "table_col_1": "Data Category",
+      "table_col_2": "Purpose",
+      "table_col_3": "Legal Basis (GDPR)",
+      "row_1_col_1": "Registration Data",
+      "row_1_col_2": "To create a user account, identify the user and provide access to \"gated\" content.",
+      "row_1_col_3": "Performance of a contract (Terms of Use).",
+      "row_2_col_1": "View Counting (c360_free_views)",
+      "row_2_col_2": "To promote limited free access for unregistered guests and prevent misuse of the service.",
+      "row_2_col_3": "Legitimate interests (protecting our intellectual property and business model).",
+      "row_3_col_1": "Technical Logs",
+      "row_3_col_2": "To ensure Platform security, prevent errors and attacks (e.g., DDoS).",
+      "row_3_col_3": "Legitimate interests (Platform security).",
+      "row_4_col_1": "Google/LinkedIn Data",
+      "row_4_col_2": "To simplify the registration process (authentication).",
+      "row_4_col_3": "Consent (you actively choose this method)."
+    },
+    "public_data": {
+      "title": "Publicly Available Data",
+      "desc": "The Company 360 platform collects, structures and analyzes publicly available data on legal entities and their officials from public registers (e.g., Enterprise Register, SRS).\nThe processing of this data is carried out in the public interest (for journalistic and research purposes) to promote transparency of the business environment in accordance with Article 85 of the GDPR and the recommendations of the Data State Inspectorate on the re-use of public register data."
+    },
+    "cookies": {
+      "title": "Cookies",
+      "intro": "We use cookies to improve user experience and ensure functionality.",
+      "necessary_title": "Necessary Cookies:",
+      "necessary_1": "<strong>token / session:</strong> Necessary for you to stay logged in.",
+      "necessary_2": "<strong>c360_free_views:</strong> Used to count free views (up to 5 times a month) for unregistered users. Without this cookie, we cannot provide the \"trial\" version.",
+      "necessary_3": "<strong>c360_cookie_consent:</strong> Saves your choice regarding cookie usage.",
+      "analytics_title": "Analytics Cookies (Optional):",
+      "analytics_1": "We may use third-party tools (e.g., Google Analytics) to understand how users use the page. These cookies are activated only with your consent.",
+      "analytics_2": "You can delete cookies at any time in your browser settings, but this may affect the ability to log in or use free views."
+    },
+    "data_sharing": {
+      "title": "Data Transfer to Third Parties",
+      "intro": "We do not sell your personal data. Data may be transferred only to trusted service providers who help ensure the operation of the Platform:",
+      "list_1": "<strong>Server Maintenance:</strong> Railway, AWS (data storage in EU/EEA territory or with appropriate security certificates).",
+      "list_2": "<strong>Authentication:</strong> Google and LinkedIn (only to the extent necessary to provide the \"Sign in\" function).",
+      "list_3": "<strong>Law Enforcement Agencies:</strong> Only in cases where required by law."
+    },
+    "data_retention": {
+      "title": "Data Retention Period",
+      "list_1": "<strong>User Profile:</strong> Stored as long as you do not delete your account. Upon deletion request, data is permanently deleted within 30 days (except for data that must be kept for accounting purposes if purchases have been made).",
+      "list_2": "<strong>Unregistered User Counter:</strong> The c360_free_views cookie is stored on your device for 30 days from the last visit."
+    },
+    "your_rights": {
+      "title": "Your Rights",
+      "intro": "According to the GDPR, you have the right to:",
+      "list_1": "Access your personal data (that we hold about you).",
+      "list_2": "Correct inaccurate data (in profile settings).",
+      "list_3": "Delete your data (\"Right to be forgotten\").",
+      "list_4": "Object to data processing or restrict it.",
+      "list_5": "Transfer data (receive your data in a structured format).",
+      "outro": "To exercise these rights, please write to us at: [tavs-epasts@company360.lv]."
+    },
+    "security": {
+      "title": "Data Security",
+      "intro": "We use modern technical solutions to protect your data:",
+      "list_1": "All data is transmitted using SSL encryption (HTTPS).",
+      "list_2": "Passwords in the database are stored only as hashes (encrypted codes), we do not see them in text form.",
+      "list_3": "Access to databases is restricted to authorized employees only."
+    },
+    "changes": {
+      "title": "Changes to Policy",
+      "desc": "We reserve the right to update this policy. Significant changes will be notified to registered users by email or by a notification on the site."
+    }
+  },
+  "CookiePolicy": {
+    "title": "Cookie Policy",
+    "last_updated": "Last updated",
+    "intro": "This Cookie Policy explains how the website company360.lv (hereinafter - \"Platform\" or \"Company 360\") uses cookies and similar technologies to recognize you when you visit our website.",
+    "what_are": {
+      "title": "1. What are cookies?",
+      "content": "Cookies are small text files sent to your device (computer, smartphone, tablet) when you visit a website. They allow the website to recognize your device and save information about your settings or actions."
+    },
+    "why_use": {
+      "title": "2. Why do we use cookies?",
+      "intro": "We use cookies for three main purposes:",
+      "list_1": "<strong>Technical operation:</strong> To allow you to log in and navigate the site securely.",
+      "list_2": "<strong>Service functionality (Metered Access):</strong> To provide guests (unregistered users) the ability to view a limited number of company profiles for free before registration.",
+      "list_3": "<strong>Analytics:</strong> To understand how users use our Platform and improve its operation."
+    },
+    "which_cookies": {
+      "title": "3. What cookies do we use?",
+      "intro": "Below is a list of cookies we use on the Platform:",
+      "type_a_title": "A. Strictly Necessary Cookies",
+      "type_a_desc": "These cookies are essential for the Platform to function correctly. Without them, we cannot provide the requested services, such as access to content or logging in.",
+      "table_headers": {
+        "name": "Name",
+        "provider": "Provider",
+        "purpose": "Purpose",
+        "expiry": "Expiry"
+      },
+      "cookies": {
+        "c360_free_views": {
+          "provider": "Company 360",
+          "purpose": "Critically important. Counts the number of free views (e.g., 5 profiles) made by an unregistered user. This allows us to offer a \"trial\" version without immediate registration.",
+          "expiry": "30 days"
+        },
+        "c360_cookie_consent": {
+          "provider": "Company 360",
+          "purpose": "Saves your choice regarding whether you have agreed to the use of cookies so the notification does not appear every time.",
+          "expiry": "1 year"
+        },
+        "token_session": {
+          "name": "token / session",
+          "provider": "Company 360",
+          "purpose": "Identifies the user after login to ensure a secure session and access to gated data.",
+          "expiry": "Session (or 30 days if you choose \"Remember me\")"
+        },
+        "csrf": {
+          "name": "next-auth.csrf-token",
+          "provider": "Company 360",
+          "purpose": "Security token that protects against CSRF attacks (protects your data when filling out forms).",
+          "expiry": "Session"
+        }
+      },
+      "type_b_title": "B. Third Party and Authentication Cookies",
+      "type_b_desc": "If you choose to register or log in using Google or LinkedIn, these service providers may set their own cookies to ensure the authentication process.",
+      "third_party_headers": {
+        "name": "Name",
+        "provider": "Provider",
+        "purpose": "Purpose",
+        "link": "Link to Policy"
+      },
+      "third_party_cookies": {
+        "google": {
+          "name": "AUTH_SESSION_ID etc.",
+          "provider": "Google",
+          "purpose": "Provides \"Sign in with Google\" functionality.",
+          "policy_name": "Google Privacy Policy"
+        },
+        "linkedin": {
+          "name": "li_at, lidc",
+          "provider": "LinkedIn",
+          "purpose": "Provides \"Sign in with LinkedIn\" functionality.",
+          "policy_name": "LinkedIn Cookie Policy"
+        }
+      },
+      "type_c_title": "C. Analytics Cookies (Optional)",
+      "type_c_desc": "Currently, we do not actively use analytics cookies, but we may introduce them in the future (e.g., Google Analytics) to improve user experience. In such case, we will ask for your separate consent."
+    },
+    "manage": {
+      "title": "4. How to manage cookies?",
+      "p1": "When visiting our site for the first time, you were shown a notification with the option to accept or reject cookies.",
+      "p2": "You can change your browser settings at any time to delete or block cookies:",
+      "list": "Google Chrome: Settings > Privacy and security > Cookies and other site data\nSafari: Preferences > Privacy\nFirefox: Options > Privacy & Security",
+      "warning": "<strong>Important:</strong> If you block or delete necessary cookies (especially c360_free_views), our Platform may not function correctly, and you may be denied free access to data, requiring immediate registration."
+    },
+    "changes": {
+      "title": "5. Changes to Cookie Policy",
+      "content": "We may update this Cookie Policy from time to time to reflect changes in our technologies or legislation. Please review this page regularly."
+    },
+    "contact": {
+      "title": "6. Contact Information",
+      "content": "If you have questions about the use of cookies, please contact us:",
+      "email": "Email: animas@animas.lv",
+      "address": "Address: [Your Company Address]"
+    }
   }
 }

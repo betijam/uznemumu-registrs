@@ -447,5 +447,99 @@
     "login_link": "Pieslēdzies šeit",
     "error_generic": "Notika kļūda",
     "success_register": "Reģistrācija veiksmīga! Lūdzu pieslēdzieties."
+  },
+  "Privacy": {
+    "title": "Privātuma politika",
+    "last_updated": "Pēdējo reizi atjaunota",
+    "general_info": {
+      "title": "Vispārīgā informācija",
+      "p1": "Šī privātuma politika apraksta, kā SIA \"Animas\" (turpmāk – \"Mēs\", \"Pārzinis\" vai \"Company 360\") ievāc, apstrādā un aizsargā jūsu personas datus, kad izmantojat mūsu vietni company360.lv (turpmāk – \"Platforma\").",
+      "p2": "Mēs esam apņēmušies aizsargāt jūsu privātumu un nodrošināt godīgu un pārredzamu datu apstrādi saskaņā ar Vispārīgo datu aizsardzības regulu (VDAR) un Latvijas Republikas likumiem.",
+      "controller_title": "Datu pārziņa rekvizīti:",
+      "name": "Nosaukums: SIA \"Animas\"",
+      "reg_no": "Reģistrācijas Nr.: [Reģistrācijas numurs]",
+      "address": "Juridiskā adrese: [Adrese]",
+      "email": "E-pasts saziņai: info@company360.lv"
+    },
+    "data_we_collect": {
+      "title": "Kādus datus mēs ievācam?",
+      "intro": "Mēs apstrādājam divu veidu datus: (A) datus, ko jūs mums sniedzat, un (B) datus, kas tiek ievākti automātiski.",
+      "section_a_title": "A. Dati, ko jūs sniedzat reģistrējoties",
+      "section_a_desc": "Lai nodrošinātu piekļuvi paplašinātai analītikai, mēs lūdzam izveidot lietotāja profilu.",
+      "list_email": "<strong>Reģistrācija ar E-pastu:</strong> Vārds, Uzvārds, E-pasta adrese, Parole (tiek glabāta šifrētā veidā).",
+      "list_social": "<strong>Reģistrācija ar Google vai LinkedIn:</strong> Ja izvēlaties \"Sign in with Google/LinkedIn\", mēs saņemam jūsu vārdu, uzvārdu, e-pasta adresi un profila attēlu no attiecīgā pakalpojuma sniedzēja.",
+      "important_note": "<strong>Svarīgi:</strong> Mēs nesaņemam un neglabājam jūsu Google vai LinkedIn paroles.",
+      "section_b_title": "B. Automātiski ievāktie dati (Sīkdatnes un Logi)",
+      "section_b_desc": "Kad apmeklējat Platformu, mēs automātiski fiksējam tehnisko informāciju:",
+      "list_tech_1": "IP adrese un ierīces tips;",
+      "list_tech_2": "Pārlūkprogrammas versija;",
+      "list_tech_3": "Apskatīto uzņēmumu un personu skaits (skatīt sadaļu \"Bezmaksas skatījumu limits\")."
+    },
+    "purpose": {
+      "title": "Kādam nolūkam un uz kāda pamata mēs apstrādājam datus?",
+      "table_col_1": "Datu kategorija",
+      "table_col_2": "Nolūks",
+      "table_col_3": "Tiesiskais pamats (VDAR)",
+      "row_1_col_1": "Reģistrācijas dati",
+      "row_1_col_2": "Lai izveidotu lietotāja kontu, identificētu lietotāju un nodrošinātu piekļuvi \"slēgtajam\" saturam.",
+      "row_1_col_3": "Līguma izpilde (Lietošanas noteikumi).",
+      "row_2_col_1": "Skatījumu uzskaite (c360_free_views)",
+      "row_2_col_2": "Lai nodrošinātu ierobežotu bezmaksas piekļuvi nereģistrētiem viesiem un novērstu pakalpojuma ļaunprātīgu izmantošanu.",
+      "row_2_col_3": "Leģitīmās intereses (aizsargāt mūsu intelektuālo īpašumu un biznesa modeli).",
+      "row_3_col_1": "Tehniskie logi",
+      "row_3_col_2": "Lai nodrošinātu Platformas drošību, novērstu kļūdas un uzbrukumus (piem., DDoS).",
+      "row_3_col_3": "Leģitīmās intereses (Platformas drošība).",
+      "row_4_col_1": "Google/LinkedIn dati",
+      "row_4_col_2": "Lai vienkāršotu reģistrācijas procesu (autentifikācija).",
+      "row_4_col_3": "Piekrišana (jūs aktīvi izvēlaties šo metodi)."
+    },
+    "public_data": {
+      "title": "Publiski pieejamie dati",
+      "desc": "Platforma Company 360 apkopo, strukturē un analizē publiski pieejamus datus par juridiskām personām un to amatpersonām no publiskiem reģistriem (piem., Uzņēmumu reģistrs, VID).\nŠo datu apstrāde tiek veikta sabiedrības interesēs (žurnālistikas un pētniecības nolūkos), lai veicinātu biznesa vides caurspīdīgumu saskaņā ar VDAR 85. pantu un Datu valsts inspekcijas rekomendācijām par publisko reģistru datu atkalizmantošanu."
+    },
+    "cookies": {
+      "title": "Sīkdatnes (Cookies)",
+      "intro": "Mēs izmantojam sīkdatnes, lai uzlabotu lietotāja pieredzi un nodrošinātu funkcionalitāti.",
+      "necessary_title": "Nepieciešamās sīkdatnes:",
+      "necessary_1": "<strong>token / session:</strong> Nepieciešamas, lai jūs paliktu ielogojies sistēmā.",
+      "necessary_2": "<strong>c360_free_views:</strong> Izmantojam, lai uzskaitītu bezmaksas skatījumus (līdz 5 reizēm mēnesī) nereģistrētiem lietotājiem. Bez šīs sīkdatnes mēs nevaram nodrošināt \"izmēģinājuma\" (trial) versiju.",
+      "necessary_3": "<strong>c360_cookie_consent:</strong> Saglabā jūsu izvēli par sīkdatņu lietošanu.",
+      "analytics_title": "Analītikas sīkdatnes (Pēc izvēles):",
+      "analytics_1": "Mēs varam izmantot trešo pušu rīkus (piem., Google Analytics), lai saprastu, kā lietotāji izmanto lapu. Šīs sīkdatnes tiek aktivizētas tikai ar jūsu piekrišanu.",
+      "analytics_2": "Jūs jebkurā laikā varat dzēst sīkdatnes savas pārlūkprogrammas iestatījumos, taču tas var ietekmēt iespēju ielogoties vai izmantot bezmaksas skatījumus."
+    },
+    "data_sharing": {
+      "title": "Datu nodošana trešajām pusēm",
+      "intro": "Mēs nepārdodam jūsu personas datus. Dati var tikt nodoti tikai uzticamiem pakalpojumu sniedzējiem, kas palīdz nodrošināt Platformas darbību:",
+      "list_1": "<strong>Serveru uzturēšana:</strong> Railway, AWS (datu glabāšana ES/EEZ teritorijā vai ar atbilstošiem drošības sertifikātiem).",
+      "list_2": "<strong>Autentifikācija:</strong> Google un LinkedIn (tikai tādā apmērā, lai nodrošinātu \"Sign in\" funkciju).",
+      "list_3": "<strong>Tiesībsargājošās iestādes:</strong> Tikai gadījumos, kad to pieprasa likums."
+    },
+    "data_retention": {
+      "title": "Datu glabāšanas termiņš",
+      "list_1": "<strong>Lietotāja profils:</strong> Tiek glabāts tik ilgi, kamēr jūs neizdzēšat savu kontu. Pēc dzēšanas pieprasījuma dati tiek neatgriezeniski dzēsti 30 dienu laikā (izņemot datus, kas jāglabā grāmatvedības vajadzībām, ja ir veikti pirkumi).",
+      "list_2": "<strong>Nereģistrētu lietotāju skaitītājs:</strong> Sīkdatne c360_free_views tiek glabāta jūsu ierīcē 30 dienas no pēdējā apmeklējuma."
+    },
+    "your_rights": {
+      "title": "Jūsu tiesības",
+      "intro": "Saskaņā ar VDAR jums ir tiesības:",
+      "list_1": "Piekļūt saviem personas datiem (ko mēs par jums glabājam).",
+      "list_2": "Labot neprecīzus datus (profila iestatījumos).",
+      "list_3": "Dzēst savus datus (\"Tiesības tikt aizmirstam\").",
+      "list_4": "Iebilst pret datu apstrādi vai to ierobežot.",
+      "list_5": "Pārnest datus (saņemt savus datus strukturētā formātā).",
+      "outro": "Lai izmantotu šīs tiesības, lūdzu, rakstiet mums uz: [tavs-epasts@company360.lv]."
+    },
+    "security": {
+      "title": "Datu drošība",
+      "intro": "Mēs izmantojam mūsdienīgus tehniskos risinājumus, lai aizsargātu jūsu datus:",
+      "list_1": "Visi dati tiek pārraidīti, izmantojot SSL šifrēšanu (HTTPS).",
+      "list_2": "Paroles datubāzē tiek glabātas tikai kā hash (šifrēti kodi), mēs tās neredzam teksta veidā.",
+      "list_3": "Piekļuve datu bāzēm ir ierobežota tikai autorizētiem darbiniekiem."
+    },
+    "changes": {
+      "title": "Izmaiņas politikā",
+      "desc": "Mēs paturam tiesības atjaunināt šo politiku. Būtiskas izmaiņas tiks paziņotas e-pastā reģistrētajiem lietotājiem vai ar paziņojumu vietnē."
+    }
   }
 }

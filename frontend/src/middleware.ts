@@ -71,5 +71,5 @@ export default function middleware(request: NextRequest) {
 
 export const config = {
     // Exclude API routes, static files, sitemaps, and robots.txt from middleware
-    matcher: ['/((?!api|_next/static|_next/image|favicon.ico|sitemap|robots).*)'],
+    matcher: ['/((?!api|_next/static|_next/image|favicon.ico|sitemap|robots|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };
