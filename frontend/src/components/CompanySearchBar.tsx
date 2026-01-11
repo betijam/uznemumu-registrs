@@ -23,7 +23,12 @@ interface SearchResults {
     persons: Person[];
 }
 
-export default function CompanySearchBar() {
+interface CompanySearchBarProps {
+    onSelectCompany?: (company: Company) => void;
+    onSelectPerson?: (person: Person) => void;
+}
+
+export default function CompanySearchBar({ onSelectCompany, onSelectPerson }: CompanySearchBarProps) {
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState("");
     const [results, setResults] = useState<SearchResults>({ companies: [], persons: [] });
@@ -69,14 +74,22 @@ export default function CompanySearchBar() {
         setSearchQuery("");
         setShowDropdown(false);
         setResults({ companies: [], persons: [] });
-        router.push(`/company/${company.regcode}`);
+        if (onSelectCompany) {
+            onSelectCompany(company);
+        } else {
+            router.push(`/company/${company.regcode}`);
+        }
     };
 
     const handleSelectPerson = (person: Person) => {
         setSearchQuery("");
         setShowDropdown(false);
         setResults({ companies: [], persons: [] });
-        router.push(`/person/${person.person_id}`);
+        if (onSelectPerson) {
+            onSelectPerson(person);
+        } else {
+            router.push(`/person/${person.person_id}`);
+        }
     };
 
     const handleSearch = (e: React.FormEvent) => {

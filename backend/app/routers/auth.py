@@ -250,6 +250,13 @@ def handle_social_login(email: str, full_name: str, provider: str):
             })
             conn.commit()
             user = result.fetchone()
+        else:
+            # If user exists but name is null/empty, update it
+            if not user.full_name and full_name:
+                conn.execute(text("UPDATE users SET full_name = :name WHERE email = :email"), {"name": full_name, "email": email})
+                conn.commit()
+                # Refresh user object
+                user = conn.execute(text("SELECT * FROM users WHERE email = :email"), {"email": email}).fetchone()
         
         # Issue Token
         conn.execute(text("UPDATE users SET last_login = NOW() WHERE email = :email"), {"email": email})

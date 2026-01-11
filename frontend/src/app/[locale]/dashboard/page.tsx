@@ -49,10 +49,14 @@ export default function DashboardPage() {
             // Load user info, favorites, and recent views
             const [favoritesRes, historyRes] = await Promise.all([
                 fetch(`${process.env.NEXT_PUBLIC_API_URL}/favorites/`, {
-                    credentials: 'include'
+                    headers: {
+                        'Authorization': `Bearer ${Cookies.get('token')}`
+                    }
                 }),
                 fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/recent?limit=10`, {
-                    credentials: 'include'
+                    headers: {
+                        'Authorization': `Bearer ${Cookies.get('token')}`
+                    }
                 })
             ]);
 
@@ -76,12 +80,20 @@ export default function DashboardPage() {
             if (meRes.ok) {
                 const userData = await meRes.json();
                 setUser({
-                    name: userData.full_name,
+                    name: userData.full_name || userData.email.split('@')[0],
                     email: userData.email,
-                    initials: userData.full_name ? userData.full_name.split(' ').map((n: any) => n[0]).join('').toUpperCase() : userData.email[0].toUpperCase()
+                    initials: (userData.full_name || userData.email)
+                        .split(' ')
+                        .map((n: any) => n[0])
+                        .join('')
+                        .toUpperCase()
+                        .substring(0, 2)
                 });
             } else {
-                // Fallback to cookie check if needed
+                // If unauthorized, redirect to login
+                if (meRes.status === 401) {
+                    router.push('/auth/login');
+                }
             }
 
         } catch (error) {
@@ -95,7 +107,9 @@ export default function DashboardPage() {
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favorites/${entityId}?entity_type=company`, {
                 method: 'DELETE',
-                credentials: 'include'
+                headers: {
+                    'Authorization': `Bearer ${Cookies.get('token')}`
+                }
             });
 
             if (res.ok) {
@@ -106,8 +120,40 @@ export default function DashboardPage() {
         }
     };
 
-    const formatDate = (dateStr: string) => {
-        const date = new Date(dateStr);
+    const addFavoriteFromSearch = async (company: any) => {
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favorites/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${Cookies.get('token')}`
+                },
+                body: JSON.stringify({
+                    entity_id: String(company.regcode),
+                    entity_type: 'company',
+                    entity_name: company.name
+                })
+            });
+
+            if (res.ok) {
+                // Refresh favorites
+                const favRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favorites/`, {
+                    headers: {
+                        'Authorization': `Bearer ${Cookies.get('token')}`
+                    }
+                });
+                if (favRes.ok) {
+                    const favData = await favRes.json();
+                    setFavorites(favData);
+                }
+            }
+        } catch (error) {
+            console.error("Error adding favorite:", error);
+        }
+    };
+
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
         const diffMins = Math.floor(diffMs / 60000);
@@ -245,7 +291,7 @@ export default function DashboardPage() {
                                 <div className="bg-white border border-gray-200 rounded-xl p-8 text-center flex flex-col items-center">
                                     <p className="text-gray-500 mb-6">{t('favorites_empty')}</p>
                                     <div className="w-full max-w-md">
-                                        <CompanySearchBar />
+                                        <CompanySearchBar onSelectCompany={addFavoriteFromSearch} />
                                     </div>
                                 </div>
                             ) : (
