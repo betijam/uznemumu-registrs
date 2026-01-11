@@ -181,7 +181,7 @@ export default function FinancialAnalysisTab({ company }: FinancialAnalysisTabPr
                                     {financialHistory.length >= 3 && (
                                         <div className="inline-flex items-center gap-1">
                                             {(() => {
-                                                const recent = financialHistory.slice(0, 3).map(f => f.current_ratio).filter(v => v !== null);
+                                                const recent = financialHistory.slice(0, 3).map((f: any) => f.current_ratio).filter((v: any) => v !== null);
                                                 if (recent.length < 2) return <span className="text-gray-400">-</span>;
                                                 const trend = recent[0] > recent[recent.length - 1] ? '↗' : recent[0] < recent[recent.length - 1] ? '↘' : '→';
                                                 const color = recent[0] > recent[recent.length - 1] ? 'text-green-600' : recent[0] < recent[recent.length - 1] ? 'text-red-600' : 'text-gray-600';
@@ -203,7 +203,7 @@ export default function FinancialAnalysisTab({ company }: FinancialAnalysisTabPr
                                     {financialHistory.length >= 3 && (
                                         <div className="inline-flex items-center gap-1">
                                             {(() => {
-                                                const recent = financialHistory.slice(0, 3).map(f => f.cash_ratio).filter(v => v !== null);
+                                                const recent = financialHistory.slice(0, 3).map((f: any) => f.cash_ratio).filter((v: any) => v !== null);
                                                 if (recent.length < 2) return <span className="text-gray-400">-</span>;
                                                 const trend = recent[0] > recent[recent.length - 1] ? '↗' : recent[0] < recent[recent.length - 1] ? '↘' : '→';
                                                 const color = recent[0] > recent[recent.length - 1] ? 'text-green-600' : recent[0] < recent[recent.length - 1] ? 'text-red-600' : 'text-gray-600';
@@ -237,7 +237,7 @@ export default function FinancialAnalysisTab({ company }: FinancialAnalysisTabPr
                                     {financialHistory.length >= 3 && (
                                         <div className="inline-flex items-center gap-1">
                                             {(() => {
-                                                const recent = financialHistory.slice(0, 3).map(f => f.net_profit_margin).filter(v => v !== null);
+                                                const recent = financialHistory.slice(0, 3).map((f: any) => f.net_profit_margin).filter((v: any) => v !== null);
                                                 if (recent.length < 2) return <span className="text-gray-400">-</span>;
                                                 const trend = recent[0] > recent[recent.length - 1] ? '↗' : recent[0] < recent[recent.length - 1] ? '↘' : '→';
                                                 const color = recent[0] > recent[recent.length - 1] ? 'text-green-600' : recent[0] < recent[recent.length - 1] ? 'text-red-600' : 'text-gray-600';
@@ -259,7 +259,7 @@ export default function FinancialAnalysisTab({ company }: FinancialAnalysisTabPr
                                     {financialHistory.length >= 3 && (
                                         <div className="inline-flex items-center gap-1">
                                             {(() => {
-                                                const recent = financialHistory.slice(0, 3).map(f => f.debt_to_equity).filter(v => v !== null);
+                                                const recent = financialHistory.slice(0, 3).map((f: any) => f.debt_to_equity).filter((v: any) => v !== null);
                                                 if (recent.length < 2) return <span className="text-gray-400">-</span>;
                                                 const trend = recent[0] > recent[recent.length - 1] ? '↗' : recent[0] < recent[recent.length - 1] ? '↘' : '→';
                                                 const color = recent[0] < recent[recent.length - 1] ? 'text-green-600' : recent[0] > recent[recent.length - 1] ? 'text-red-600' : 'text-gray-600';
