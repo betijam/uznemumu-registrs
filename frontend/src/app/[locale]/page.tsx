@@ -1,15 +1,11 @@
-"use client";
-
-import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer"; // Assuming we have a footer, or I should omit it if not certain
+import Footer from "@/components/Footer";
 import HeroSearch from "@/components/dashboard/HeroSearch";
 import MarketPulse from "@/components/dashboard/MarketPulse";
 import BentoGrid from "@/components/dashboard/BentoGrid";
 import Roadmap from "@/components/dashboard/Roadmap";
 import { Link } from "@/i18n/routing";
-// Force rebuild
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 interface DashboardData {
   pulse: {
@@ -28,30 +24,31 @@ interface DashboardData {
   latest_registered: any[];
 }
 
-export default function Home() {
-  const t = useTranslations('HomePage');
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+// Server-side data fetching
+async function getDashboardData(): Promise<DashboardData | null> {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
-  useEffect(() => {
-    async function fetchDashboard() {
-      try {
-        const res = await fetch('/api/home/dashboard');
-        if (res.ok) {
-          const json = await res.json();
-          setData(json);
-        } else {
-          console.error("Dashboard fetch failed");
-        }
-      } catch (error) {
-        console.error("Dashboard error:", error);
-      } finally {
-        setLoading(false);
-      }
+  try {
+    const res = await fetch(`${API_BASE_URL}/home/dashboard`, {
+      cache: 'no-store', // Always get fresh data
+      next: { revalidate: 300 } // Revalidate every 5 minutes
+    });
+
+    if (res.ok) {
+      return res.json();
     }
 
-    fetchDashboard();
-  }, []);
+    console.error("Dashboard fetch failed:", res.status);
+    return null;
+  } catch (error) {
+    console.error("Dashboard error:", error);
+    return null;
+  }
+}
+
+export default async function Home() {
+  const t = await getTranslations('HomePage');
+  const data = await getDashboardData();
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -87,11 +84,9 @@ export default function Home() {
 
       {/* Dashboard Content */}
       <div className="container mx-auto px-4 pb-20 relative z-10">
-        <MarketPulse data={data ? data.pulse : null} loading={loading} />
+        <MarketPulse data={data ? data.pulse : null} loading={false} />
 
-        {loading ? (
-          <div className="w-full h-96 bg-gray-100 rounded-2xl animate-pulse"></div>
-        ) : data ? (
+        {data ? (
           <BentoGrid
             tops={data.tops}
             latest={data.latest_registered}

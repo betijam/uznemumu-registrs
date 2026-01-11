@@ -694,14 +694,8 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                         "person_hash": p.person_code
                     })
             
-            # 5. Get risks
-            sanctions = conn.execute(text("""
-                SELECT program, list_name, date FROM sanctions WHERE company_regcode = :r
-            """), {"r": regcode}).fetchall()
-            
-            liquidations = conn.execute(text("""
-                SELECT type, start_date, grounds FROM liquidations WHERE company_regcode = :r
-            """), {"r": regcode}).fetchall()
+            # 5. Get risks using existing function
+            risks_by_type, total_risk_score = get_risks(regcode)
             
             # 6. Get graph data (parents, children)
             parents = conn.execute(text("""
@@ -761,10 +755,7 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             "officers": officers,
             "members": members,
             "ubos": ubos,
-            "risks": {
-                "sanctions": [{"program": s.program, "list": s.list_name} for s in sanctions],
-                "liquidations": [{"type": l.type, "start_date": str(l.start_date)} for l in liquidations]
-            },
+            "risks": risks_by_type,
             "graph": {
                 "parents": [{"regcode": p.regcode, "name": p.name} for p in parents],
                 "children": [{"regcode": c.regcode, "name": c.name} for c in children]

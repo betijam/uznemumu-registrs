@@ -191,7 +191,8 @@ def list_companies(
             }
             
     except Exception as e:
-        logger.error(f"Explorer Error: {e}")
-        # Build strict fallback if MatView fails? 
-        # For now, just raise error, as MatView should exist.
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Explorer Error: {e}", exc_info=True)
+        logger.error(f"Query params: page={page}, limit={limit}, sort_by={sort_by}, status={status}")
+        logger.error(f"Where clauses: {where_clauses}")
+        logger.error(f"Params: {params}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
