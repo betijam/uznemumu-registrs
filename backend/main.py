@@ -32,14 +32,21 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("🚀 ETL Scheduler DISABLED - Running in API-only mode")
 
-    # AUTOMATIC DB SCHEMA FIX (Run once on startup to ensure views match code)
-    try:
-        from update_db_schema import update_materialized_view
-        logger.info("🔄 Checking and updating DB schema (materialized views)...")
-        update_materialized_view()
-        logger.info("✅ DB Schema up to date.")
-    except Exception as e:
-        logger.error(f"⚠️ Failed to update DB schema: {e}")
+    # AUTOMATIC DB SCHEMA FIX (Run in background to avoid blocking startup/health checks)
+    import threading
+    import time
+    
+    def background_db_update():
+        time.sleep(5) # Allow server to start up fully
+        try:
+            from update_db_schema import update_materialized_view
+            logger.info("🔄 Checking and updating DB schema (materialized views) in background...")
+            update_materialized_view()
+            logger.info("✅ DB Schema update complete.")
+        except Exception as e:
+            logger.error(f"⚠️ Failed to update DB schema: {e}")
+
+    threading.Thread(target=background_db_update, daemon=True).start()
     
 
     yield

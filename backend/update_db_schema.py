@@ -32,26 +32,18 @@ def update_materialized_view():
             
         logger.info("Executing materialized_stats.sql...")
         with engine.begin() as conn:
-            # We need to execute the statements. 
-            # The file might contain multiple statements separated by ;
-            # But create materialized view usually needs to be one block or handled carefully.
-            # Let's try executing the whole block if possible, or split by ; if simple.
+            # Split SQL file into separate commands
+            # This is safer than executing the whole file as one block with SQLAlchemy
+            commands = sql_content.split(';')
             
-            # Since the file has DROP and CREATE, running it as a block might work depending on driver.
-            # But let's act safe and Execute explicit commands.
-             
-            # 1. Drop
-            conn.execute(text("DROP MATERIALIZED VIEW IF EXISTS company_stats_materialized CASCADE;"))
-            logger.info("Dropped old view.")
-
-            # 2. Create View Query - we need to extract the CREATE VIEW part or just run the file content if simple.
-            # The file content is:
-            # DROP ...;
-            # CREATE MATERIALIZED VIEW ... AS ... WITH DATA;
-            # CREATE INDEX ...;
-            
-            # Let's execute the file content directly.
-            conn.execute(text(sql_content))
+            for command in commands:
+                command = command.strip()
+                if command:
+                    try:
+                        conn.execute(text(command))
+                    except Exception as cmd_error:
+                        logger.warning(f"Warning executing command: {command[:50]}... -> {cmd_error}")
+                        # Don't raise immediately, try to continue (e.g. if index exists)
             
         logger.info("Successfully updated company_stats_materialized view!")
         
