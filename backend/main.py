@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 from contextlib import asynccontextmanager
 from asgi_correlation_id import CorrelationIdMiddleware
@@ -61,6 +62,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# GZip Compression - Reduce response size by ~70%
+app.add_middleware(GZipMiddleware, minimum_size=1000)  # Compress responses >1KB
 
 app.add_middleware(CorrelationIdMiddleware)
 

@@ -224,30 +224,57 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
 
     console.log(`[SC] View count: ${viewCount}, UA: ${userAgent.substring(0, 50)}...`);
 
-    // Load ALL data in parallel for instant display (no lazy loading)
-    const [company, graph, benchmark, competitors, financialHistory, persons, risks, taxHistory, procurements] = await Promise.all([
-        getCompany(id, apiHeaders),
-        getGraph(id, apiHeaders),
-        getBenchmark(id, apiHeaders),
-        getCompetitors(id, apiHeaders),
-        getFinancialHistory(id, apiHeaders),
-        getPersons(id, apiHeaders),
-        getRisks(id, apiHeaders),
-        getTaxHistory(id, apiHeaders),
-        getProcurements(id, apiHeaders)
-    ]);
+    // 🚀 OPTIMIZED: Use single /full endpoint instead of 9 separate API calls
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
-    // Merge all data into company object for CompanyTabs
-    const fullCompanyData = {
-        ...company,
-        financial_history: financialHistory,
-        officers: persons.officers,
-        members: persons.members,
-        ubos: persons.ubos,
-        risks: risks,
-        tax_history: taxHistory,
-        procurements: procurements
-    };
+    let company, financialHistory, officers, members, ubos, risks, graph, taxHistory, procurements;
+    let benchmark, competitors;
+    let fullCompanyData;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/companies/${id}/full`, {
+            ...CACHE_CONFIG,
+            headers: apiHeaders
+        });
+
+        if (!res.ok) {
+            notFound();
+        }
+
+        const fullData = await res.json();
+
+        // Extract data from single response
+        company = fullData.company;
+        financialHistory = fullData.financial_history || [];
+        officers = fullData.officers || [];
+        members = fullData.members || [];
+        ubos = fullData.ubos || [];
+        risks = fullData.risks || {};
+        graph = fullData.graph || { parents: [], children: [] };
+        taxHistory = fullData.tax_history || [];
+        procurements = fullData.procurements || [];
+
+        // Get benchmark and competitors separately (these are computed, not just data fetch)
+        [benchmark, competitors] = await Promise.all([
+            getBenchmark(id, apiHeaders),
+            getCompetitors(id, apiHeaders)
+        ]);
+
+        // Merge all data into company object for CompanyTabs
+        fullCompanyData = {
+            ...company,
+            financial_history: financialHistory,
+            officers: officers,
+            members: members,
+            ubos: ubos,
+            risks: risks,
+            tax_history: taxHistory,
+            procurements: procurements
+        };
+    } catch (error) {
+        console.error('Error fetching company data:', error);
+        notFound();
+    }
 
     const t = await getTranslations({ locale: (await params).locale, namespace: 'Company' });
 
