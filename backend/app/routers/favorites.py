@@ -42,7 +42,105 @@ async def add_favorite(
     """Add an entity to user's favorites"""
     try:
         with engine.connect() as conn:
-# ... (intermediate lines skipped) ...
+            # Check if already exists
+            existing = conn.execute(
+                text("""
+                SELECT id FROM favorites 
+                WHERE user_id = :user_id 
+                AND entity_id = :entity_id 
+                AND entity_type = :entity_type
+                """),
+                {
+                    "user_id": current_user.id,
+                    "entity_id": favorite.entity_id,
+                    "entity_type": favorite.entity_type
+                }
+            ).fetchone()
+            
+            if existing:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Entity already in favorites"
+                )
+            
+            # Insert new favorite
+            result = conn.execute(
+                text("""
+                INSERT INTO favorites (user_id, entity_id, entity_type, entity_name)
+                VALUES (:user_id, :entity_id, :entity_type, :entity_name)
+                RETURNING id, entity_id, entity_type, entity_name, created_at
+                """),
+                {
+                    "user_id": current_user.id,
+                    "entity_id": favorite.entity_id,
+                    "entity_type": favorite.entity_type,
+                    "entity_name": favorite.entity_name
+                }
+            )
+            conn.commit()
+            
+            row = result.fetchone()
+            return FavoriteResponse(
+                id=str(row[0]),
+                entity_id=row[1],
+                entity_type=row[2],
+                entity_name=row[3],
+                created_at=row[4]
+            )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding favorite: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to add favorite"
+        )
+
+
+@router.delete("/{entity_id}")
+async def remove_favorite(
+    entity_id: str,
+    entity_type: str = "company",
+    current_user: Any = Depends(get_current_user)
+):
+    """Remove an entity from user's favorites"""
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                text("""
+                DELETE FROM favorites 
+                WHERE user_id = :user_id 
+                AND entity_id = :entity_id 
+                AND entity_type = :entity_type
+                RETURNING id
+                """),
+                {
+                    "user_id": current_user.id,
+                    "entity_id": entity_id,
+                    "entity_type": entity_type
+                }
+            )
+            conn.commit()
+            
+            if result.fetchone() is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Favorite not found"
+                )
+            
+            return {"message": "Favorite removed successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing favorite: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to remove favorite"
+        )
+
+
 @router.get("", response_model=List[FavoriteResponse])
 async def get_favorites(
     current_user: Any = Depends(get_current_user)
