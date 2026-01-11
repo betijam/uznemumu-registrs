@@ -13,7 +13,7 @@ export default function Footer() {
                     <div className="col-span-1">
                         <div className="flex items-center gap-2 mb-4">
                             <img
-                                src="/Company360_logo_Color_PNG_bez_aizsarglaukumu-.png"
+                                src="/company360.png"
                                 alt="Company 360"
                                 className="h-12 w-auto"
                             />

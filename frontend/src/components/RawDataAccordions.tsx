@@ -58,19 +58,19 @@ export default function RawDataAccordions({ financialHistory }: RawDataAccordion
                                 </tr>
                                 <tr>
                                     <td className="py-2 text-gray-700">Procentu izdevumi / Interest Expenses</td>
-                                    <td className="py-2 text-right text-gray-900">{formatCurrency(latest.interest_expenses)}</td>
+                                    <td className="py-2 text-right text-gray-900">{formatCurrency(latest.interest_payment)}</td>
                                 </tr>
                                 <tr>
                                     <td className="py-2 text-gray-700">Nolietojums / Depreciation</td>
-                                    <td className="py-2 text-right text-gray-900">{formatCurrency(latest.depreciation_expenses)}</td>
+                                    <td className="py-2 text-right text-gray-900">{formatCurrency(latest.depreciation)}</td>
                                 </tr>
                                 <tr>
                                     <td className="py-2 text-gray-700">Ienākuma nodokļi / Income Tax Provision</td>
-                                    <td className="py-2 text-right text-gray-900">{formatCurrency(latest.provision_for_income_taxes)}</td>
+                                    <td className="py-2 text-right text-gray-900">{formatCurrency(latest.corporate_income_tax)}</td>
                                 </tr>
                                 <tr>
                                     <td className="py-2 text-gray-700">Darba samaksa / Labour Expenses</td>
-                                    <td className="py-2 text-right text-gray-900">{formatCurrency(latest.by_nature_labour_expenses)}</td>
+                                    <td className="py-2 text-right text-gray-900">{formatCurrency(latest.labour_costs)}</td>
                                 </tr>
                                 <tr className="bg-blue-50">
                                     <td className="py-2 font-semibold text-gray-900">EBITDA</td>
@@ -107,7 +107,7 @@ export default function RawDataAccordions({ financialHistory }: RawDataAccordion
                                     <tbody className="divide-y divide-gray-200">
                                         <tr>
                                             <td className="py-2 text-gray-700">Kopējie aktīvi / Total Assets</td>
-                                            <td className="py-2 text-right font-semibold text-gray-900">{formatCurrency(latest.total_assets)}</td>
+                                            <td className="py-2 text-right font-semibold text-gray-900">{formatCurrency(latest.balance || latest.total_assets)}</td>
                                         </tr>
                                         <tr>
                                             <td className="py-2 text-gray-700">Apgrozāmie līdzekļi / Current Assets</td>
@@ -179,42 +179,42 @@ export default function RawDataAccordions({ financialHistory }: RawDataAccordion
 
                 {expandedSection === 'cashflow' && (
                     <div className="px-6 py-4 bg-gray-50">
-                        {latest.cfo_im_net_operating_cash_flow !== null ? (
+                        {latest.cfo !== null ? (
                             <table className="w-full text-sm">
                                 <tbody className="divide-y divide-gray-200">
                                     <tr className="bg-green-50">
                                         <td className="py-2 font-semibold text-gray-900">Operatīvā darbība / Operating Activities</td>
                                         <td className="py-2 text-right font-bold text-gray-900">
-                                            {formatCurrency(latest.cfo_im_net_operating_cash_flow)}
+                                            {formatCurrency(latest.cfo)}
                                         </td>
                                     </tr>
                                     <tr>
                                         <td className="py-2 text-gray-700 pl-4">↳ Samaksātie ienākuma nodokļi / Income Taxes Paid</td>
-                                        <td className="py-2 text-right text-gray-900">{formatCurrency(latest.cfo_im_income_taxes_paid)}</td>
+                                        <td className="py-2 text-right text-gray-900">{formatCurrency(latest.taxes_paid_cf || 0)}</td>
                                     </tr>
                                     <tr className="bg-orange-50">
                                         <td className="py-2 font-semibold text-gray-900">Ieguldījumu darbība / Investing Activities</td>
                                         <td className="py-2 text-right font-bold text-gray-900">
-                                            {formatCurrency(latest.cfi_acquisition_of_fixed_assets_intangible_assets)}
+                                            {formatCurrency(latest.cfi)}
                                         </td>
                                     </tr>
                                     <tr>
                                         <td className="py-2 text-gray-700 pl-4">↳ CapEx (pamatlīdzekļi) / Fixed Assets</td>
-                                        <td className="py-2 text-right text-gray-900">{formatCurrency(latest.cfi_acquisition_of_fixed_assets_intangible_assets)}</td>
+                                        <td className="py-2 text-right text-gray-900">{formatCurrency(latest.cfi)}</td>
                                     </tr>
                                     <tr className="bg-purple-50">
                                         <td className="py-2 font-semibold text-gray-900">Finansēšanas darbība / Financing Activities</td>
                                         <td className="py-2 text-right font-bold text-gray-900">
-                                            {formatCurrency(latest.cff_net_financing_cash_flow)}
+                                            {formatCurrency(latest.cff)}
                                         </td>
                                     </tr>
                                     <tr className="bg-blue-100">
                                         <td className="py-2 font-bold text-gray-900">Kopējā naudas izmaiņa / Net Change in Cash</td>
                                         <td className="py-2 text-right font-bold text-gray-900">
                                             {formatCurrency(
-                                                (latest.cfo_im_net_operating_cash_flow || 0) +
-                                                (latest.cfi_acquisition_of_fixed_assets_intangible_assets || 0) +
-                                                (latest.cff_net_financing_cash_flow || 0)
+                                                (latest.cfo || 0) +
+                                                (latest.cfi || 0) +
+                                                (latest.cff || 0)
                                             )}
                                         </td>
                                     </tr>

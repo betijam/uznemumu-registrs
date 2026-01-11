@@ -175,14 +175,23 @@ def get_top_competitors(regcode: int, limit: int = 5):
             "limit": limit
         }).fetchall()
         
+        def safe_json_float(val):
+            if val is None:
+                return None
+            f = float(val)
+            import math
+            if math.isnan(f) or math.isinf(f):
+                return None
+            return f
+
         return [
             {
                 "regcode": c.regcode,
                 "name": c.name,
                 "employee_count": c.employee_count,
                 "nace_text": c.nace_text,
-                "turnover": float(c.turnover) if c.turnover else None,
-                "profit": float(c.profit) if c.profit else None,
+                "turnover": safe_json_float(c.turnover),
+                "profit": safe_json_float(c.profit),
                 "year": c.year
             }
             for c in competitors

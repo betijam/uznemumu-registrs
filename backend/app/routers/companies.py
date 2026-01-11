@@ -115,7 +115,10 @@ def get_financial_history(regcode: int):
         fin_rows = conn.execute(text("""
             SELECT year, turnover, profit, employees, cash_balance,
                    current_ratio, quick_ratio, cash_ratio,
-                   net_profit_margin, roe, roa, debt_to_equity, equity_ratio, ebitda
+                   net_profit_margin, roe, roa, debt_to_equity, equity_ratio, ebitda,
+                   interest_expenses, depreciation_expenses, provision_for_income_taxes, by_nature_labour_expenses,
+                   accounts_receivable, inventories,
+                   cfo_im_net_operating_cash_flow, cff_net_financing_cash_flow, cfi_acquisition_of_fixed_assets_intangible_assets
             FROM financial_reports 
             WHERE company_regcode = :r 
             ORDER BY year DESC
@@ -145,7 +148,17 @@ def get_financial_history(regcode: int):
                 "roa": safe_float(f.roa),
                 "debt_to_equity": safe_float(f.debt_to_equity),
                 "equity_ratio": safe_float(f.equity_ratio),
-                "ebitda": safe_float(f.ebitda)
+                "ebitda": safe_float(f.ebitda),
+                # Extended fields
+                "interest_payment": safe_float(f.interest_expenses),
+                "depreciation": safe_float(f.depreciation_expenses),
+                "corporate_income_tax": safe_float(f.provision_for_income_taxes),
+                "labour_costs": safe_float(f.by_nature_labour_expenses),
+                "accounts_receivable": safe_float(f.accounts_receivable),
+                "inventories": safe_float(f.inventories),
+                "cfo": safe_float(f.cfo_im_net_operating_cash_flow),
+                "cff": safe_float(f.cff_net_financing_cash_flow),
+                "cfi": safe_float(f.cfi_acquisition_of_fixed_assets_intangible_assets)
             }
             
             turnover_val = safe_float(f.turnover)
@@ -219,7 +232,13 @@ def get_risks(regcode: int):
         total_score = sum(r.risk_score or 0 for r in rows)
         by_type = {'sanctions': [], 'liquidations': [], 'suspensions': [], 'securing_measures': []}
         for r in rows:
-            risk = {"type": r.risk_type, "description": r.description, "date": str(r.start_date) if r.start_date else None, "score": r.risk_score}
+            risk = {
+                "type": r.risk_type,
+                "description": r.description,
+                "date": str(r.start_date) if r.start_date else None,
+                "score": r.risk_score,
+                "active": True # They are already filtered by active = TRUE
+            }
             if r.risk_type == 'sanction':
                 risk.update({"program": r.sanction_program, "list_text": r.sanction_list_text, "legal_base_url": r.legal_base_url})
                 by_type['sanctions'].append(risk)
@@ -802,47 +821,19 @@ def get_persons_endpoint(regcode: int, response: Response):
 
 @router.get("/companies/{regcode}/risks")
 def get_risks_endpoint(regcode: int, response: Response):
-    """Lazy-load endpoint for full risk details."""
+    """Lazy-load endpoint for risks."""
     response.headers["Cache-Control"] = "public, max-age=3600"
     
-    with engine.connect() as conn:
-        rows = conn.execute(text("""
-            SELECT risk_type, description, start_date, risk_score,
-                   sanction_program, sanction_list_text, legal_base_url,
-                   suspension_code, suspension_grounds,
-                   measure_type, institution_name, case_number,
-                   liquidation_type, liquidation_grounds
-            FROM risks 
-            WHERE company_regcode = :r AND active = TRUE
-            ORDER BY risk_score DESC, start_date DESC
-        """), {"r": regcode}).fetchall()
-        
-        total_score = sum(r.risk_score or 0 for r in rows)
-        
-        by_type = {'sanctions': [], 'liquidations': [], 'suspensions': [], 'securing_measures': []}
-        for r in rows:
-            risk = {
-                "type": r.risk_type, "description": r.description,
-                "date": str(r.start_date) if r.start_date else None, "score": r.risk_score
-            }
-            if r.risk_type == 'sanction':
-                risk.update({"program": r.sanction_program, "list_text": r.sanction_list_text, "legal_base_url": r.legal_base_url})
-                by_type['sanctions'].append(risk)
-            elif r.risk_type == 'liquidation':
-                risk.update({"liquidation_type": r.liquidation_type, "grounds": r.liquidation_grounds})
-                by_type['liquidations'].append(risk)
-            elif r.risk_type == 'suspension':
-                risk.update({"suspension_code": r.suspension_code, "grounds": r.suspension_grounds})
-                by_type['suspensions'].append(risk)
-            elif r.risk_type == 'securing_measure':
-                risk.update({"measure_type": r.measure_type, "institution": r.institution_name, "case_number": r.case_number})
-                by_type['securing_measures'].append(risk)
-        
-        return {
-            "risks": by_type, 
-            "total_risk_score": total_score,
-            "risk_level": "CRITICAL" if total_score >= 100 else "HIGH" if total_score >= 50 else "MEDIUM" if total_score >= 30 else "LOW" if total_score > 0 else "NONE"
-        }
+    risks_by_type, total_risk_score = get_risks(regcode)
+    
+    # Calculate level for consistency
+    risk_level = "CRITICAL" if total_risk_score >= 100 else "HIGH" if total_risk_score >= 50 else "MEDIUM" if total_risk_score >= 30 else "LOW" if total_risk_score > 0 else "NONE"
+    
+    return {
+        "risks": risks_by_type,
+        "total_risk_score": total_risk_score,
+        "risk_level": risk_level
+    }
 
 
 # ================================================================================

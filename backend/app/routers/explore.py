@@ -28,7 +28,7 @@ def list_companies(
     order: str = Query("desc", pattern="^(asc|desc)$"),
     nace: Optional[List[str]] = Query(None, description="List of NACE codes (partial match)"),
     region: Optional[str] = Query(None, description="Region search term, e.g. Riga"),
-    status: str = Query("all", pattern="^(active|liquidated|all)$"),
+    status: str = Query("all"), # Removed regex to handle frontend artifacts like 'active:1'
     min_turnover: Optional[int] = Query(None),
     max_turnover: Optional[int] = Query(None),
     min_employees: Optional[int] = Query(None),
@@ -45,6 +45,9 @@ def list_companies(
     
     offset = (page - 1) * limit
     
+    # Clean status param (handle 'active:1' legacy/frontend format)
+    clean_status = status.split(':')[0] if status else "all"
+    
     # Determine efficient latest year if not provided
     if not year:
         year = 2024 
@@ -53,10 +56,10 @@ def list_companies(
     where_clauses = ["1=1"]
     params = {"year": year}
     
-    if status != "all":
-        if status == "active":
+    if clean_status != "all":
+        if clean_status == "active":
              where_clauses.append("(c.status = 'active' OR c.status = 'A' OR c.status ILIKE 'aktīvs' OR c.status IS NULL OR c.status = '')")
-        elif status == "liquidated":
+        elif clean_status == "liquidated":
              where_clauses.append("(c.status = 'liquidated' OR c.status = 'L' OR c.status ILIKE 'likvidēts' OR c.status ILIKE 'steigta likvidācija')")
     
     if nace:

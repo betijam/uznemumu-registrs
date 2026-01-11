@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import RawDataAccordions from './RawDataAccordions';
+import FinancialHealthCharts from './FinancialHealthCharts';
 import {
     formatCurrency,
     formatPercent,
@@ -30,13 +31,13 @@ export default function FinancialAnalysisTab({ company }: FinancialAnalysisTabPr
             {/* 1. VID Reitings / Tax Rating */}
             {company.rating && (
                 <div className={`p-4 rounded-lg border ${company.rating.grade === 'A' ? 'bg-green-50 border-green-200' :
-                        company.rating.grade === 'B' ? 'bg-yellow-50 border-yellow-200' :
-                            'bg-gray-50 border-gray-200'
+                    company.rating.grade === 'B' ? 'bg-yellow-50 border-yellow-200' :
+                        'bg-gray-50 border-gray-200'
                     }`}>
                     <div className="flex items-center gap-3">
                         <div className={`text-2xl font-bold ${company.rating.grade === 'A' ? 'text-green-700' :
-                                company.rating.grade === 'B' ? 'text-yellow-700' :
-                                    'text-gray-700'
+                            company.rating.grade === 'B' ? 'text-yellow-700' :
+                                'text-gray-700'
                             }`}>
                             {company.rating.grade} {t('grade')}
                         </div>
@@ -52,98 +53,10 @@ export default function FinancialAnalysisTab({ company }: FinancialAnalysisTabPr
                 </div>
             )}
 
-            {/* 2. Fiskālā Disciplīna (Table) */}
-            <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                    <h3 className="font-semibold text-gray-900">{t('fiscalDiscipline')}</h3>
-                    <span className="text-sm text-green-600 font-medium flex items-center gap-1">
-                        ● {t('noTaxDebt')}
-                    </span>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
-                            <tr>
-                                <th className="px-6 py-3">{t('year')}</th>
-                                <th className="px-6 py-3 text-right">{t('totalTax')}</th>
-                                <th className="px-6 py-3 text-right">{t('vsaoi')}</th>
-                                <th className="px-6 py-3 text-right">{t('iin')}</th>
-                                <th className="px-6 py-3 text-right">{t('employees')}</th>
-                                <th className="px-6 py-3 text-right">{t('avgSalary')}</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {taxHistory.length > 0 ? taxHistory.map((row: any, idx: number) => (
-                                <tr key={idx} className="hover:bg-gray-50">
-                                    <td className="px-6 py-3 font-medium text-gray-900">{row.year}</td>
-                                    <td className="px-6 py-3 text-right font-medium">{formatCurrency(row.total_tax_paid)}</td>
-                                    <td className="px-6 py-3 text-right text-gray-600">{formatCurrency(row.social_tax_vsaoi)}</td>
-                                    <td className="px-6 py-3 text-right text-gray-600">{formatCurrency(row.labor_tax_iin)}</td>
-                                    <td className="px-6 py-3 text-right text-gray-900">{row.avg_employees}</td>
-                                    <td className="px-6 py-3 text-right font-medium text-green-700">
-                                        {formatCurrency(row.avg_gross_salary)}
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">{t('noData')}</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            {/* 2. Visual Graphs (NEW) */}
+            <FinancialHealthCharts latestFinancials={latest} />
 
-            {/* 3. Finanšu Vēsture (Table with See More) */}
-            <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                    <h3 className="font-semibold text-gray-900">{t('financialHistory')}</h3>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
-                            <tr>
-                                <th className="px-6 py-3">{t('year')}</th>
-                                <th className="px-6 py-3 text-right">{t('turnover')}</th>
-                                <th className="px-6 py-3 text-right">{t('profit')}</th>
-                                <th className="px-6 py-3 text-right">{t('employees')}</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {visibleHistory.length > 0 ? visibleHistory.map((row: any, idx: number) => (
-                                <tr key={idx} className="hover:bg-gray-50">
-                                    <td className="px-6 py-3 font-medium text-gray-900">{row.year}</td>
-                                    <td className="px-6 py-3 text-right">
-                                        {formatCurrency(row.turnover)}
-                                    </td>
-                                    <td className={`px-6 py-3 text-right font-medium ${row.profit >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
-                                        {formatCurrency(row.profit)}
-                                    </td>
-                                    <td className="px-6 py-3 text-right text-gray-600">
-                                        {row.employees || '-'}
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan={4} className="px-6 py-4 text-center text-gray-500">{t('noData')}</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-                {sortedHistory.length > 5 && (
-                    <div className="p-3 border-t border-gray-100 text-center">
-                        <button
-                            onClick={() => setShowAllHistory(!showAllHistory)}
-                            className="text-sm font-medium text-blue-600 hover:text-blue-700"
-                        >
-                            {showAllHistory ? t('showLess') : t('showMore')}
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            {/* 4. Detalizēti Finanšu Rādītāji (Table) */}
+            {/* 3. Detalizēti Finanšu Rādītāji (Moved Up) */}
             <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
                     <h3 className="font-semibold text-gray-900">{t('detailedFinancials')}</h3>
@@ -244,7 +157,98 @@ export default function FinancialAnalysisTab({ company }: FinancialAnalysisTabPr
                 </div>
             </div>
 
-            {/* 5. Raw Data Accordions */}
+            {/* 4. Fiskālā Disciplīna (Table) */}
+            <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                    <h3 className="font-semibold text-gray-900">{t('fiscalDiscipline')}</h3>
+                    <span className="text-sm text-green-600 font-medium flex items-center gap-1">
+                        ● {t('noTaxDebt')}
+                    </span>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
+                            <tr>
+                                <th className="px-6 py-3">{t('year')}</th>
+                                <th className="px-6 py-3 text-right">{t('totalTax')}</th>
+                                <th className="px-6 py-3 text-right">{t('vsaoi')}</th>
+                                <th className="px-6 py-3 text-right">{t('iin')}</th>
+                                <th className="px-6 py-3 text-right">{t('employees')}</th>
+                                <th className="px-6 py-3 text-right">{t('avgSalary')}</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {taxHistory.length > 0 ? taxHistory.map((row: any, idx: number) => (
+                                <tr key={idx} className="hover:bg-gray-50">
+                                    <td className="px-6 py-3 font-medium text-gray-900">{row.year}</td>
+                                    <td className="px-6 py-3 text-right font-medium">{formatCurrency(row.total_tax_paid)}</td>
+                                    <td className="px-6 py-3 text-right text-gray-600">{formatCurrency(row.social_tax_vsaoi)}</td>
+                                    <td className="px-6 py-3 text-right text-gray-600">{formatCurrency(row.labor_tax_iin)}</td>
+                                    <td className="px-6 py-3 text-right text-gray-900">{row.avg_employees}</td>
+                                    <td className="px-6 py-3 text-right font-medium text-green-700">
+                                        {formatCurrency(row.avg_gross_salary)}
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">{t('noData')}</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* 5. Finanšu Vēsture (Table with See More) */}
+            <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                    <h3 className="font-semibold text-gray-900">{t('financialHistory')}</h3>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
+                            <tr>
+                                <th className="px-6 py-3">{t('year')}</th>
+                                <th className="px-6 py-3 text-right">{t('turnover')}</th>
+                                <th className="px-6 py-3 text-right">{t('profit')}</th>
+                                <th className="px-6 py-3 text-right">{t('employees')}</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {visibleHistory.length > 0 ? visibleHistory.map((row: any, idx: number) => (
+                                <tr key={idx} className="hover:bg-gray-50">
+                                    <td className="px-6 py-3 font-medium text-gray-900">{row.year}</td>
+                                    <td className="px-6 py-3 text-right">
+                                        {formatCurrency(row.turnover)}
+                                    </td>
+                                    <td className={`px-6 py-3 text-right font-medium ${row.profit >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
+                                        {formatCurrency(row.profit)}
+                                    </td>
+                                    <td className="px-6 py-3 text-right text-gray-600">
+                                        {row.employees || '-'}
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr>
+                                    <td colSpan={4} className="px-6 py-4 text-center text-gray-500">{t('noData')}</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+                {sortedHistory.length > 5 && (
+                    <div className="p-3 border-t border-gray-100 text-center">
+                        <button
+                            onClick={() => setShowAllHistory(!showAllHistory)}
+                            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                        >
+                            {showAllHistory ? t('showLess') : t('showMore')}
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* 6. Raw Data Accordions */}
             <RawDataAccordions financialHistory={sortedHistory} />
 
         </div>

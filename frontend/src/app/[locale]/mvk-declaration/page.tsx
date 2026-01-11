@@ -520,7 +520,7 @@ ${t('total')}\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(
                         {/* Scenario Summary */}
                         <div className="bg-white rounded-xl shadow-lg p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-bold text-gray-900">🧠 {t('scenario_summary')}</h2>
+                                <h2 className="text-xl font-bold text-gray-900">{t('scenario_summary')}</h2>
                                 <StatusBadge type={mvkData.scenario.company_type} />
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -545,7 +545,7 @@ ${t('total')}\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(
 
                         {/* 0️⃣ Status Detection Summary */}
                         <div className="bg-white rounded-xl shadow-lg p-6">
-                            <h2 className="text-xl font-bold text-gray-900 mb-4">📊 {t('status_detection_title')}</h2>
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">{t('status_detection_title')}</h2>
 
                             <div className="overflow-x-auto -mx-4 sm:mx-0">
                                 <table className="w-full text-sm mb-4 min-w-[400px]">
@@ -560,7 +560,7 @@ ${t('total')}\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(
                                         <tr className="border-b">
                                             <td className="px-4 py-3">{t('share_capital_rel')}</td>
                                             <td className="px-4 py-3">
-                                                <span className="text-green-600 font-medium">✅ {t('auto_detected')}</span>
+                                                <span className="text-green-600 font-medium">{t('auto_detected')}</span>
                                             </td>
                                             <td className="px-4 py-3 text-gray-500">{t('ur_data')}</td>
                                         </tr>
@@ -606,7 +606,7 @@ ${t('total')}\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(
                         {/* Section 0: Identification */}
                         <div className="bg-white rounded-xl shadow-lg p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-bold text-gray-900">📋 {t('section_0_title')}</h2>
+                                <h2 className="text-xl font-bold text-gray-900">{t('section_0_title')}</h2>
                                 <button
                                     onClick={() => copyToClipboard(getIdentificationText(), "identification")}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copySuccess === "identification"
@@ -614,7 +614,7 @@ ${t('total')}\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(
                                         : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                                         }`}
                                 >
-                                    {copySuccess === "identification" ? `✓ ${t('copied')}` : `📋 ${t('copy')}`}
+                                    {copySuccess === "identification" ? `✓ ${t('copied')}` : `${t('copy')}`}
                                 </button>
                             </div>
                             <div className="bg-gray-50 rounded-lg p-4 font-mono text-sm space-y-1">
@@ -665,7 +665,7 @@ ${t('total')}\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(
                         {mvkData.scenario.has_partners && (
                             <div className="bg-white rounded-xl shadow-lg p-6">
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-xl font-bold text-gray-900">📊 {t('section_a_title')}</h2>
+                                    <h2 className="text-xl font-bold text-gray-900">{t('section_a_title')}</h2>
                                     <button
                                         onClick={() => copyTableAsHtml("table-section-a", "section_a")}
                                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copySuccess === "section_a"
@@ -673,7 +673,7 @@ ${t('total')}\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(
                                             : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                                             }`}
                                     >
-                                        {copySuccess === "section_a" ? `✓ ${t('copied')}` : `📋 ${t('copy_table_a')}`}
+                                        {copySuccess === "section_a" ? `✓ ${t('copied')}` : `${t('copy_table_a')}`}
                                     </button>
                                 </div>
 
@@ -733,7 +733,7 @@ ${t('total')}\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(
                             <div className="bg-white rounded-xl shadow-lg p-6">
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-xl font-bold text-gray-900">
-                                        🔗 {t('section_b_title')}
+                                        {t('section_b_title')}
                                         <span className="ml-2 text-sm font-normal text-gray-500">
                                             {t('type')} {mvkData.section_b.type === "B1" ? `B(1) - ${t('consolidated')}` : `B(2) - ${t('non_consolidated')}`}
                                         </span>
@@ -803,7 +803,7 @@ ${t('total')}\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(
                         {/* Summary Table 2.1-2.3 */}
                         <div className="bg-white rounded-xl shadow-lg p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-bold text-gray-900">📈 {t('summary_title')}</h2>
+                                <h2 className="text-xl font-bold text-gray-900">{t('summary_title')}</h2>
                                 <button
                                     onClick={() => copyTableAsHtml("table-summary", "summary")}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copySuccess === "summary"
@@ -811,7 +811,7 @@ ${t('total')}\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(
                                         : "bg-primary text-white hover:bg-primary-dark"
                                         }`}
                                 >
-                                    {copySuccess === "summary" ? `✓ ${t('copied')}` : `📋 ${t('copy_summary')}`}
+                                    {copySuccess === "summary" ? `✓ ${t('copied')}` : `${t('copy_summary')}`}
                                 </button>
                             </div>
 
@@ -861,7 +861,7 @@ ${t('total')}\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(
 
                         {/* MVK Size Classification */}
                         <div className="bg-gradient-to-r from-primary to-primary-dark rounded-xl shadow-lg p-6 text-white">
-                            <h2 className="text-xl font-bold mb-4">🏢 {t('classification_result', { year: mvkData.year })}</h2>
+                            <h2 className="text-xl font-bold mb-4">{t('classification_result', { year: mvkData.year })}</h2>
                             <div className="grid grid-cols-3 gap-4 mb-4">
                                 <div className="text-center">
                                     <p className="text-3xl font-bold">{formatNumber(mvkData.summary_table.total.employees)}</p>

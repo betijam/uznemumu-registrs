@@ -82,6 +82,8 @@ export default function CompanyTabs({
                         officers: personsData.officers,
                         members: personsData.members,
                         ubos: personsData.ubos,
+                        risks: (risksData as any).risks,
+                        total_risk_score: (risksData as any).total_risk_score,
                         risk_level: (risksData as any).risk_level || prev.risk_level,
                         tax_history: taxData,
                         procurements: procData
