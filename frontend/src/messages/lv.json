@@ -456,6 +456,7 @@
   "Privacy": {
     "title": "Privātuma politika",
     "last_updated": "Pēdējo reizi atjaunota",
+    "date": "2026. gada 11. janvārī",
     "general_info": {
       "title": "Vispārīgā informācija",
       "p1": "Šī privātuma politika apraksta, kā SIA \"Animas\" (turpmāk – \"Mēs\", \"Pārzinis\" vai \"Company 360\") ievāc, apstrādā un aizsargā jūsu personas datus, kad izmantojat mūsu vietni company360.lv (turpmāk – \"Platforma\").",
@@ -716,7 +717,17 @@
     "add_to_favorites": "Pievienot favorītiem",
     "remove_from_favorites": "Noņemt no favorītiem",
     "added_to_favorites": "Pievienots favorītiem!",
-    "removed_from_favorites": "Noņemts no favorītiem"
+    "removed_from_favorites": "Noņemts no favorītiem",
+    "comparison_title": "Salīdzināšanas saraksts",
+    "comparison_empty": "Nav pievienotu uzņēmumu salīdzināšanai",
+    "open_comparison": "Atvērt salīdzināšanu",
+    "suggest_modal_title": "Ieteikt jaunu funkciju",
+    "suggest_label": "Tava ideja vai pamanītā kļūda",
+    "suggest_placeholder": "Apraksti savu ieteikumu šeit...",
+    "cancel": "Atcelt",
+    "send_suggestion": "Nosūtīt Ieteikumu",
+    "sending": "Sūta...",
+    "suggestion_success": "Paldies par ieteikumu!"
   },
   "Pricing": {
     "title": "Vienkāršas un godīgas cenas",
@@ -769,5 +780,99 @@
     "faq_a2": "Mēs strādājam pie Pro funkcijām. Plānots palaist 2026. gada 2. ceturksnī. Piesāksimies gaidīšanas sarakstam, lai saņemtu agrīnu piekļuvi.",
     "faq_q3": "No kurienes nāk dati?",
     "faq_a3": "Mēs apkopojam datus no uzņēmumu reģistra, Valsts ieņēmumu dienesta (VID), Centrālās statistikas pārvaldes un citiem publiskiem avotiem. Visi dati ir publiski pieejami."
+  },
+  "CookiePolicy": {
+    "title": "Sīkdatņu politika",
+    "last_updated": "Pēdējoreiz atjaunināts",
+    "date": "2026. gada 11. janvārī",
+    "intro": "Mēs izmantojam sīkdatnes un līdzīgas tehnoloģijas, lai uzlabotu lietotāju pieredzi, analizētu apmeklējumu plūsmu un nodrošinātu mājaslapas drošu darbību. Šī politika paskaidro, kā mēs izmantojam sīkdatnes un kā Jūs varat tās pārvaldīt.",
+    "what_are": {
+      "title": "Kas ir sīkdatnes?",
+      "content": "Sīkdatnes ir nelieli teksta faili, kas tiek saglabāti Jūsu datorā vai mobilajā ierīcē, kad apmeklējat mājaslapu. Tie palīdz mājaslapai \"atcerēties\" Jūsu darbības un izvēles (piemēram, valodu, pieslēgšanās informāciju) noteiktā laika periodā."
+    },
+    "why_use": {
+      "title": "Kāpēc mēs izmantojam sīkdatnes?",
+      "intro": "Mēs izmantojam sīkdatnes vairākiem mērķiem:",
+      "list_1": "<strong>Būtiskās sīkdatnes</strong>: Nepieciešamas mājaslapas darbībai (piemēram, lai Jūs varētu pieslēgties savam profilam).",
+      "list_2": "<strong>Analītiskās sīkdatnes</strong>: Palīdz saprast, kā lietotāji izmanto lapu, lai mēs varētu to uzlabot.",
+      "list_3": "<strong>Funkcionālās sīkdatnes</strong>: Nodrošina personalizētu pieredzi, piemēram, atceroties Jūsu valodas izvēli."
+    },
+    "which_cookies": {
+      "title": "Kādas sīkdatnes mēs izmantojam?",
+      "intro": "Mēs izmantojam gan pagaidu (sesijas) sīkdatnes, gan pastāvīgās sīkdatnes.",
+      "type_a_title": "A. Pašu sīkdatnes (Pirmās puses)",
+      "type_a_desc": "Šīs sīkdatnes uzstāda mūsu sistēma, un tās ir nepieciešamas pamatfunkcijām.",
+      "table_headers": {
+        "name": "Nosaukums",
+        "provider": "Pakalpojums",
+        "purpose": "Mērķis",
+        "expiry": "Termiņš"
+      },
+      "cookies": {
+        "c360_free_views": {
+          "provider": "Company 360",
+          "purpose": "Skatījumu skaita izsekošana nereģistrētiem lietotājiem",
+          "expiry": "1 gads"
+        },
+        "c360_cookie_consent": {
+          "provider": "Company 360",
+          "purpose": "Atceras Jūsu sīkdatņu piekrišanas izvēli",
+          "expiry": "1 gads"
+        },
+        "token_session": {
+          "name": "token",
+          "provider": "Company 360",
+          "purpose": "Sesijas identifikācija (autentifikācija)",
+          "expiry": "30 dienas"
+        },
+        "csrf": {
+          "name": "csrftoken",
+          "provider": "Company 360",
+          "purpose": "Drošības aizsardzība pret starpvietņu pieprasījumu viltošanu",
+          "expiry": "1 gads"
+        }
+      },
+      "type_b_title": "B. Trešo pušu sīkdatnes",
+      "type_b_desc": "Mēs izmantojam uzticamu partneru rīkus analītikai un drošībai.",
+      "third_party_headers": {
+        "name": "Nosaukums",
+        "provider": "Pakalpojumu sniedzējs",
+        "purpose": "Mērķis",
+        "link": "Politika"
+      },
+      "third_party_cookies": {
+        "google": {
+          "name": "_ga, _gid",
+          "provider": "Google Analytics",
+          "purpose": "Analītika un lietotāju plūsmas izpēte",
+          "policy_name": "Privātuma politika"
+        },
+        "linkedin": {
+          "name": "li_sugr, bcookie",
+          "provider": "LinkedIn",
+          "purpose": "Vienotā pieteikšanās un autentifikācija",
+          "policy_name": "Sīkdatņu politika"
+        }
+      },
+      "type_c_title": "C. Pārdošanas un mārketinga sīkdatnes",
+      "type_c_desc": "Šobrīd mēs neizmantojam tiešās reklāmas sīkdatnes lietotāju profilēšanai."
+    },
+    "manage": {
+      "title": "Kā pārvaldīt sīkdatnes?",
+      "p1": "Jūs varat jebkurā laikā dzēst sīkdatnes no savas ierīces, izmatojot pārlūkprogrammas iestatījumus.",
+      "p2": "Lielākā daļa pārlūkprogrammu ļauj bloķēt visas sīkdatnes vai atļaut tikai noteiktu vietņu sīkdatnes. Lūk, kā to izdarīt populārākajās pārlūkprogrammās:",
+      "list": "• Chrome: Iestatījumi -> Privātums un drošība -> Sīkfaili un citi vietņu dati\n• Safari: Settings -> Privacy -> Manage Website Data\n• Firefox: Preferences -> Privacy & Security -> Cookies and Site Data",
+      "warning": "<strong>Brīdinājums:</strong> Ja Jūs bloķēsiet visas sīkdatnes, dažas mūsu mājaslapas funkcijas var nedarboties pareizi (piemēram, nevarēsiet autorizēties)."
+    },
+    "changes": {
+      "title": "Izmaiņas politikā",
+      "content": "Mēs varam laiku pa laikam atjaunināt šo sīkdatņu politiku. Visas izmaiņas tiks publicētas šajā lapā."
+    },
+    "contact": {
+      "title": "Kontakti",
+      "content": "Ja Jums ir jautājumi par mūsu sīkdatņu izmantošanu, lūdzu, sazinieties ar mums:",
+      "email": "E-pasts: info@company360.lv",
+      "address": "Adrese: Rīga, Latvija"
+    }
   }
 }

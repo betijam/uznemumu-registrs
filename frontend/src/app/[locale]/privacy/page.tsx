@@ -3,13 +3,13 @@ import { useTranslations } from 'next-intl';
 
 export default function PrivacyPage() {
     const t = useTranslations('Privacy');
-    const currentYear = new Date().getFullYear();
+
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-4xl">
             <h1 className="text-3xl font-bold mb-4">{t('title')}</h1>
 
-            <p className="text-sm text-gray-500 mb-8">{t('last_updated')}: {currentYear}. gada 11. janvārī</p>
+            <p className="text-sm text-gray-500 mb-8">{t('last_updated')}: {t('date')}</p>
 
             <section className="mb-8">
                 <h2 className="text-2xl font-semibold mb-4">1. {t('general_info.title')}</h2>

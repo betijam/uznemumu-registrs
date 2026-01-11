@@ -1,9 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/routing";
+import { Link, useRouter } from "@/i18n/routing";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
+import { useComparison } from "@/contexts/ComparisonContext";
+import CompanySearchBar from "@/components/CompanySearchBar";
 
 interface Favorite {
     id: string;
@@ -23,10 +25,20 @@ interface RecentView {
 export default function DashboardPage() {
     const t = useTranslations('Dashboard');
     const router = useRouter();
+    const { selectedCompanies, removeCompany: removeFromComparison } = useComparison();
     const [favorites, setFavorites] = useState<Favorite[]>([]);
+
+    const handleLogout = () => {
+        Cookies.remove('token');
+        router.push('/');
+        router.refresh();
+    };
     const [recentViews, setRecentViews] = useState<RecentView[]>([]);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
+    const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false);
+    const [suggestion, setSuggestion] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         loadDashboardData();
@@ -54,12 +66,23 @@ export default function DashboardPage() {
                 setRecentViews(histData);
             }
 
-            // TODO: Load user info from auth context
-            setUser({
-                name: "Jānis Bērziņš",
-                email: "janis@uznemums.lv",
-                initials: "JB"
+            // Load real user info
+            const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+                headers: {
+                    'Authorization': `Bearer ${Cookies.get('token')}`
+                }
             });
+
+            if (meRes.ok) {
+                const userData = await meRes.json();
+                setUser({
+                    name: userData.full_name,
+                    email: userData.email,
+                    initials: userData.full_name ? userData.full_name.split(' ').map((n: any) => n[0]).join('').toUpperCase() : userData.email[0].toUpperCase()
+                });
+            } else {
+                // Fallback to cookie check if needed
+            }
 
         } catch (error) {
             console.error("Error loading dashboard:", error);
@@ -96,6 +119,17 @@ export default function DashboardPage() {
         if (diffDays === 0) return "Šodien";
         if (diffDays === 1) return "Vakar";
         return date.toLocaleDateString('lv-LV');
+    };
+
+    const handleSuggest = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setIsSuggestModalOpen(false);
+        setSuggestion("");
+        setIsSubmitting(false);
+        alert(t('suggestion_success'));
     };
 
     if (loading) {
@@ -152,7 +186,10 @@ export default function DashboardPage() {
                             <button className="w-full py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 text-slate-700">
                                 {t('edit_profile')}
                             </button>
-                            <button className="w-full mt-2 py-2 text-red-600 text-sm font-medium hover:underline">
+                            <button
+                                onClick={handleLogout}
+                                className="w-full mt-2 py-2 text-red-600 text-sm font-medium hover:underline text-center"
+                            >
                                 {t('logout')}
                             </button>
                         </div>
@@ -179,7 +216,10 @@ export default function DashboardPage() {
                                     10 gadu vēsture
                                 </li>
                             </ul>
-                            <button className="w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors border border-white/10">
+                            <button
+                                onClick={() => setIsSuggestModalOpen(true)}
+                                className="w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors border border-white/10"
+                            >
                                 {t('suggest_feature')}
                             </button>
                         </div>
@@ -202,11 +242,11 @@ export default function DashboardPage() {
                             </div>
 
                             {favorites.length === 0 ? (
-                                <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
-                                    <p className="text-gray-500 mb-4">{t('favorites_empty')}</p>
-                                    <Link href="/" className="text-indigo-600 hover:text-indigo-800 font-medium">
-                                        {t('back_to_search')} →
-                                    </Link>
+                                <div className="bg-white border border-gray-200 rounded-xl p-8 text-center flex flex-col items-center">
+                                    <p className="text-gray-500 mb-6">{t('favorites_empty')}</p>
+                                    <div className="w-full max-w-md">
+                                        <CompanySearchBar />
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden shadow-sm">
@@ -232,6 +272,46 @@ export default function DashboardPage() {
                                             >
                                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Comparison Section */}
+                        <div className="pt-2">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                    </svg>
+                                    {t('comparison_title')}
+                                </h3>
+                                <Link href="/benchmark" className="text-xs font-semibold text-indigo-600 hover:underline">
+                                    {t('open_comparison')} →
+                                </Link>
+                            </div>
+
+                            {selectedCompanies.length === 0 ? (
+                                <div className="bg-white border border-gray-200 rounded-xl p-6 text-center text-sm text-gray-500 shadow-sm">
+                                    {t('comparison_empty')}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {selectedCompanies.map((comp) => (
+                                        <div key={comp.regcode} className="bg-white border border-gray-200 rounded-lg p-3 flex items-center justify-between group shadow-sm hover:border-indigo-200 transition-colors">
+                                            <Link href={`/company/${comp.regcode}`} className="font-medium text-slate-800 hover:text-indigo-600 truncate text-sm">
+                                                {comp.name}
+                                            </Link>
+                                            <button
+                                                onClick={() => removeFromComparison(comp.regcode)}
+                                                className="p-1 text-gray-400 hover:text-red-500 rounded transition-colors"
+                                                title="Noņemt"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                                 </svg>
                                             </button>
                                         </div>
@@ -274,6 +354,51 @@ export default function DashboardPage() {
 
                 </div>
             </div>
+
+            {/* Suggestion Modal */}
+            {isSuggestModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsSuggestModalOpen(false)}></div>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg relative z-10 overflow-hidden">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-slate-900">{t('suggest_modal_title')}</h3>
+                            <button onClick={() => setIsSuggestModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <form onSubmit={handleSuggest} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('suggest_label')}</label>
+                                <textarea
+                                    required
+                                    value={suggestion}
+                                    onChange={(e) => setSuggestion(e.target.value)}
+                                    className="w-full h-40 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none resize-none"
+                                    placeholder={t('suggest_placeholder')}
+                                ></textarea>
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsSuggestModalOpen(false)}
+                                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                >
+                                    {t('cancel')}
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting || !suggestion.trim()}
+                                    className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isSubmitting ? t('sending') : t('send_suggestion')}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

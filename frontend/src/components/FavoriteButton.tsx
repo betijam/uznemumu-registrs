@@ -1,134 +1,104 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import Cookies from "js-cookie";
 
 interface FavoriteButtonProps {
     entityId: string;
     entityName: string;
-    entityType?: "company" | "person";
-    className?: string;
+    entityType?: string;
 }
 
 export default function FavoriteButton({
     entityId,
     entityName,
-    entityType = "company",
-    className = ""
+    entityType = "company"
 }: FavoriteButtonProps) {
+    const t = useTranslations('Dashboard');
     const [isFavorite, setIsFavorite] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const router = useRouter();
+    const [isLoading, setIsLoading] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
 
     useEffect(() => {
-        checkFavoriteStatus();
+        const token = Cookies.get('token');
+        setIsLoggedIn(!!token);
+
+        if (!!token) {
+            checkFavoriteStatus();
+        }
     }, [entityId]);
 
     const checkFavoriteStatus = async () => {
         try {
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/favorites/check/${entityId}?entity_type=${entityType}`,
-                { credentials: 'include' }
-            );
-
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favorites/`, {
+                credentials: 'include'
+            });
             if (res.ok) {
-                const data = await res.json();
-                setIsFavorite(data.is_favorite);
-                setIsAuthenticated(true);
-            } else if (res.status === 401) {
-                setIsAuthenticated(false);
+                const favorites = await res.json();
+                const found = favorites.some((f: any) => f.entity_id === entityId);
+                setIsFavorite(found);
             }
         } catch (error) {
             console.error("Error checking favorite status:", error);
         }
     };
 
-    const toggleFavorite = async (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (!isAuthenticated) {
-            // Redirect to login
-            router.push('/auth/login');
+    const toggleFavorite = async () => {
+        if (!isLoggedIn) {
+            // Optional: Redirect to login or show modal
+            window.location.href = `/${window.location.pathname.split('/')[1]}/auth/login`;
             return;
         }
 
-        // Optimistic UI update
-        const previousState = isFavorite;
-        setIsFavorite(!isFavorite);
-        setLoading(true);
-
+        setIsLoading(true);
         try {
             if (isFavorite) {
-                // Remove from favorites
-                const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/favorites/${entityId}?entity_type=${entityType}`,
-                    {
-                        method: 'DELETE',
-                        credentials: 'include'
-                    }
-                );
-
-                if (!res.ok) {
-                    throw new Error('Failed to remove favorite');
-                }
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favorites/${entityId}?entity_type=${entityType}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                if (res.ok) setIsFavorite(false);
             } else {
-                // Add to favorites
-                const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/favorites/`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({
-                            entity_id: entityId,
-                            entity_type: entityType,
-                            entity_name: entityName
-                        })
-                    }
-                );
-
-                if (!res.ok) {
-                    throw new Error('Failed to add favorite');
-                }
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/favorites/${entityId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        entity_type: entityType,
+                        entity_name: entityName
+                    }),
+                    credentials: 'include'
+                });
+                if (res.ok) setIsFavorite(true);
             }
         } catch (error) {
             console.error("Error toggling favorite:", error);
-            // Revert optimistic update on error
-            setIsFavorite(previousState);
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
+
+    if (!isLoggedIn) return null;
 
     return (
         <button
             onClick={toggleFavorite}
-            disabled={loading}
-            className={`group relative inline-flex items-center justify-center p-2 rounded-lg transition-all ${isFavorite
-                    ? 'text-red-500 hover:bg-red-50'
-                    : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
-                } ${loading ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
-            title={isFavorite ? "Noņemt no favorītiem" : "Pievienot favorītiem"}
+            disabled={isLoading}
+            className={`inline-flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors shadow-sm ${isFavorite
+                    ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
+                    : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                }`}
+            title={isFavorite ? t('remove_from_favorites') : t('add_to_favorites')}
         >
             <svg
-                className="w-6 h-6 transition-transform group-hover:scale-110"
-                fill={isFavorite ? "currentColor" : "none"}
-                viewBox="0 0 24 24"
+                className={`w-4 h-4 ${isFavorite ? 'fill-current' : 'fill-none'}`}
                 stroke="currentColor"
-                strokeWidth={2}
+                viewBox="0 0 24 24"
             >
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
-
-            {/* Tooltip */}
-            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                {isFavorite ? "Noņemt no favorītiem" : "Pievienot favorītiem"}
+            <span className="hidden sm:inline">
+                {isFavorite ? t('remove_from_favorites') : t('add_to_favorites')}
             </span>
         </button>
     );

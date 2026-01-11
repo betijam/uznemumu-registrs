@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import CompanySizeBadge from "@/components/CompanySizeBadge";
 import CompanySearchBar from "@/components/CompanySearchBar";
 import AddToComparisonButton from "@/components/AddToComparisonButton";
+import FavoriteButton from "@/components/FavoriteButton";
 import ProFeatureButton from "@/components/ui/ProFeatureButton";
 import { getTranslations } from "next-intl/server";
 
@@ -260,8 +261,8 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                             </div>
                         </div>
 
-                        {/* Actions */}
-                        <div className="mt-4 flex gap-3 md:mt-0 md:ml-4">
+                        <div className="mt-4 flex gap-2 md:mt-0 md:ml-4 items-center">
+                            <FavoriteButton entityId={company.regcode} entityName={company.name} />
                             <AddToComparisonButton company={{ regcode: company.regcode, name: company.name }} />
                             <ProFeatureButton featureName="monitoring">
                                 <button className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm w-full md:w-auto justify-center">

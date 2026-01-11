@@ -42,7 +42,7 @@ export default function Navbar() {
                     </div>
 
                     {/* Desktop Navigation */}
-                    <div className="hidden sm:flex items-center gap-4">
+                    <div className="hidden lg:flex items-center gap-4">
                         <Link
                             href="/"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium"
@@ -123,23 +123,13 @@ export default function Navbar() {
                     </div>
 
                     {/* Mobile Menu Button - Visible ONLY on small screens */}
-                    <div className="flex sm:hidden items-center gap-2">
-                        {isLoggedIn && (
-                            <Link
-                                href="/dashboard"
-                                className="p-2 text-gray-600 hover:text-primary transition-colors rounded-full"
-                            >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                            </Link>
-                        )}
-                        <div className="block sm:hidden">
+                    <div className="flex lg:hidden items-center gap-2">
+                        <div className="block lg:hidden">
                             <LanguageSwitcher />
                         </div>
                         <button
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors sm:hidden"
+                            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors lg:hidden"
                             aria-label="Toggle menu"
                         >
                             {isMenuOpen ? (
@@ -159,7 +149,7 @@ export default function Navbar() {
             {/* Mobile Menu Dropdown */}
             {
                 isMenuOpen && (
-                    <div className="sm:hidden bg-white border-t border-gray-100 shadow-lg">
+                    <div className="lg:hidden bg-white border-t border-gray-100 shadow-lg">
                         <div className="px-4 py-3 space-y-2">
                             <Link
                                 href="/"
