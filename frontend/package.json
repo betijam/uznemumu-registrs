@@ -15,6 +15,7 @@
     "last 2 Edge versions"
   ],
   "dependencies": {
+    "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
     "@swc/helpers": "^0.5.18",
     "@types/js-cookie": "^3.0.6",
