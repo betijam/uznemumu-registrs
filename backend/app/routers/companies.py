@@ -442,15 +442,13 @@ async def get_company_details(regcode: int, response: Response, request: Request
         current_user = await get_current_user(request)
         if current_user:
             from app.routers.history import log_view_history
-            from app.core.database import get_db
-            db = next(get_db())
             background_tasks.add_task(
                 log_view_history,
                 str(current_user.id),
                 str(regcode),
                 'company',
                 company['name'],
-                db
+                None  # db parameter not used anymore
             )
     except Exception as e:
         # Silently fail if user is not authenticated
