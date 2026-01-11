@@ -9,6 +9,7 @@ export default function PricingPage() {
     const t = useTranslations('Pricing');
     const [email, setEmail] = useState("");
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [openFaq, setOpenFaq] = useState<number | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -36,6 +37,21 @@ export default function PricingPage() {
         }
     };
 
+    const comparisonFeatures = [
+        { key: 'search_access', basic: t('unlimited'), pro: t('unlimited') },
+        { key: 'data_history', basic: t('years_2'), pro: t('years_10_plus') },
+        { key: 'export_data', basic: t('not_available'), pro: t('available') },
+        { key: 'monitoring_alerts', basic: t('not_available'), pro: t('available') },
+        { key: 'ads', basic: t('yes'), pro: t('no') },
+        { key: 'support', basic: t('community'), pro: t('priority') },
+    ];
+
+    const faqs = [
+        { q: t('faq_q1'), a: t('faq_a1') },
+        { q: t('faq_q2'), a: t('faq_a2') },
+        { q: t('faq_q3'), a: t('faq_a3') },
+    ];
+
     return (
         <div className="bg-gray-50 min-h-screen">
             <Navbar />
@@ -55,7 +71,7 @@ export default function PricingPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
 
                     {/* Basic Plan */}
-                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex flex-col">
+                    <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden flex flex-col">
                         <div className="p-8 flex-1">
                             <h3 className="text-xl font-semibold text-gray-900">{t('basic_plan')}</h3>
                             <p className="mt-4 flex items-baseline text-gray-900">
@@ -121,6 +137,9 @@ export default function PricingPage() {
                             </ul>
                         </div>
                         <div className="p-8 bg-purple-50 border-t border-purple-100">
+                            <p className="text-xs font-semibold text-purple-900 uppercase tracking-wide mb-3 text-center">
+                                {t('join_waitlist').toUpperCase()}
+                            </p>
                             {status === 'success' ? (
                                 <div className="text-center p-2 bg-green-100 text-green-700 rounded-lg border border-green-200">
                                     <p className="font-semibold">✓ {t('waitlist_joined')}</p>
@@ -158,6 +177,77 @@ export default function PricingPage() {
                                 </form>
                             )}
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Comparison Table */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+                <div className="max-w-4xl mx-auto">
+                    <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">{t('comparison_title')}</h2>
+                    <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th scope="col" className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                                        {t('feature')}
+                                    </th>
+                                    <th scope="col" className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
+                                        {t('basic')}
+                                    </th>
+                                    <th scope="col" className="px-6 py-4 text-center text-sm font-semibold text-purple-900 bg-purple-50">
+                                        {t('pro')}
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {comparisonFeatures.map((feature, idx) => (
+                                    <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                                            {t(feature.key)}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700 text-center">
+                                            {feature.basic}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-purple-900 font-semibold text-center bg-purple-50">
+                                            {feature.pro}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {/* FAQ Section */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
+                <div className="max-w-3xl mx-auto">
+                    <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">{t('faq_title')}</h2>
+                    <div className="space-y-4">
+                        {faqs.map((faq, idx) => (
+                            <div key={idx} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                                <button
+                                    onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                                    className="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-50 transition-colors"
+                                >
+                                    <span className="text-lg font-semibold text-gray-900">{faq.q}</span>
+                                    <svg
+                                        className={`w-5 h-5 text-gray-500 transition-transform ${openFaq === idx ? 'transform rotate-180' : ''}`}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                {openFaq === idx && (
+                                    <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                                        <p className="text-gray-700">{faq.a}</p>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
