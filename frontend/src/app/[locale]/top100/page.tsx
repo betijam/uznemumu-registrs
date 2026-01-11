@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 import { formatCompanyName } from '@/utils/formatCompanyName';
@@ -31,7 +31,7 @@ export default function Top100Page() {
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState<'turnover' | 'profit'>('turnover');
 
-    const fetchData = async (sort: 'turnover' | 'profit') => {
+    const fetchData = useCallback(async (sort: 'turnover' | 'profit') => {
         setLoading(true);
         try {
             // Use /api prefix - proxied through Next.js server
@@ -42,11 +42,11 @@ export default function Top100Page() {
             console.error('Failed to fetch TOP 100 data:', error);
         }
         setLoading(false);
-    };
+    }, []);
 
     useEffect(() => {
         fetchData(sortBy);
-    }, [sortBy]);
+    }, [sortBy, fetchData]);
 
     const formatCurrency = (value: number | null) => {
         if (!value) return '-';

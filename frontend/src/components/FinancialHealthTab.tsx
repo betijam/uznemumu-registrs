@@ -6,6 +6,33 @@ interface FinancialHealthTabProps {
     company: any;
 }
 
+// Sparkline component
+const Sparkline = ({ data }: { data: number[] }) => {
+    if (!data || data.length === 0) return <span className="text-gray-400">-</span>;
+
+    const max = Math.max(...data);
+    const min = Math.min(...data);
+    const range = max - min || 1;
+
+    const points = data.map((val, idx) => {
+        const x = (idx / (data.length - 1)) * 60;
+        const y = 20 - ((val - min) / range) * 15;
+        return `${x},${y}`;
+    }).join(' ');
+
+    return (
+        <svg viewBox="0 0 60 20" className="w-16 h-6 inline-block">
+            <polyline
+                points={points}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                className="text-primary"
+            />
+        </svg>
+    );
+};
+
 export default function FinancialHealthTab({ company }: FinancialHealthTabProps) {
     const financialHistory = company.financial_history || [];
     const latest = financialHistory[0] || {};
@@ -37,33 +64,6 @@ export default function FinancialHealthTab({ company }: FinancialHealthTabProps)
     const formatRatio = (val: number | null) => {
         if (val === null || val === undefined) return '-';
         return val.toFixed(2);
-    };
-
-    // Sparkline component
-    const Sparkline = ({ data }: { data: number[] }) => {
-        if (!data || data.length === 0) return <span className="text-gray-400">-</span>;
-
-        const max = Math.max(...data);
-        const min = Math.min(...data);
-        const range = max - min || 1;
-
-        const points = data.map((val, idx) => {
-            const x = (idx / (data.length - 1)) * 60;
-            const y = 20 - ((val - min) / range) * 15;
-            return `${x},${y}`;
-        }).join(' ');
-
-        return (
-            <svg viewBox="0 0 60 20" className="w-16 h-6 inline-block">
-                <polyline
-                    points={points}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    className="text-primary"
-                />
-            </svg>
-        );
     };
 
     return (

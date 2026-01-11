@@ -11,13 +11,14 @@ export default function Navbar() {
     const t = useTranslations('Navigation');
     const tAuth = useTranslations('Auth');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    // Use lazy initialization to avoid setState in useEffect
+    const [isLoggedIn, setIsLoggedIn] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return !!Cookies.get('token');
+        }
+        return false;
+    });
     const router = useRouter();
-
-    useEffect(() => {
-        const token = Cookies.get('token');
-        setIsLoggedIn(!!token);
-    }, []);
 
     const handleLogout = () => {
         Cookies.remove('token');

@@ -10,12 +10,14 @@ function VerifyEmailContent() {
     const searchParams = useSearchParams();
     const token = searchParams.get("token");
     const router = useRouter();
-    const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+    // Use lazy initialization to set initial status based on token presence
+    const [status, setStatus] = useState<"loading" | "success" | "error">(() => {
+        return token ? "loading" : "error";
+    });
 
     useEffect(() => {
         if (!token) {
-            setStatus("error");
-            return;
+            return; // Status already set to "error" via lazy initialization
         }
 
         const verify = async () => {
@@ -33,7 +35,7 @@ function VerifyEmailContent() {
                 } else {
                     setStatus("error");
                 }
-            } catch (e) {
+            } catch {
                 setStatus("error");
             }
         };

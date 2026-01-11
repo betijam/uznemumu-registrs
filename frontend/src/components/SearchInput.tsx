@@ -166,7 +166,7 @@ export default function SearchInput({ className = "" }: { className?: string }) 
 
                     <div className="bg-gray-50 px-4 py-2 text-center sticky bottom-0 border-t border-gray-100">
                         <button onClick={handleSearch} className="text-sm font-medium text-purple-600 hover:text-purple-800">
-                            {t('view_all_prefix')} "{query}" &rarr;
+                            {t('view_all_prefix')} &quot;{query}&quot; &rarr;
                         </button>
                     </div>
                 </div>

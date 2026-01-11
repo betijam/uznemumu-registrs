@@ -626,7 +626,10 @@ async def get_financial_history_endpoint(regcode: str, response: Response):
                    total_assets, equity, current_liabilities, total_current_assets,
                    accounts_receivable, by_nature_labour_expenses,
                    cfo_im_net_operating_cash_flow, cfo_im_income_taxes_paid,
-                   cfi_acquisition_of_fixed_assets_intangible_assets, cff_net_financing_cash_flow
+                   cfi_acquisition_of_fixed_assets_intangible_assets, cff_net_financing_cash_flow,
+                   -- Fix: Select missing columns
+                   interest_expenses, depreciation_expenses, provision_for_income_taxes,
+                   inventories, non_current_liabilities
             FROM financial_reports 
             WHERE company_regcode = :r 
             ORDER BY year DESC
@@ -657,17 +660,24 @@ async def get_financial_history_endpoint(regcode: str, response: Response):
                 "debt_to_equity": safe_float(f.debt_to_equity),
                 "equity_ratio": safe_float(f.equity_ratio),
                 "ebitda": safe_float(f.ebitda),
-                # Extended fields
+                # Extended fields - P&L
+                "labour_costs": safe_float(f.by_nature_labour_expenses),
+                "interest_payment": safe_float(f.interest_expenses),
+                "depreciation": safe_float(f.depreciation_expenses),
+                "corporate_income_tax": safe_float(f.provision_for_income_taxes),
+                # Extended fields - Balance Sheet
                 "total_assets": safe_float(f.total_assets),
                 "equity": safe_float(f.equity),
                 "current_liabilities": safe_float(f.current_liabilities),
+                "non_current_liabilities": safe_float(f.non_current_liabilities),
                 "total_current_assets": safe_float(f.total_current_assets),
                 "accounts_receivable": safe_float(f.accounts_receivable),
-                "by_nature_labour_expenses": safe_float(f.by_nature_labour_expenses),
-                "cfo_im_net_operating_cash_flow": safe_float(f.cfo_im_net_operating_cash_flow),
-                "cfo_im_income_taxes_paid": safe_float(f.cfo_im_income_taxes_paid),
-                "cfi_acquisition_of_fixed_assets_intangible_assets": safe_float(f.cfi_acquisition_of_fixed_assets_intangible_assets),
-                "cff_net_financing_cash_flow": safe_float(f.cff_net_financing_cash_flow)
+                "inventories": safe_float(f.inventories),
+                # Extended fields - Cash Flow (mapped to short keys for frontend)
+                "cfo": safe_float(f.cfo_im_net_operating_cash_flow),
+                "taxes_paid_cf": safe_float(f.cfo_im_income_taxes_paid),
+                "cfi": safe_float(f.cfi_acquisition_of_fixed_assets_intangible_assets),
+                "cff": safe_float(f.cff_net_financing_cash_flow)
             }
             
             if prev_turnover and f.turnover and prev_turnover != 0:

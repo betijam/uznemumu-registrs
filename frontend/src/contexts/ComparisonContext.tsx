@@ -22,20 +22,20 @@ const MAX_COMPANIES = 5;
 const STORAGE_KEY = 'benchmark_comparison_cart';
 
 export function ComparisonProvider({ children }: { children: React.ReactNode }) {
-    const [selectedCompanies, setSelectedCompanies] = useState<Company[]>([]);
-
-    // Load from localStorage on mount
-    useEffect(() => {
-        try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                setSelectedCompanies(parsed);
+    // Use lazy initialization to load from localStorage without setState in useEffect
+    const [selectedCompanies, setSelectedCompanies] = useState<Company[]>(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    return JSON.parse(stored);
+                }
+            } catch (error) {
+                console.error('Error loading comparison cart:', error);
             }
-        } catch (error) {
-            console.error('Error loading comparison cart:', error);
         }
-    }, []);
+        return [];
+    });
 
     // Save to localStorage whenever selection changes
     useEffect(() => {

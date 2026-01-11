@@ -40,6 +40,25 @@ interface WorkforceViewProps {
     companies: CompanyData[];
 }
 
+const SortIcon = ({ column, sortColumn, sortDirection }: { column: string, sortColumn: string, sortDirection: 'asc' | 'desc' }) => {
+    if (sortColumn !== column) {
+        return (
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+            </svg>
+        );
+    }
+    return sortDirection === 'asc' ? (
+        <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+        </svg>
+    ) : (
+        <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+    );
+};
+
 export default function WorkforceView({ companies }: WorkforceViewProps) {
     const [sortColumn, setSortColumn] = useState<string>('employees');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -142,25 +161,6 @@ export default function WorkforceView({ companies }: WorkforceViewProps) {
         }
     };
 
-    const SortIcon = ({ column }: { column: string }) => {
-        if (sortColumn !== column) {
-            return (
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                </svg>
-            );
-        }
-        return sortDirection === 'asc' ? (
-            <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-        ) : (
-            <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-        );
-    };
-
     // Calculate growth rates
     const calculateGrowth = (trend: { year: number; value: number }[]) => {
         if (trend.length < 2) return null;
@@ -191,7 +191,7 @@ export default function WorkforceView({ companies }: WorkforceViewProps) {
                                 >
                                     <div className="flex items-center justify-end gap-1">
                                         Darbinieki
-                                        <SortIcon column="employees" />
+                                        <SortIcon column="employees" sortColumn={sortColumn} sortDirection={sortDirection} />
                                     </div>
                                 </th>
                                 <th
@@ -200,7 +200,7 @@ export default function WorkforceView({ companies }: WorkforceViewProps) {
                                 >
                                     <div className="flex items-center justify-end gap-1">
                                         Vidējā alga
-                                        <SortIcon column="avgSalary" />
+                                        <SortIcon column="avgSalary" sortColumn={sortColumn} sortDirection={sortDirection} />
                                     </div>
                                 </th>
                                 <th

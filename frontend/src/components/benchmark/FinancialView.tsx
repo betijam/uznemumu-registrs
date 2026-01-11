@@ -50,6 +50,25 @@ interface FinancialViewProps {
 
 type ChartMetric = 'revenue' | 'profit';
 
+const SortIcon = ({ column, sortColumn, sortDirection }: { column: string, sortColumn: string, sortDirection: 'asc' | 'desc' }) => {
+    if (sortColumn !== column) {
+        return (
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+            </svg>
+        );
+    }
+    return sortDirection === 'asc' ? (
+        <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+        </svg>
+    ) : (
+        <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+    );
+};
+
 export default function FinancialView({ companies }: FinancialViewProps) {
     const [sortColumn, setSortColumn] = useState<string>('revenue');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -192,25 +211,6 @@ export default function FinancialView({ companies }: FinancialViewProps) {
         }
     };
 
-    const SortIcon = ({ column }: { column: string }) => {
-        if (sortColumn !== column) {
-            return (
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                </svg>
-            );
-        }
-        return sortDirection === 'asc' ? (
-            <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-        ) : (
-            <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-        );
-    };
-
     return (
         <div className="space-y-6">
             {/* Comparison Table */}
@@ -231,7 +231,7 @@ export default function FinancialView({ companies }: FinancialViewProps) {
                                 >
                                     <div className="flex items-center justify-end gap-1">
                                         Apgrozījums
-                                        <SortIcon column="revenue" />
+                                        <SortIcon column="revenue" sortColumn={sortColumn} sortDirection={sortDirection} />
                                     </div>
                                 </th>
                                 <th
@@ -240,7 +240,7 @@ export default function FinancialView({ companies }: FinancialViewProps) {
                                 >
                                     <div className="flex items-center justify-end gap-1">
                                         Peļņa
-                                        <SortIcon column="profit" />
+                                        <SortIcon column="profit" sortColumn={sortColumn} sortDirection={sortDirection} />
                                     </div>
                                 </th>
                                 <th
@@ -249,7 +249,7 @@ export default function FinancialView({ companies }: FinancialViewProps) {
                                 >
                                     <div className="flex items-center justify-end gap-1">
                                         Peļņas marža
-                                        <SortIcon column="profitMargin" />
+                                        <SortIcon column="profitMargin" sortColumn={sortColumn} sortDirection={sortDirection} />
                                     </div>
                                 </th>
                                 <th
@@ -258,7 +258,7 @@ export default function FinancialView({ companies }: FinancialViewProps) {
                                 >
                                     <div className="flex items-center justify-end gap-1">
                                         EBITDA
-                                        <SortIcon column="ebitda" />
+                                        <SortIcon column="ebitda" sortColumn={sortColumn} sortDirection={sortDirection} />
                                     </div>
                                 </th>
                                 <th
@@ -267,7 +267,7 @@ export default function FinancialView({ companies }: FinancialViewProps) {
                                 >
                                     <div className="flex items-center justify-end gap-1">
                                         ROE
-                                        <SortIcon column="roe" />
+                                        <SortIcon column="roe" sortColumn={sortColumn} sortDirection={sortDirection} />
                                     </div>
                                 </th>
                                 <th
@@ -276,7 +276,7 @@ export default function FinancialView({ companies }: FinancialViewProps) {
                                 >
                                     <div className="flex items-center justify-end gap-1">
                                         ROA
-                                        <SortIcon column="roa" />
+                                        <SortIcon column="roa" sortColumn={sortColumn} sortDirection={sortDirection} />
                                     </div>
                                 </th>
                             </tr>
@@ -321,8 +321,8 @@ export default function FinancialView({ companies }: FinancialViewProps) {
                         <button
                             onClick={() => setChartMetric('revenue')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${chartMetric === 'revenue'
-                                    ? 'bg-primary text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-primary text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                         >
                             Apgrozījums
@@ -330,8 +330,8 @@ export default function FinancialView({ companies }: FinancialViewProps) {
                         <button
                             onClick={() => setChartMetric('profit')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${chartMetric === 'profit'
-                                    ? 'bg-primary text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-primary text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                             disabled
                         >
