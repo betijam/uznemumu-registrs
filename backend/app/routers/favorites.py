@@ -9,7 +9,7 @@ from datetime import datetime
 import logging
 
 from app.core.database import engine
-from app.core.auth import get_current_user
+from app.routers.auth import get_current_user
 from app.models.user import User
 from pydantic import BaseModel
 
