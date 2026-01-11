@@ -32,7 +32,7 @@ export default function FavoriteButton({
     const checkFavoriteStatus = async () => {
         try {
             console.log('[DEBUG] Checking favorite status for:', entityId);
-            const res = await fetch('/api/favorites/', {
+            const res = await fetch('/api/favorites', {
                 headers: {
                     'Authorization': `Bearer ${Cookies.get('token')}`
                 }
@@ -67,7 +67,7 @@ export default function FavoriteButton({
                 });
                 if (res.ok) setIsFavorite(false);
             } else {
-                const res = await fetch('/api/favorites/', {
+                const res = await fetch('/api/favorites', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

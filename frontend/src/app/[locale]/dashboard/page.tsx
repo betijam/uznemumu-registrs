@@ -49,7 +49,7 @@ export default function DashboardPage() {
             // Load user info, favorites, and recent views
             console.log('[DEBUG] Loading dashboard data...');
             const [favoritesRes, historyRes] = await Promise.all([
-                fetch('/api/favorites/', {
+                fetch('/api/favorites', {
                     headers: {
                         'Authorization': `Bearer ${Cookies.get('token')}`
                     }
@@ -130,7 +130,7 @@ export default function DashboardPage() {
 
     const addFavoriteFromSearch = async (company: any) => {
         try {
-            const res = await fetch('/api/favorites/', {
+            const res = await fetch('/api/favorites', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -145,7 +145,7 @@ export default function DashboardPage() {
 
             if (res.ok) {
                 // Refresh favorites
-                const favRes = await fetch('/api/favorites/', {
+                const favRes = await fetch('/api/favorites', {
                     headers: {
                         'Authorization': `Bearer ${Cookies.get('token')}`
                     }
