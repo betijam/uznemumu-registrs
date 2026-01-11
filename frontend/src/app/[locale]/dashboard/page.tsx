@@ -79,6 +79,7 @@ export default function DashboardPage() {
 
             if (meRes.ok) {
                 const userData = await meRes.json();
+                console.log("Dashboard: Fetched user data:", userData); // DEBUG
                 setUser({
                     name: userData.full_name || userData.email.split('@')[0],
                     email: userData.email,
@@ -90,6 +91,7 @@ export default function DashboardPage() {
                         .substring(0, 2)
                 });
             } else {
+                console.error("Dashboard: Error fetching user data", meRes.status); // DEBUG
                 // If unauthorized, redirect to login
                 if (meRes.status === 401) {
                     router.push('/auth/login');
@@ -149,6 +151,7 @@ export default function DashboardPage() {
             }
         } catch (error) {
             console.error("Error adding favorite:", error);
+            alert("Kļūda pievienojot favorītu. Lūdzu mēģiniet vēlreiz."); // DEBUG USER FEEDBACK
         }
     };
 
