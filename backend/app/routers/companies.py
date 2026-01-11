@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Response, Request, Depends, Query
+from fastapi import APIRouter, HTTPException, Response, Request, Depends, Query, BackgroundTasks
 from sqlalchemy import text
 from app.core.database import engine
 import logging
@@ -397,7 +397,7 @@ def get_sitemap_ids(page: int = Query(1, ge=1), limit: int = Query(50000, le=500
         }
 
 @router.get("/companies/{regcode}")
-async def get_company_details(regcode: int, response: Response, request: Request):
+async def get_company_details(regcode: int, response: Response, request: Request, background_tasks: BackgroundTasks):
     # NO HTTP CACHE - Access control must run every time
     response.headers["Cache-Control"] = "no-store"
     
@@ -436,6 +436,25 @@ async def get_company_details(regcode: int, response: Response, request: Request
             # Add access flag to response so Frontend knows whether to show Teaser UI
             "has_full_access": has_full_access
         }
+    
+    # Log view history in background (if user is authenticated)
+    try:
+        current_user = await get_current_user(request)
+        if current_user:
+            from app.routers.history import log_view_history
+            from app.core.database import get_db
+            db = next(get_db())
+            background_tasks.add_task(
+                log_view_history,
+                str(current_user.id),
+                str(regcode),
+                'company',
+                company['name'],
+                db
+            )
+    except Exception as e:
+        # Silently fail if user is not authenticated
+        logger.debug(f"History tracking skipped: {e}")
 
     # Create Cache Table if not exists
     with engine.connect() as conn:
