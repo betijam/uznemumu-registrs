@@ -279,8 +279,7 @@ export default function RegisterPage() {
                             />
                             <label htmlFor="terms" className="text-sm text-gray-600">
                                 Piekrītu{' '}
-                                <Link href="/terms" className="text-blue-600 hover:underline">Lietošanas noteikumiem</Link>
-                                {' '}un{' '}
+
                                 <Link href="/privacy" className="text-blue-600 hover:underline">Privātuma politikai</Link>.
                             </label>
                         </div>

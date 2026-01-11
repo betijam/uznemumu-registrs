@@ -142,41 +142,52 @@ def search_hint(q: str):
         
         if len(query_words) == 0:
             companies = []
-        elif len(name_words) == 0 and len(type_words) > 0:
-            # Only type search (e.g., just "SIA")
-            type_cond = " OR ".join([f"LOWER(\"type\") = :type{i}" for i in range(len(type_words))])
-            params = {f"type{i}": tw.lower() for i, tw in enumerate(type_words)}
-            company_sql = f"""
-                SELECT name, name_in_quotes, "type" as company_type, regcode
-                FROM companies 
-                WHERE ({type_cond})
-                ORDER BY name ASC
-                LIMIT 7
-            """
-            companies = conn.execute(text(company_sql), params).fetchall()
         elif len(name_words) == 1 and len(type_words) == 0:
-            # Simple single-word name search
+            # Tiered search: 
+            # 0. Prefix/Exact (B-tree)
+            # 1. Full Text Search (GIN FTS)
+            # 2. Trigram Similarity (GIN Trigram)
             company_sql = """
-                SELECT name, name_in_quotes, "type" as company_type, regcode
-                FROM companies 
-                WHERE unaccent(lower(name)) LIKE unaccent(lower(:q))
-                ORDER BY 
-                    CASE WHEN unaccent(lower(name)) LIKE unaccent(lower(:q_start)) THEN 0 ELSE 1 END,
-                    name ASC
+                WITH 
+                q AS (SELECT immutable_unaccent(lower(:q_raw)) as val, :q_raw as raw_val),
+                rank0 AS (
+                    SELECT name, name_in_quotes, "type" as company_type, regcode, 0 as rank, 0.0::float as dist
+                    FROM companies, q
+                    WHERE immutable_unaccent(lower(name)) LIKE q.val || '%'
+                       OR immutable_unaccent(lower(name)) LIKE 'sia ' || q.val || '%'
+                       OR immutable_unaccent(lower(name)) LIKE 'as ' || q.val || '%'
+                       OR immutable_unaccent(lower(name)) LIKE 'sabiedriba ar ierobezotu atbildibu "' || q.val || '%'
+                       OR immutable_unaccent(lower(name)) LIKE '"' || q.val || '%'
+                    LIMIT 7
+                ),
+                rank1 AS (
+                    SELECT name, name_in_quotes, "type" as company_type, regcode, 1 as rank,
+                           (immutable_unaccent(lower(name)) <-> q.val) as dist
+                    FROM companies, q
+                    WHERE (
+                        to_tsvector('simple', name) @@ to_tsquery('simple', q.raw_val || ':*')
+                        OR immutable_unaccent(lower(name)) % q.val
+                    )
+                    AND regcode NOT IN (SELECT regcode FROM rank0)
+                    LIMIT 7
+                )
+                SELECT * FROM rank0
+                UNION ALL
+                SELECT * FROM rank1
+                ORDER BY rank, dist, name
                 LIMIT 7
             """
             companies = conn.execute(text(company_sql), {
-                "q": f"%{name_words[0]}%",
-                "q_start": f"{name_words[0]}%"
+                "q_raw": name_words[0]
             }).fetchall()
         else:
             # Multi-word: Match name words + optionally match type
             conditions = []
-            params = {}
+            params = {"q_raw": " ".join(name_words)}
             
             # Name word conditions
             for i, word in enumerate(name_words):
-                conditions.append(f"unaccent(lower(name)) LIKE unaccent(lower(:word{i}))")
+                conditions.append(f"immutable_unaccent(lower(name)) LIKE immutable_unaccent(lower(:word{i}))")
                 params[f"word{i}"] = f"%{word}%"
             
             # Type conditions (if any type abbreviations in query)
@@ -187,11 +198,19 @@ def search_hint(q: str):
                     params[f"type{i}"] = tw.lower()
             
             where_clause = " AND ".join(conditions)
+            
             company_sql = f"""
-                SELECT name, name_in_quotes, "type" as company_type, regcode
+                SELECT name, name_in_quotes, "type" as company_type, regcode,
+                       (immutable_unaccent(lower(name)) <-> immutable_unaccent(lower(:q_raw))) as dist
                 FROM companies 
                 WHERE {where_clause}
-                ORDER BY name ASC
+                ORDER BY 
+                    CASE 
+                        WHEN immutable_unaccent(lower(name)) LIKE immutable_unaccent(lower(:word0)) THEN 0 
+                        ELSE 1 
+                    END,
+                    dist ASC, 
+                    name ASC
                 LIMIT 7
             """
             companies = conn.execute(text(company_sql), params).fetchall()
@@ -199,24 +218,39 @@ def search_hint(q: str):
         # 2. Search Persons - same flexible matching
         if len(query_words) == 1:
             person_sql = """
+                WITH matches AS (
+                    (SELECT 
+                        p.person_name, p.person_code, p.person_hash, p.company_regcode, 0 as rank
+                     FROM persons p
+                     WHERE immutable_unaccent(lower(p.person_name)) LIKE immutable_unaccent(lower(:q_start))
+                       AND p.person_code IS NOT NULL
+                     LIMIT 10)
+                    UNION ALL
+                    (SELECT 
+                        p.person_name, p.person_code, p.person_hash, p.company_regcode, 1 as rank
+                     FROM persons p
+                     WHERE immutable_unaccent(lower(p.person_name)) % immutable_unaccent(lower(:q_raw))
+                       AND NOT (immutable_unaccent(lower(p.person_name)) LIKE immutable_unaccent(lower(:q_start)))
+                       AND p.person_code IS NOT NULL
+                     LIMIT 10)
+                )
                 SELECT 
-                    p.person_name,
-                    p.person_code,
-                    p.person_hash,
-                    COUNT(DISTINCT p.company_regcode) as company_count
-                FROM persons p
-                WHERE unaccent(lower(p.person_name)) LIKE unaccent(lower(:q))
-                    AND p.person_code IS NOT NULL
-                GROUP BY p.person_code, p.person_name, p.person_hash
-                ORDER BY company_count DESC, p.person_name
+                    person_name, person_code, person_hash, 
+                    COUNT(DISTINCT company_regcode) as company_count
+                FROM matches
+                GROUP BY person_code, person_name, person_hash, rank
+                ORDER BY rank, company_count DESC, person_name
                 LIMIT 5
             """
-            persons = conn.execute(text(person_sql), {"q": f"%{query_words[0]}%"}).fetchall()
+            persons = conn.execute(text(person_sql), {
+                "q_raw": query_words[0],
+                "q_start": f"{query_words[0]}%"
+            }).fetchall()
         else:
             conditions = []
             params = {}
             for i, word in enumerate(query_words):
-                conditions.append(f"unaccent(lower(p.person_name)) LIKE unaccent(lower(:word{i}))")
+                conditions.append(f"immutable_unaccent(lower(p.person_name)) LIKE immutable_unaccent(lower(:word{i}))")
                 params[f"word{i}"] = f"%{word}%"
             
             where_clause = " AND ".join(conditions)

@@ -341,9 +341,9 @@ def get_territory_top_companies(
                 c.nace_text
             FROM companies c
             JOIN financial_reports fr ON c.regcode = fr.company_regcode
+               AND fr.year = :year
             WHERE c.atvk = :territory_code
-              AND fr.year = :year
-              AND c.status = 'active'
+              AND (c.status = 'active' OR c.status = 'A' OR c.status ILIKE 'aktīvs' OR c.status IS NULL OR c.status = '')
             ORDER BY fr.turnover DESC NULLS LAST
             LIMIT :limit
         """), {"territory_code": territory.code, "year": year, "limit": limit})

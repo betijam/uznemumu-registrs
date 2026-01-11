@@ -53,7 +53,7 @@ export default function SearchInput({ className = "" }: { className?: string }) 
                 setHints({ companies: [], persons: [] });
                 setShowHints(false);
             }
-        }, 300);
+        }, 200);
 
         return () => clearTimeout(timer);
     }, [query]);
