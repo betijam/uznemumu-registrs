@@ -199,6 +199,7 @@ export default function RegionsMap({ onRegionClick }: RegionsMapProps) {
                     data={geoData}
                     style={getFeatureStyle}
                     onEachFeature={onEachFeature}
+                    pane="overlayPane"
                 />
 
                 {/* Density Bubbles Overlay */}
@@ -250,14 +251,32 @@ export default function RegionsMap({ onRegionClick }: RegionsMapProps) {
                             key={`city-${city.name}`}
                             center={[city.lat, city.lng]}
                             radius={Math.max(4, Math.log10(city.company_count + 1) * 3)}
+                            pane="markerPane"
                             pathOptions={{
                                 color: "#1e3a5f",
                                 fillColor: getColor(city[selectedMetric.replace('total_', '')] || city[selectedMetric] || 0, selectedMetric),
                                 fillOpacity: 0.85,
                                 weight: 2,
+                                className: "cursor-pointer",
+                            }}
+                            eventHandlers={{
+                                click: () => {
+                                    if (onRegionClick) {
+                                        onRegionClick(city.db_name || city.name, "city");
+                                    } else {
+                                        router.push(`/regions/city/${encodeURIComponent(city.db_name || city.name)}`);
+                                    }
+                                },
+                                mouseover: (e: any) => {
+                                    e.target.setStyle({ weight: 3, fillOpacity: 1 });
+                                    e.target.bringToFront();
+                                },
+                                mouseout: (e: any) => {
+                                    e.target.setStyle({ weight: 2, fillOpacity: 0.85 });
+                                }
                             }}
                         >
-                            <Tooltip>
+                            <Tooltip permanent={false} direction="top" offset={[0, -10]}>
                                 <div className="font-semibold">{city.name}</div>
                                 <div className="text-sm">{city.company_count.toLocaleString()} uzņēmumi</div>
                                 <div className="text-sm">{formatValue(city[selectedMetric] || 0, selectedMetric)}</div>
@@ -289,10 +308,20 @@ export default function RegionsMap({ onRegionClick }: RegionsMapProps) {
           border-radius: 8px;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           padding: 8px 12px;
+          pointer-events: none;
+        }
+        .leaflet-tooltip {
+          pointer-events: none !important;
         }
         .leaflet-tooltip-left:before,
         .leaflet-tooltip-right:before {
           border: none;
+        }
+        .cursor-pointer {
+          cursor: pointer !important;
+        }
+        .leaflet-interactive {
+          cursor: pointer;
         }
       `}</style>
         </div>

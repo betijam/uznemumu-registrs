@@ -13,9 +13,9 @@ export default function Footer() {
                     <div className="col-span-1">
                         <div className="flex items-center gap-2 mb-4">
                             <img
-                                src="/company360.svg"
+                                src="/Company360_logo_Color_PNG_bez_aizsarglaukumu-.png"
                                 alt="Company 360"
-                                className="h-8 w-auto"
+                                className="h-12 w-auto"
                             />
                         </div>
                         <p className="text-gray-400 text-sm max-w-xs leading-relaxed">

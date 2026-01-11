@@ -34,9 +34,9 @@ export default function Navbar() {
                     <div className="flex items-center">
                         <Link href="/" className="flex-shrink-0 flex items-center gap-2">
                             <img
-                                src="/company360.png"
+                                src="/Company360_logo_Color_PNG_bez_aizsarglaukumu-.png"
                                 alt="Company 360"
-                                className="h-10 w-auto"
+                                className="h-14 w-auto"
                             />
                         </Link>
                     </div>
