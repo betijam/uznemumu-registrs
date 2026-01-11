@@ -713,9 +713,9 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             
             # 8. Get procurements
             proc_rows = conn.execute(text("""
-                SELECT authority, subject, amount, deadline, status
-                FROM procurements WHERE company_regcode = :r
-                ORDER BY deadline DESC LIMIT 10
+                SELECT authority_name as authority, subject, amount, contract_date
+                FROM procurements WHERE winner_regcode = :r
+                ORDER BY contract_date DESC LIMIT 10
             """), {"r": regcode}).fetchall()
         
         # Build response

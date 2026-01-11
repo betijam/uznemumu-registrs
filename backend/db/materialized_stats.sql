@@ -10,9 +10,9 @@ WITH latest_fin AS (
     SELECT 
         f.company_regcode,
         f.year,
-        CAST(NULLIF(f.turnover, 'NaN') AS NUMERIC) as turnover,
-        CAST(NULLIF(f.profit, 'NaN') AS NUMERIC) as profit,
-        CAST(NULLIF(f.employees, 'NaN') AS INTEGER) as employees
+        f.turnover,
+        f.profit,
+        f.employees
     FROM financial_reports f
 ),
 growth_calc AS (
