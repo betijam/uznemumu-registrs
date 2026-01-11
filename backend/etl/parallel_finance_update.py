@@ -1,6 +1,5 @@
 """
-OPTIMIZED Incremental ETL using dictionary lookups instead of slow pandas merges
-Based on the fast approach from process_finance_extended.py
+PARALLEL ETL - Uses all CPU cores for maximum speed
 """
 import pandas as pd
 import logging
@@ -9,22 +8,69 @@ from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 import os
 from csv_cache import CSVCache
+from multiprocessing import Pool, cpu_count
+from functools import partial
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv('DATABASE_URL')
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 # CSV URLs
 BALANCE_SHEETS_URL = "https://data.gov.lv/dati/dataset/8d31b878-536a-44aa-a013-8bc6b669d477/resource/50ef4f26-f410-4007-b296-22043ca3dc43/download/balance_sheets.csv"
 FINANCIAL_STATEMENTS_URL = "https://data.gov.lv/dati/dataset/8d31b878-536a-44aa-a013-8bc6b669d477/resource/27fcc5ec-c63b-4bfd-bb08-01f073a52d04/download/financial_statements.csv"
 
-BATCH_SIZE = 500  # Optimized batch size for network efficiency
+BATCH_SIZE = 1000  # Larger batches for parallel processing
+NUM_WORKERS = max(1, cpu_count() - 1)  # Leave 1 core free
 
-class OptimizedFinanceETL:
-    """Fast ETL using dictionary lookups instead of pandas merge"""
+def process_balance_chunk(args):
+    """Process a single balance sheet chunk - runs in parallel"""
+    chunk_data, stmt_lookup_df = args
+    
+    try:
+        # Extract accounts_receivable column
+        ar_col = None
+        for col in ['accounts_receivable', 'debtori', 'receivables']:
+            if col in chunk_data.columns:
+                ar_col = col
+                break
+        
+        if not ar_col or 'statement_id' not in chunk_data.columns:
+            return []
+        
+        # Filter to only statement_ids we care about
+        chunk_data = chunk_data[chunk_data['statement_id'].isin(stmt_lookup_df['statement_id'])]
+        
+        if len(chunk_data) == 0:
+            return []
+        
+        # Merge with statement lookup
+        chunk_data = chunk_data.merge(
+            stmt_lookup_df[['statement_id', 'regcode', 'year']], 
+            on='statement_id', 
+            how='inner'  # Only keep matches
+        )
+        
+        # Convert accounts_receivable to numeric
+        chunk_data['accounts_receivable'] = pd.to_numeric(chunk_data[ar_col], errors='coerce')
+        
+        # Drop rows with missing data
+        chunk_data = chunk_data.dropna(subset=['regcode', 'year', 'accounts_receivable'])
+        
+        if len(chunk_data) == 0:
+            return []
+        
+        # Return as list of dicts for database update
+        return chunk_data[['regcode', 'year', 'accounts_receivable']].to_dict('records')
+    
+    except Exception as e:
+        logger.error(f"Error processing chunk: {e}")
+        return []
+
+class ParallelFinanceETL:
+    """Ultra-fast parallel ETL"""
     
     def __init__(self, full_load=False):
         self.engine = engine
@@ -93,16 +139,16 @@ class OptimizedFinanceETL:
             return regcodes
     
     def run(self):
-        """Execute optimized ETL using dictionary lookups"""
+        """Execute parallel ETL"""
         try:
             self.update_state('RUNNING')
-            logger.info(f"🚀 Starting {'FULL' if self.full_load else 'INCREMENTAL'} ETL run...")
+            logger.info(f"🚀 Starting PARALLEL ETL with {NUM_WORKERS} workers...")
             
             # Get regcodes that need updating
             regcodes_to_update = self.get_regcodes_to_update()
             
             if len(regcodes_to_update) == 0:
-                logger.info("✅ No records to update! All up to date.")
+                logger.info("✅ No records to update!")
                 self.update_state('SUCCESS', 0)
                 return
             
@@ -111,108 +157,63 @@ class OptimizedFinanceETL:
             statements_path = self.cache.get_cached_path(FINANCIAL_STATEMENTS_URL)
             balance_path = self.cache.get_cached_path(BALANCE_SHEETS_URL)
             
-            # Step 1: Build statement mapping dictionary (statement_id -> (regcode, year))
+            # Step 1: Build statement mapping (VECTORIZED)
             logger.info(f"📥 Loading statement mappings...")
-            stmt_map = {}  # statement_id -> {'regcode': X, 'year': Y}
+            stmt_map = {}
             
-            chunk_num = 0
             for stmt_chunk in pd.read_csv(statements_path, sep=';', dtype=str, chunksize=100000):
-                chunk_num += 1
-                
-                # VECTORIZED: Convert columns to numeric in one go
                 stmt_chunk['regcode'] = pd.to_numeric(stmt_chunk['legal_entity_registration_number'], errors='coerce')
                 stmt_chunk['year_int'] = pd.to_numeric(stmt_chunk['year'], errors='coerce')
                 
-                # VECTORIZED: Filter to only regcodes we need
                 relevant = stmt_chunk[stmt_chunk['regcode'].isin(regcodes_to_update)].copy()
                 
-                # VECTORIZED: Build dictionary from filtered dataframe
                 if len(relevant) > 0:
                     new_mappings = relevant.set_index('id')[['regcode', 'year_int']].to_dict('index')
-                    # Rename year_int to year in dict
                     for stmt_id, data in new_mappings.items():
                         stmt_map[stmt_id] = {'regcode': int(data['regcode']), 'year': int(data['year_int'])}
-                
-                if chunk_num % 5 == 0:
-                    logger.info(f"  Processed {chunk_num} statement chunks, {len(stmt_map)} relevant statements")
             
-            logger.info(f"✅ Loaded {len(stmt_map)} relevant statement mappings")
+            logger.info(f"✅ Loaded {len(stmt_map)} statement mappings")
             
             if len(stmt_map) == 0:
-                logger.info("✅ No statements found for these companies")
+                logger.info("✅ No statements found")
                 self.update_state('SUCCESS', 0)
                 return
             
-            # Step 2: Process balance sheets using VECTORIZED operations (much faster)
-            logger.info(f"📊 Processing balance sheets...")
-            
-            # OPTIMIZATION: Convert stmt_map to DataFrame ONCE (not in every loop iteration)
+            # Convert to DataFrame for parallel workers
             stmt_lookup_df = pd.DataFrame.from_dict(stmt_map, orient='index')
             stmt_lookup_df.index.name = 'statement_id'
             stmt_lookup_df = stmt_lookup_df.reset_index()
-            logger.info(f"✅ Created lookup table with {len(stmt_lookup_df)} statements")
             
-            updates = []  # List of (regcode, year, accounts_receivable)
-            chunk_num = 0
-            total_rows_processed = 0
+            # Step 2: Read balance sheets in chunks and prepare for parallel processing
+            logger.info(f"📊 Reading balance sheets for parallel processing...")
             
-            for bal_chunk in pd.read_csv(balance_path, sep=';', dtype=str, chunksize=50000): # Optimized chunk size
-                chunk_num += 1
-                chunk_start = pd.Timestamp.now()
-                # logger.info(f"📊 Processing balance chunk {chunk_num} ({len(bal_chunk)} rows)...") # Too noisy
-                
-                # Extract accounts_receivable column
-                ar_col = None
-                for col in ['accounts_receivable', 'debtori', 'receivables']:
-                    if col in bal_chunk.columns:
-                        ar_col = col
-                        break
-                
-                if not ar_col or 'statement_id' not in bal_chunk.columns:
-                    continue
-                
-                # OPTIMIZATION: Filter to only statement_ids we care about FIRST
-                bal_chunk = bal_chunk[bal_chunk['statement_id'].isin(stmt_map.keys())]
-                
-                if len(bal_chunk) == 0:
-                    continue
-                
-                # TRULY VECTORIZED: Merge (join) instead of map - MUCH faster!
-                bal_chunk = bal_chunk.merge(
-                    stmt_lookup_df[['statement_id', 'regcode', 'year']], 
-                    on='statement_id', 
-                    how='left'
-                )
-                
-                # Convert accounts_receivable to numeric
-                bal_chunk['accounts_receivable'] = pd.to_numeric(bal_chunk[ar_col], errors='coerce')
-                
-                # Drop rows with missing data
-                bal_chunk = bal_chunk.dropna(subset=['regcode', 'year', 'accounts_receivable'])
-                
-                if len(bal_chunk) == 0:
-                    continue
-                
-                # Buffer updates
-                chunk_updates = bal_chunk[['regcode', 'year', 'accounts_receivable']].to_dict('records')
-                updates.extend(chunk_updates)
-                total_rows_processed += len(bal_chunk)
-                
-                # Process buffer if it gets large enough, OR if we have any updates to prevent memory growth
-                if len(updates) >= BATCH_SIZE:
-                    self._batch_update(updates)
-                    updates = [] # Clear buffer
-                
-                # Show progress every 10 chunks to avoid spam
-                if chunk_num % 10 == 0:
-                    logger.info(f"  ⏱️  Processed {chunk_num} CSV chunks (Total updated: {total_rows_processed})")
+            chunks_to_process = []
+            for bal_chunk in pd.read_csv(balance_path, sep=';', dtype=str, chunksize=50000):
+                chunks_to_process.append((bal_chunk, stmt_lookup_df))
             
-            # Final batch
-            if updates:
-                self._batch_update(updates)
+            logger.info(f"✅ Prepared {len(chunks_to_process)} chunks for {NUM_WORKERS} workers")
             
-            logger.info(f"✅ Update complete! Updated {total_rows_processed} total rows")
-            self.update_state('SUCCESS', total_rows_processed)
+            # Step 3: Process chunks in parallel
+            logger.info(f"🚀 Processing in parallel...")
+            all_updates = []
+            
+            with Pool(processes=NUM_WORKERS) as pool:
+                results = pool.map(process_balance_chunk, chunks_to_process)
+                
+                # Flatten results
+                for chunk_result in results:
+                    all_updates.extend(chunk_result)
+                    if len(all_updates) % 10000 == 0:
+                        logger.info(f"  Processed {len(all_updates)} records so far...")
+            
+            logger.info(f"✅ Parallel processing complete! {len(all_updates)} updates ready")
+            
+            # Step 4: Batch update database
+            if all_updates:
+                self._batch_update(all_updates)
+            
+            logger.info(f"✅ ETL complete! Updated {len(all_updates)} records")
+            self.update_state('SUCCESS', len(all_updates))
             
         except Exception as e:
             logger.error(f"❌ ETL failed: {e}")
@@ -220,17 +221,15 @@ class OptimizedFinanceETL:
             raise
     
     def _batch_update(self, all_updates):
-        """Batch update database in small slices to avoid timeouts"""
+        """Batch update database"""
         if not all_updates:
             return
         
-        # Slicing the updates list into smaller pieces
         total = len(all_updates)
+        logger.info(f"💾 Updating database in batches of {BATCH_SIZE}...")
         
-        # Process in slices of BATCH_SIZE (e.g. 50)
         for i in range(0, total, BATCH_SIZE):
-            slice_end = min(i + BATCH_SIZE, total)
-            batch = all_updates[i:slice_end]
+            batch = all_updates[i:i + BATCH_SIZE]
             
             try:
                 with self.engine.connect() as conn:
@@ -244,18 +243,17 @@ class OptimizedFinanceETL:
                         batch
                     )
                     conn.commit()
-                # logger.info(f"    💾 Updated records {i+1}-{slice_end}") 
-                print(f".", end="", flush=True) # Visual progress dot
+                
+                if (i // BATCH_SIZE) % 10 == 0:
+                    logger.info(f"  💾 Updated {i + len(batch)}/{total} records")
             except Exception as e:
-                logger.error(f"Failed to update batch {i}-{slice_end}: {e}")
-        
-        print("") # Newline after dots
+                logger.error(f"Failed to update batch {i}: {e}")
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--full', action='store_true', help='Run full load instead of incremental')
+    parser.add_argument('--full', action='store_true', help='Run full load')
     args = parser.parse_args()
     
-    etl = OptimizedFinanceETL(full_load=args.full)
+    etl = ParallelFinanceETL(full_load=args.full)
     etl.run()

@@ -1,6 +1,4 @@
-"""
-Create tables for feedback and newsletter signups
-"""
+-- Create tables for feedback and newsletter signups
 
 -- Waitlist/Newsletter table (already exists, but let's ensure it)
 CREATE TABLE IF NOT EXISTS waitlist_emails (

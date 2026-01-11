@@ -171,12 +171,35 @@ export default function DashboardPage() {
     const handleSuggest = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setIsSuggestModalOpen(false);
-        setSuggestion("");
-        setIsSubmitting(false);
-        alert(t('suggestion_success'));
+
+        try {
+            const res = await fetch('/api/waitlist/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${Cookies.get('token')}`
+                },
+                body: JSON.stringify({
+                    feedback_text: suggestion,
+                    email: user?.email,
+                    source: 'dashboard'
+                })
+            });
+
+            if (res.ok) {
+                setIsSuggestModalOpen(false);
+                setSuggestion("");
+                // Show success message (you can replace alert with a toast notification)
+                alert(t('suggestion_success'));
+            } else {
+                alert("Kļūda nosūtot ieteikumu. Mēģiniet vēlāk.");
+            }
+        } catch (error) {
+            console.error("Error submitting feedback:", error);
+            alert("Kļūda nosūtot ieteikumu.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     if (loading) {
