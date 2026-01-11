@@ -62,6 +62,12 @@ export default function Navbar() {
                             {t('regions')}
                         </Link>
                         <Link
+                            href="/pricing"
+                            className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
+                        >
+                            {t('pricing')}
+                        </Link>
+                        <Link
                             href="/explore"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
                         >
@@ -71,7 +77,7 @@ export default function Navbar() {
                             href="/personas"
                             className="text-gray-600 hover:text-primary transition-colors text-sm font-medium whitespace-nowrap"
                         >
-                            Personas
+                            {t('personas')}
                         </Link>
                         <Link
                             href="/mvk-declaration"
@@ -86,7 +92,7 @@ export default function Navbar() {
                                 onClick={handleLogout}
                                 className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm"
                             >
-                                Logout
+                                {t('logout')}
                             </button>
                         ) : (
                             <Link href="/auth/login" className="inline-flex items-center gap-2 px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-primary hover:bg-secondary transition-colors shadow-sm">
@@ -153,6 +159,13 @@ export default function Navbar() {
                                 {t('regions')}
                             </Link>
                             <Link
+                                href="/pricing"
+                                onClick={() => setIsMenuOpen(false)}
+                                className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
+                            >
+                                {t('pricing')}
+                            </Link>
+                            <Link
                                 href="/mvk-declaration"
                                 onClick={() => setIsMenuOpen(false)}
                                 className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
@@ -165,7 +178,7 @@ export default function Navbar() {
                                     onClick={handleLogout}
                                     className="w-full mt-2 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm"
                                 >
-                                    Logout
+                                    {t('logout')}
                                 </button>
                             ) : (
                                 <Link href="/auth/login" className="block w-full mt-2 px-4 py-2.5 border border-transparent rounded-lg text-sm font-medium text-white bg-primary hover:bg-secondary transition-colors shadow-sm text-center">

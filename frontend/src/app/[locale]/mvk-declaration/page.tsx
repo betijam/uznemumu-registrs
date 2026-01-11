@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import debounce from "lodash.debounce";
+import { useTranslations, useLocale } from "next-intl";
 
 interface Company {
     regcode: number;
@@ -66,19 +67,23 @@ interface ControlCriteria {
     explanation: string;
 }
 
-// Format currency helper
-function formatCurrency(value: number | null | undefined): string {
-    if (value === null || value === undefined) return "—";
-    return new Intl.NumberFormat("lv-LV", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value);
-}
-
-// Format number helper
-function formatNumber(value: number | null | undefined): string {
-    if (value === null || value === undefined) return "—";
-    return new Intl.NumberFormat("lv-LV").format(value);
-}
-
 export default function MVKDeclarationPage() {
+    const t = useTranslations('MVK');
+    const locale = useLocale();
+    const dateLocale = locale === 'en' ? 'en-GB' : locale === 'ru' ? 'ru-RU' : 'lv-LV';
+
+    // Format currency helper
+    function formatCurrency(value: number | null | undefined): string {
+        if (value === null || value === undefined) return "—";
+        return new Intl.NumberFormat(dateLocale, { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value);
+    }
+
+    // Format number helper
+    function formatNumber(value: number | null | undefined): string {
+        if (value === null || value === undefined) return "—";
+        return new Intl.NumberFormat(dateLocale).format(value);
+    }
+
     const [searchQuery, setSearchQuery] = useState("");
     const [suggestions, setSuggestions] = useState<Company[]>([]);
     const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -270,28 +275,30 @@ export default function MVKDeclarationPage() {
     const getIdentificationText = () => {
         if (!mvkData) return "";
         const { identification } = mvkData;
-        return `Komercsabiedrības nosaukums: ${identification.name}
-Juridiskā adrese: ${identification.address}
-Reģistrācijas numurs: ${identification.regcode}
-Paraksttiesīgā persona: ${identification.authorized_person || "—"} (${identification.authorized_position || "—"})`;
+        return `${t('name')}: ${identification.name}
+${t('address')}: ${identification.address}
+${t('reg_no')}: ${identification.regcode}
+${t('authorized_person')}: ${identification.authorized_person || "—"} (${identification.authorized_position || "—"})`;
     };
 
     // Generate summary table text
     const getSummaryTableText = () => {
         if (!mvkData) return "";
         const { summary_table } = mvkData;
-        return `2.1. Pašas komercsabiedrības dati\t${formatNumber(summary_table.row_2_1.employees)}\t${formatCurrency(summary_table.row_2_1.turnover)}\t${formatCurrency(summary_table.row_2_1.balance)}
-2.2. Partneruzņēmumu dati (proporcionāli)\t${formatNumber(summary_table.row_2_2.employees)}\t${formatCurrency(summary_table.row_2_2.turnover)}\t${formatCurrency(summary_table.row_2_2.balance)}
-2.3. Saistīto uzņēmumu dati (100%)\t${formatNumber(summary_table.row_2_3.employees)}\t${formatCurrency(summary_table.row_2_3.turnover)}\t${formatCurrency(summary_table.row_2_3.balance)}
-KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_table.total.turnover)}\t${formatCurrency(summary_table.total.balance)}`;
+        return `2.1. ${t('row_2_1_desc')}\t${formatNumber(summary_table.row_2_1.employees)}\t${formatCurrency(summary_table.row_2_1.turnover)}\t${formatCurrency(summary_table.row_2_1.balance)}
+2.2. ${t('row_2_2_desc')}\t${formatNumber(summary_table.row_2_2.employees)}\t${formatCurrency(summary_table.row_2_2.turnover)}\t${formatCurrency(summary_table.row_2_2.balance)}
+2.3. ${t('row_2_3_desc')}\t${formatNumber(summary_table.row_2_3.employees)}\t${formatCurrency(summary_table.row_2_3.turnover)}\t${formatCurrency(summary_table.row_2_3.balance)}
+${t('total')}\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_table.total.turnover)}\t${formatCurrency(summary_table.total.balance)}`;
     };
+
+    const tSize = useTranslations('CompanySize');
 
     // Status badge component
     const StatusBadge = ({ type }: { type: string }) => {
         const config = {
-            AUTONOMOUS: { color: "bg-green-100 text-green-800 border-green-300", label: "🟢 Autonoms" },
-            PARTNER: { color: "bg-yellow-100 text-yellow-800 border-yellow-300", label: "🟡 Partneruzņēmumi" },
-            LINKED: { color: "bg-red-100 text-red-800 border-red-300", label: "🔴 Saistīti uzņēmumi" },
+            AUTONOMOUS: { color: "bg-green-100 text-green-800 border-green-300", label: "🟢 " + t('none').replace(' (Autonomous)', '').replace(' (Autonoms)', '').replace(' (Автономное)', '') },
+            PARTNER: { color: "bg-yellow-100 text-yellow-800 border-yellow-300", label: "🟡 " + t('partners') },
+            LINKED: { color: "bg-red-100 text-red-800 border-red-300", label: "🔴 " + t('linked_companies') },
         }[type] || { color: "bg-gray-100 text-gray-800", label: type };
 
         return (
@@ -303,16 +310,26 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
 
     // Company size badge
     const SizeBadge = ({ size }: { size: string | null | undefined }) => {
-        const config: Record<string, { color: string; icon: string }> = {
-            "Mikro": { color: "bg-blue-500", icon: "🔹" },
-            "Mazs": { color: "bg-green-500", icon: "🟢" },
-            "Vidējs": { color: "bg-yellow-500", icon: "🟡" },
-            "Liels": { color: "bg-red-500", icon: "🔴" },
+        const sizeKeyMap: Record<string, string> = {
+            "Mikro": "micro",
+            "Mazs": "small",
+            "Vidējs": "medium",
+            "Liels": "large",
         };
-        const c = config[size || ""] || { color: "bg-gray-500", icon: "⚪" };
+        const key = size ? sizeKeyMap[size] : '';
+        const label = key ? tSize(key) : (size || t('not_found'));
+
+        const config: Record<string, { color: string; icon: string }> = {
+            "micro": { color: "bg-blue-500", icon: "🔹" },
+            "small": { color: "bg-green-500", icon: "🟢" },
+            "medium": { color: "bg-yellow-500", icon: "🟡" },
+            "large": { color: "bg-red-500", icon: "🔴" },
+        };
+        const c = config[key || ""] || { color: "bg-gray-500", icon: "⚪" };
+
         return (
             <span className={`${c.color} text-white px-4 py-2 rounded-lg text-lg font-bold shadow-lg`}>
-                {c.icon} {size || "Nav datu"} uzņēmums
+                {c.icon} {label}
             </span>
         );
     };
@@ -369,25 +386,25 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
 
         let html = `
             <h1>MVK Deklarācijas Pielikumi</h1>
-            <h2>Uzņēmuma informācija</h2>
-            <p><strong>Nosaukums:</strong> ${identification.name}</p>
-            <p><strong>Reģ. nr.:</strong> ${identification.regcode}</p>
-            <p><strong>Adrese:</strong> ${identification.address}</p>
-            <p><strong>Paraksttiesīgā persona:</strong> ${identification.authorized_person || "—"}</p>
-            <p><strong>MVK statuss:</strong> ${mvkData.company_size || "Nav noteikts"}</p>
+            <h2>${t('section_0_title')}</h2>
+            <p><strong>${t('name')}:</strong> ${identification.name}</p>
+            <p><strong>${t('reg_no')}:</strong> ${identification.regcode}</p>
+            <p><strong>${t('address')}:</strong> ${identification.address}</p>
+            <p><strong>${t('authorized_person')}:</strong> ${identification.authorized_person || "—"}</p>
+            <p><strong>${t('company_type')}:</strong> ${mvkData.company_size || "—"}</p>
             <hr/>
-            <h2>Kopsavilkuma tabula (2.1-2.3)</h2>
+            <h2>${t('summary_title')}</h2>
             <table border="1" cellpadding="5" style="border-collapse:collapse;">
-                <tr style="background:#eee;"><th>Rinda</th><th>Apraksts</th><th>Darbinieki</th><th>Apgrozījums</th><th>Bilance</th></tr>
-                <tr><td>2.1</td><td>Pašas komercsabiedrības dati</td><td>${summary_table.row_2_1.employees || 0}</td><td>${formatCurrency(summary_table.row_2_1.turnover)}</td><td>${formatCurrency(summary_table.row_2_1.balance)}</td></tr>
-                <tr style="background:#fffde7;"><td>2.2</td><td>Partneruzņēmumu dati</td><td>${summary_table.row_2_2.employees}</td><td>${formatCurrency(summary_table.row_2_2.turnover)}</td><td>${formatCurrency(summary_table.row_2_2.balance)}</td></tr>
-                <tr style="background:#ffebee;"><td>2.3</td><td>Saistīto uzņēmumu dati</td><td>${summary_table.row_2_3.employees}</td><td>${formatCurrency(summary_table.row_2_3.turnover)}</td><td>${formatCurrency(summary_table.row_2_3.balance)}</td></tr>
-                <tr style="background:#1a365d;color:white;font-weight:bold;"><td colspan="2">KOPĀ</td><td>${summary_table.total.employees}</td><td>${formatCurrency(summary_table.total.turnover)}</td><td>${formatCurrency(summary_table.total.balance)}</td></tr>
+                <tr style="background:#eee;"><th>${t('row')}</th><th>${t('description')}</th><th>${t('employees')}</th><th>${t('turnover')}</th><th>${t('balance')}</th></tr>
+                <tr><td>2.1</td><td>${t('row_2_1_desc')}</td><td>${summary_table.row_2_1.employees || 0}</td><td>${formatCurrency(summary_table.row_2_1.turnover)}</td><td>${formatCurrency(summary_table.row_2_1.balance)}</td></tr>
+                <tr style="background:#fffde7;"><td>2.2</td><td>${t('row_2_2_desc')}</td><td>${summary_table.row_2_2.employees}</td><td>${formatCurrency(summary_table.row_2_2.turnover)}</td><td>${formatCurrency(summary_table.row_2_2.balance)}</td></tr>
+                <tr style="background:#ffebee;"><td>2.3</td><td>${t('row_2_3_desc')}</td><td>${summary_table.row_2_3.employees}</td><td>${formatCurrency(summary_table.row_2_3.turnover)}</td><td>${formatCurrency(summary_table.row_2_3.balance)}</td></tr>
+                <tr style="background:#1a365d;color:white;font-weight:bold;"><td colspan="2">${t('total')}</td><td>${summary_table.total.employees}</td><td>${formatCurrency(summary_table.total.turnover)}</td><td>${formatCurrency(summary_table.total.balance)}</td></tr>
             </table>
         `;
 
         if (section_a.partners.length > 0) {
-            html += `<h2>A Sadaļa - Partneruzņēmumi</h2><table border="1" cellpadding="5" style="border-collapse:collapse;"><tr style="background:#eee;"><th>Nr.</th><th>Nosaukums</th><th>Darbinieki</th><th>Apgrozījums</th><th>Bilance</th><th>%</th></tr>`;
+            html += `<h2>${t('section_a_title')}</h2><table border="1" cellpadding="5" style="border-collapse:collapse;"><tr style="background:#eee;"><th>${t('nr')}</th><th>${t('name')}</th><th>${t('employees')}</th><th>${t('turnover')}</th><th>${t('balance')}</th><th>%</th></tr>`;
             section_a.partners.forEach((p, i) => {
                 html += `<tr><td>${i + 1}</td><td>${p.name}</td><td>${p.employees || 0}</td><td>${formatCurrency(p.turnover)}</td><td>${formatCurrency(p.balance)}</td><td>${p.ownership_percent}%</td></tr>`;
             });
@@ -395,7 +412,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
         }
 
         if (section_b.entities.length > 0) {
-            html += `<h2>B Sadaļa - Saistītie uzņēmumi</h2><table border="1" cellpadding="5" style="border-collapse:collapse;"><tr style="background:#eee;"><th>Nr.</th><th>Nosaukums</th><th>Darbinieki</th><th>Apgrozījums</th><th>Bilance</th><th>%</th></tr>`;
+            html += `<h2>${t('section_b_title')}</h2><table border="1" cellpadding="5" style="border-collapse:collapse;"><tr style="background:#eee;"><th>${t('nr')}</th><th>${t('name')}</th><th>${t('employees')}</th><th>${t('turnover')}</th><th>${t('balance')}</th><th>%</th></tr>`;
             section_b.entities.forEach((e, i) => {
                 html += `<tr><td>${i + 1}</td><td>${e.name}</td><td>${e.employees || 0}</td><td>${formatCurrency(e.turnover)}</td><td>${formatCurrency(e.balance)}</td><td>${e.ownership_percent}%</td></tr>`;
             });
@@ -413,11 +430,10 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
             <div className="bg-gradient-to-br from-primary via-primary-dark to-accent py-16">
                 <div className="max-w-4xl mx-auto px-4 text-center">
                     <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                        Saistīto Subjektu Lapa
+                        {t('title')}
                     </h1>
                     <p className="text-gray-200 text-lg mb-8">
-                        Šī lapa palīdz sagatavot MVK/MVU deklarācijas pielikumus. Atlasiet uzņēmumu,
-                        un sistēma automātiski parādīs tikai tās sadaļas, kuras jums jāaizpilda.
+                        {t('subtitle')}
                     </p>
 
                     {/* Search Input */}
@@ -431,7 +447,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
-                                placeholder="Ievadiet uzņēmuma nosaukumu vai reģ. numuru"
+                                placeholder={t('search_placeholder')}
                                 className="w-full pl-12 pr-4 py-4 rounded-xl text-gray-900 border-0 focus:ring-2 focus:ring-accent shadow-lg"
                             />
                         </div>
@@ -444,6 +460,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                         key={company.regcode}
                                         onClick={() => handleSelectCompany(company)}
                                         className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b last:border-0"
+                                        aria-label={company.name}
                                     >
                                         <div>
                                             <span className="font-medium text-gray-900">{company.name}</span>
@@ -472,7 +489,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                             <div className="flex items-center justify-between flex-wrap gap-4">
                                 <div>
                                     <h2 className="text-2xl font-bold mb-2">{mvkData.identification.name}</h2>
-                                    <p className="opacity-80">Reģ. nr. {mvkData.identification.regcode}</p>
+                                    <p className="opacity-80">{t('reg_no')} {mvkData.identification.regcode}</p>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <SizeBadge size={mvkData.company_size} />
@@ -480,22 +497,22 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                         onClick={downloadFullDeclaration}
                                         className="bg-white text-primary px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors flex items-center gap-2"
                                     >
-                                        📄 Lejupielādēt Word
+                                        📄 {t('download_word')}
                                     </button>
                                 </div>
                             </div>
                             <div className="mt-4 grid grid-cols-3 gap-4 text-center">
                                 <div className="bg-white/10 rounded-lg p-3">
                                     <p className="text-2xl font-bold">{formatNumber(mvkData.summary_table.total.employees)}</p>
-                                    <p className="text-sm opacity-80">Darbinieki (kopā)</p>
+                                    <p className="text-sm opacity-80">{t('employees')}</p>
                                 </div>
                                 <div className="bg-white/10 rounded-lg p-3">
                                     <p className="text-2xl font-bold">{formatCurrency(mvkData.summary_table.total.turnover)}</p>
-                                    <p className="text-sm opacity-80">Apgrozījums (kopā)</p>
+                                    <p className="text-sm opacity-80">{t('turnover')}</p>
                                 </div>
                                 <div className="bg-white/10 rounded-lg p-3">
                                     <p className="text-2xl font-bold">{formatCurrency(mvkData.summary_table.total.balance)}</p>
-                                    <p className="text-sm opacity-80">Bilance (kopā)</p>
+                                    <p className="text-sm opacity-80">{t('balance')}</p>
                                 </div>
                             </div>
                         </div>
@@ -503,93 +520,93 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                         {/* Scenario Summary */}
                         <div className="bg-white rounded-xl shadow-lg p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-bold text-gray-900">🧠 MVK Scenārija Kopsavilkums</h2>
+                                <h2 className="text-xl font-bold text-gray-900">🧠 {t('scenario_summary')}</h2>
                                 <StatusBadge type={mvkData.scenario.company_type} />
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div className="bg-gray-50 rounded-lg p-4">
-                                    <p className="text-sm text-gray-500">Uzņēmuma tips</p>
+                                    <p className="text-sm text-gray-500">{t('company_type')}</p>
                                     <p className="font-semibold">{mvkData.scenario.company_type}</p>
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-4">
-                                    <p className="text-sm text-gray-500">Partneruzņēmumi</p>
-                                    <p className="font-semibold">{mvkData.scenario.has_partners ? "✅ Jā" : "❌ Nē"}</p>
+                                    <p className="text-sm text-gray-500">{t('partners')}</p>
+                                    <p className="font-semibold">{mvkData.scenario.has_partners ? `✅ ${t('yes')}` : `❌ ${t('no')}`}</p>
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-4">
-                                    <p className="text-sm text-gray-500">Saistītie uzņēmumi</p>
-                                    <p className="font-semibold">{mvkData.scenario.has_linked ? "✅ Jā" : "❌ Nē"}</p>
+                                    <p className="text-sm text-gray-500">{t('linked_companies')}</p>
+                                    <p className="font-semibold">{mvkData.scenario.has_linked ? `✅ ${t('yes')}` : `❌ ${t('no')}`}</p>
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-4">
-                                    <p className="text-sm text-gray-500">Aizpildāmās sadaļas</p>
-                                    <p className="font-semibold">{mvkData.scenario.required_sections.length > 0 ? mvkData.scenario.required_sections.join(", ") : "Nav (Autonoms)"}</p>
+                                    <p className="text-sm text-gray-500">{t('required_sections')}</p>
+                                    <p className="font-semibold">{mvkData.scenario.required_sections.length > 0 ? mvkData.scenario.required_sections.join(", ") : t('none')}</p>
                                 </div>
                             </div>
                         </div>
 
                         {/* 0️⃣ Status Detection Summary */}
                         <div className="bg-white rounded-xl shadow-lg p-6">
-                            <h2 className="text-xl font-bold text-gray-900 mb-4">📊 Kā sistēma noteica jūsu MVK statusu</h2>
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">📊 {t('status_detection_title')}</h2>
 
                             <div className="overflow-x-auto -mx-4 sm:mx-0">
                                 <table className="w-full text-sm mb-4 min-w-[400px]">
                                     <thead className="bg-gray-100">
                                         <tr>
-                                            <th className="px-3 sm:px-4 py-3 text-left font-semibold">Kritērijs</th>
-                                            <th className="px-3 sm:px-4 py-3 text-left font-semibold">Statuss</th>
-                                            <th className="px-3 sm:px-4 py-3 text-left font-semibold">Avots</th>
+                                            <th className="px-3 sm:px-4 py-3 text-left font-semibold">{t('criteria')}</th>
+                                            <th className="px-3 sm:px-4 py-3 text-left font-semibold">{t('status')}</th>
+                                            <th className="px-3 sm:px-4 py-3 text-left font-semibold">{t('source')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr className="border-b">
-                                            <td className="px-4 py-3">Kapitāldaļu attiecības</td>
+                                            <td className="px-4 py-3">{t('share_capital_rel')}</td>
                                             <td className="px-4 py-3">
-                                                <span className="text-green-600 font-medium">✅ Noteikts automātiski</span>
+                                                <span className="text-green-600 font-medium">✅ {t('auto_detected')}</span>
                                             </td>
-                                            <td className="px-4 py-3 text-gray-500">Uzņēmumu reģistra dati</td>
+                                            <td className="px-4 py-3 text-gray-500">{t('ur_data')}</td>
                                         </tr>
                                         <tr className="border-b">
-                                            <td className="px-4 py-3">Saistītie uzņēmumi (&gt;50%)</td>
+                                            <td className="px-4 py-3">{t('linked_gt_50')}</td>
                                             <td className="px-4 py-3">
                                                 {mvkData.scenario.has_linked ? (
-                                                    <span className="text-red-600 font-medium">🔴 {mvkData.section_b.entities.length} atrasti</span>
+                                                    <span className="text-red-600 font-medium">🔴 {mvkData.section_b.entities.length} {t('found')}</span>
                                                 ) : (
-                                                    <span className="text-gray-500">⚪ Nav atrasti</span>
+                                                    <span className="text-gray-500">⚪ {t('not_found')}</span>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-3 text-gray-500">UR API</td>
+                                            <td className="px-4 py-3 text-gray-500">{t('ur_api')}</td>
                                         </tr>
                                         <tr className="border-b">
-                                            <td className="px-4 py-3">Partneruzņēmumi (25–50%)</td>
+                                            <td className="px-4 py-3">{t('partners_25_50')}</td>
                                             <td className="px-4 py-3">
                                                 {mvkData.scenario.has_partners ? (
-                                                    <span className="text-yellow-600 font-medium">🟡 {mvkData.section_a.partners.length} atrasti</span>
+                                                    <span className="text-yellow-600 font-medium">🟡 {mvkData.section_a.partners.length} {t('found')}</span>
                                                 ) : (
-                                                    <span className="text-gray-500">⚪ Nav atrasti</span>
+                                                    <span className="text-gray-500">⚪ {t('not_found')}</span>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-3 text-gray-500">UR API</td>
+                                            <td className="px-4 py-3 text-gray-500">{t('ur_api')}</td>
                                         </tr>
                                         <tr className="border-b bg-yellow-50">
-                                            <td className="px-4 py-3">Vadības / līgumu kontrole</td>
+                                            <td className="px-4 py-3">{t('control_criteria')}</td>
                                             <td className="px-4 py-3">
-                                                <span className="text-orange-600 font-medium">⚠️ Nav iespējams noteikt automātiski</span>
+                                                <span className="text-orange-600 font-medium">⚠️ {t('cant_auto_detect')}</span>
                                             </td>
-                                            <td className="px-4 py-3 text-gray-500">Lietotāja apliecinājums</td>
+                                            <td className="px-4 py-3 text-gray-500">{t('user_confirmation')}</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
 
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-                                <p className="font-medium mb-1">⚠️ Svarīgi</p>
-                                <p>Uzņēmumu reģistra publiskie dati nesatur informāciju par noteicošu ietekmi ar līgumiem, statūtiem vai dalībnieku vienošanos. Šie kritēriji jāapstiprina uzņēmumam pašam.</p>
+                                <p className="font-medium mb-1">⚠️ {t('important')}</p>
+                                <p>{t('important_desc')}</p>
                             </div>
                         </div>
 
                         {/* Section 0: Identification */}
                         <div className="bg-white rounded-xl shadow-lg p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-bold text-gray-900">📋 0. Sadaļa – Identifikācija</h2>
+                                <h2 className="text-xl font-bold text-gray-900">📋 {t('section_0_title')}</h2>
                                 <button
                                     onClick={() => copyToClipboard(getIdentificationText(), "identification")}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copySuccess === "identification"
@@ -597,15 +614,15 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                         : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                                         }`}
                                 >
-                                    {copySuccess === "identification" ? "✓ Nokopēts!" : "📋 Kopēt"}
+                                    {copySuccess === "identification" ? `✓ ${t('copied')}` : `📋 ${t('copy')}`}
                                 </button>
                             </div>
                             <div className="bg-gray-50 rounded-lg p-4 font-mono text-sm space-y-1">
-                                <p><span className="font-semibold">Komercsabiedrības nosaukums:</span> {mvkData.identification.name}</p>
-                                <p><span className="font-semibold">Juridiskā adrese:</span> {mvkData.identification.address}</p>
-                                <p><span className="font-semibold">Reģistrācijas numurs:</span> {mvkData.identification.regcode}</p>
+                                <p><span className="font-semibold">{t('name')}:</span> {mvkData.identification.name}</p>
+                                <p><span className="font-semibold">{t('address')}:</span> {mvkData.identification.address}</p>
+                                <p><span className="font-semibold">{t('reg_no')}:</span> {mvkData.identification.regcode}</p>
                                 <p>
-                                    <span className="font-semibold">Paraksttiesīgā persona:</span>{' '}
+                                    <span className="font-semibold">{t('authorized_person')}:</span>{' '}
                                     {mvkData.identification.authorized_person_hash ? (
                                         <Link href={`/person/${mvkData.identification.authorized_person_hash}`} className="text-blue-600 hover:underline">
                                             {mvkData.identification.authorized_person}
@@ -623,23 +640,21 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                         {userConfirmations.length > 0 && (
                             <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-orange-200">
                                 <h2 className="text-xl font-bold text-gray-900 mb-2">
-                                    ⚠️ Papildu kontroles kritēriji
+                                    ⚠️ {t('additional_criteria_title')}
                                 </h2>
                                 <p className="text-sm text-gray-600 mb-4">
-                                    Pamatojoties uz uzņēmuma statūtiem, līgumiem vai dalībnieku vienošanos.
-                                    Šī informācija nav pieejama publiskajos reģistros.
-                                    Atzīmējiet tikai tos gadījumus, kas faktiski pastāv.
+                                    {t('additional_criteria_desc')}
                                 </p>
 
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead className="bg-gray-100">
                                             <tr>
-                                                <th className="px-3 py-2 text-left font-semibold">Uzņēmums</th>
-                                                <th className="px-3 py-2 text-left font-semibold">Kritērijs</th>
-                                                <th className="px-3 py-2 text-center font-semibold">Jā</th>
-                                                <th className="px-3 py-2 text-center font-semibold">Nē</th>
-                                                <th className="px-3 py-2 text-center font-semibold">Nezinu</th>
+                                                <th className="px-3 py-2 text-left font-semibold">{t('company')}</th>
+                                                <th className="px-3 py-2 text-left font-semibold">{t('criteria')}</th>
+                                                <th className="px-3 py-2 text-center font-semibold">{t('yes')}</th>
+                                                <th className="px-3 py-2 text-center font-semibold">{t('no')}</th>
+                                                <th className="px-3 py-2 text-center font-semibold">{t('dont_know')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -655,17 +670,17 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                                                 )}
                                                                 {conf.needsConfirmation && (
                                                                     <span className="inline-block px-2 py-0.5 text-xs bg-orange-200 text-orange-800 rounded">
-                                                                        ⚠️ Cita nozare
+                                                                        ⚠️ {t('other_industry')}
                                                                     </span>
                                                                 )}
                                                                 {conf.sameMarket && !conf.needsConfirmation && (
                                                                     <span className="inline-block px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded">
-                                                                        ✓ Tā pati nozare
+                                                                        ✓ {t('same_industry')}
                                                                     </span>
                                                                 )}
                                                             </div>
                                                         </td>
-                                                        <td className="px-3 py-2">Tiesības iecelt/atlaist vadības vairākumu</td>
+                                                        <td className="px-3 py-2">{t('criteria_board')}</td>
                                                         <td className="px-3 py-2 text-center">
                                                             <input
                                                                 type="radio"
@@ -695,7 +710,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                                         </td>
                                                     </tr>
                                                     <tr key={`${conf.companyRegcode}-contract`} className="border-b">
-                                                        <td className="px-3 py-2">Noteicoša ietekme ar līgumu vai statūtiem</td>
+                                                        <td className="px-3 py-2">{t('criteria_contract')}</td>
                                                         <td className="px-3 py-2 text-center">
                                                             <input
                                                                 type="radio"
@@ -725,7 +740,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                                         </td>
                                                     </tr>
                                                     <tr key={`${conf.companyRegcode}-agreement`} className="border-b bg-gray-50">
-                                                        <td className="px-3 py-2">Kontrole ar vienošanos ar citiem dalībniekiem</td>
+                                                        <td className="px-3 py-2">{t('criteria_agreement')}</td>
                                                         <td className="px-3 py-2 text-center">
                                                             <input
                                                                 type="radio"
@@ -757,13 +772,13 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                                     {hasAnyYesConfirmation(conf.companyRegcode) && (
                                                         <tr key={`${conf.companyRegcode}-explanation`} className="bg-green-50">
                                                             <td colSpan={5} className="px-3 py-2">
-                                                                <label className="block text-xs text-gray-600 mb-1">Paskaidrojums (ieteicams):</label>
+                                                                <label className="block text-xs text-gray-600 mb-1">{t('explanation_label')}:</label>
                                                                 <textarea
                                                                     value={conf.explanation}
                                                                     onChange={(e) => updateConfirmation(conf.companyRegcode, 'explanation', e.target.value)}
                                                                     className="w-full px-3 py-2 border rounded-lg text-sm"
                                                                     rows={2}
-                                                                    placeholder="Aprakstiet kontroles pamatu..."
+                                                                    placeholder={t('explanation_placeholder')}
                                                                 />
                                                             </td>
                                                         </tr>
@@ -776,7 +791,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
 
                                 {hasUnknownConfirmations() && (
                                     <div className="mt-4 bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-800">
-                                        ⚠️ Daļa kontroles kritēriju nav izvērtēti. Atbildība par MVK statusa pareizību paliek uzņēmumam.
+                                        ⚠️ {t('warning_incomplete')}
                                     </div>
                                 )}
                             </div>
@@ -785,21 +800,21 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                         {/* Section 1: Autonomous (if applicable) */}
                         {mvkData.scenario.company_type === "AUTONOMOUS" && (
                             <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-                                <h2 className="text-xl font-bold text-green-800 mb-2">✅ 1. Sadaļa – Autonoms Uzņēmums</h2>
+                                <h2 className="text-xl font-bold text-green-800 mb-2">✅ {t('section_1_title')}</h2>
                                 <p className="text-green-700 mb-4">
-                                    Šim uzņēmumam nav jāaizpilda deklarācijas pielikumi (A/B sadaļa).
+                                    {t('section_1_desc')}
                                 </p>
                                 <div className="grid grid-cols-3 gap-4">
                                     <div className="bg-white rounded-lg p-4 text-center">
-                                        <p className="text-sm text-gray-500">Darbinieki</p>
+                                        <p className="text-sm text-gray-500">{t('employees')}</p>
                                         <p className="text-2xl font-bold text-gray-900">{formatNumber(mvkData.own_financials.employees)}</p>
                                     </div>
                                     <div className="bg-white rounded-lg p-4 text-center">
-                                        <p className="text-sm text-gray-500">Apgrozījums</p>
+                                        <p className="text-sm text-gray-500">{t('turnover')}</p>
                                         <p className="text-2xl font-bold text-gray-900">{formatCurrency(mvkData.own_financials.turnover)}</p>
                                     </div>
                                     <div className="bg-white rounded-lg p-4 text-center">
-                                        <p className="text-sm text-gray-500">Bilance</p>
+                                        <p className="text-sm text-gray-500">{t('balance')}</p>
                                         <p className="text-2xl font-bold text-gray-900">{formatCurrency(mvkData.own_financials.balance)}</p>
                                     </div>
                                 </div>
@@ -810,7 +825,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                         {mvkData.scenario.has_partners && (
                             <div className="bg-white rounded-xl shadow-lg p-6">
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-xl font-bold text-gray-900">📊 A Sadaļa – Partneruzņēmumi (25-50%)</h2>
+                                    <h2 className="text-xl font-bold text-gray-900">📊 {t('section_a_title')}</h2>
                                     <button
                                         onClick={() => copyTableAsHtml("table-section-a", "section_a")}
                                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copySuccess === "section_a"
@@ -818,7 +833,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                             : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                                             }`}
                                     >
-                                        {copySuccess === "section_a" ? "✓ Nokopēts!" : "📋 Kopēt A tabulu"}
+                                        {copySuccess === "section_a" ? `✓ ${t('copied')}` : `📋 ${t('copy_table_a')}`}
                                     </button>
                                 </div>
 
@@ -826,11 +841,11 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                     <table id="table-section-a" className="w-full text-sm min-w-[600px]">
                                         <thead className="bg-gray-100">
                                             <tr>
-                                                <th className="px-2 sm:px-4 py-3 text-left">Nr.</th>
-                                                <th className="px-2 sm:px-4 py-3 text-left">Partnerkomercsabiedrība</th>
-                                                <th className="px-2 sm:px-4 py-3 text-right">Darbinieki</th>
-                                                <th className="px-2 sm:px-4 py-3 text-right">Apgrozījums</th>
-                                                <th className="px-2 sm:px-4 py-3 text-right">Bilance</th>
+                                                <th className="px-2 sm:px-4 py-3 text-left">{t('nr')}</th>
+                                                <th className="px-2 sm:px-4 py-3 text-left">{t('partner_company')}</th>
+                                                <th className="px-2 sm:px-4 py-3 text-right">{t('employees')}</th>
+                                                <th className="px-2 sm:px-4 py-3 text-right">{t('turnover')}</th>
+                                                <th className="px-2 sm:px-4 py-3 text-right">{t('balance')}</th>
                                                 <th className="px-2 sm:px-4 py-3 text-right">%</th>
                                             </tr>
                                         </thead>
@@ -851,7 +866,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                                             partner.name
                                                         )}
                                                         {partner.entity_type === "physical_person" && (
-                                                            <span className="ml-2 text-xs bg-gray-200 px-2 py-0.5 rounded">Fiziska persona</span>
+                                                            <span className="ml-2 text-xs bg-gray-200 px-2 py-0.5 rounded">{t('physical_person')}</span>
                                                         )}
                                                     </td>
                                                     <td className="px-4 py-3 text-right">{formatNumber(partner.employees)}</td>
@@ -861,7 +876,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                                 </tr>
                                             ))}
                                             <tr className="bg-yellow-50 font-semibold">
-                                                <td className="px-4 py-3" colSpan={2}>KOPĀ (proporcionāli)</td>
+                                                <td className="px-4 py-3" colSpan={2}>{t('total_proportional')}</td>
                                                 <td className="px-4 py-3 text-right">{formatNumber(mvkData.section_a.totals.employees)}</td>
                                                 <td className="px-4 py-3 text-right">{formatCurrency(mvkData.section_a.totals.turnover)}</td>
                                                 <td className="px-4 py-3 text-right">{formatCurrency(mvkData.section_a.totals.balance)}</td>
@@ -878,9 +893,9 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                             <div className="bg-white rounded-xl shadow-lg p-6">
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-xl font-bold text-gray-900">
-                                        🔗 B Sadaļa – Saistītie Uzņēmumi (&gt;50%)
+                                        🔗 {t('section_b_title')}
                                         <span className="ml-2 text-sm font-normal text-gray-500">
-                                            Tipa {mvkData.section_b.type === "B1" ? "B(1) - Konsolidēts" : "B(2) - Nekonsolidēts"}
+                                            {t('type')} {mvkData.section_b.type === "B1" ? `B(1) - ${t('consolidated')}` : `B(2) - ${t('non_consolidated')}`}
                                         </span>
                                     </h2>
                                     <button
@@ -890,7 +905,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                             : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                                             }`}
                                     >
-                                        {copySuccess === "section_b" ? "✓ Nokōpēts!" : "📋 Kopēt B tabulu"}
+                                        {copySuccess === "section_b" ? `✓ ${t('copied')}` : `📋 ${t('copy_table_b')}`}
                                     </button>
                                 </div>
 
@@ -898,11 +913,11 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                     <table id="table-section-b" className="w-full text-sm min-w-[600px]">
                                         <thead className="bg-gray-100">
                                             <tr>
-                                                <th className="px-2 sm:px-4 py-3 text-left">Nr.</th>
-                                                <th className="px-2 sm:px-4 py-3 text-left">Saistītā komercsabiedrība</th>
-                                                <th className="px-2 sm:px-4 py-3 text-right">Darbinieki</th>
-                                                <th className="px-2 sm:px-4 py-3 text-right">Apgrozījums</th>
-                                                <th className="px-2 sm:px-4 py-3 text-right">Bilance</th>
+                                                <th className="px-2 sm:px-4 py-3 text-left">{t('nr')}</th>
+                                                <th className="px-2 sm:px-4 py-3 text-left">{t('linked_company')}</th>
+                                                <th className="px-2 sm:px-4 py-3 text-right">{t('employees')}</th>
+                                                <th className="px-2 sm:px-4 py-3 text-right">{t('turnover')}</th>
+                                                <th className="px-2 sm:px-4 py-3 text-right">{t('balance')}</th>
                                                 <th className="px-2 sm:px-4 py-3 text-right">%</th>
                                             </tr>
                                         </thead>
@@ -923,7 +938,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                                             entity.name
                                                         )}
                                                         <span className="ml-2 text-xs text-gray-500">
-                                                            {entity.relation === "owner" ? "👆 Īpašnieks" : "👇 Meitassab."}
+                                                            {entity.relation === "owner" ? `👆 ${t('owner')}` : `👇 ${t('subsidiary')}`}
                                                         </span>
                                                     </td>
                                                     <td className="px-4 py-3 text-right">{formatNumber(entity.employees)}</td>
@@ -933,7 +948,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                                 </tr>
                                             ))}
                                             <tr className="bg-red-50 font-semibold">
-                                                <td className="px-4 py-3" colSpan={2}>KOPĀ (100%)</td>
+                                                <td className="px-4 py-3" colSpan={2}>{t('total_100')}</td>
                                                 <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.row_2_3.employees)}</td>
                                                 <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_3.turnover)}</td>
                                                 <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_3.balance)}</td>
@@ -948,7 +963,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                         {/* Summary Table 2.1-2.3 */}
                         <div className="bg-white rounded-xl shadow-lg p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-bold text-gray-900">📈 Gala Kopsavilkums (2.1–2.3)</h2>
+                                <h2 className="text-xl font-bold text-gray-900">📈 {t('summary_title')}</h2>
                                 <button
                                     onClick={() => copyTableAsHtml("table-summary", "summary")}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copySuccess === "summary"
@@ -956,7 +971,7 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                         : "bg-primary text-white hover:bg-primary-dark"
                                         }`}
                                 >
-                                    {copySuccess === "summary" ? "✓ Nokopēts!" : "📋 Kopēt deklarācijas 3. sadaļai"}
+                                    {copySuccess === "summary" ? `✓ ${t('copied')}` : `📋 ${t('copy_summary')}`}
                                 </button>
                             </div>
 
@@ -964,37 +979,37 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                                 <table id="table-summary" className="w-full text-sm min-w-[600px]">
                                     <thead className="bg-gray-100">
                                         <tr>
-                                            <th className="px-2 sm:px-4 py-3 text-left">Rinda</th>
-                                            <th className="px-2 sm:px-4 py-3 text-left">Apraksts</th>
-                                            <th className="px-2 sm:px-4 py-3 text-right">Darbinieki</th>
-                                            <th className="px-2 sm:px-4 py-3 text-right">Apgrozījums</th>
-                                            <th className="px-2 sm:px-4 py-3 text-right">Bilance</th>
+                                            <th className="px-2 sm:px-4 py-3 text-left">{t('row')}</th>
+                                            <th className="px-2 sm:px-4 py-3 text-left">{t('description')}</th>
+                                            <th className="px-2 sm:px-4 py-3 text-right">{t('employees')}</th>
+                                            <th className="px-2 sm:px-4 py-3 text-right">{t('turnover')}</th>
+                                            <th className="px-2 sm:px-4 py-3 text-right">{t('balance')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr className="border-b">
                                             <td className="px-4 py-3 font-medium">2.1</td>
-                                            <td className="px-4 py-3">Pašas komercsabiedrības dati</td>
+                                            <td className="px-4 py-3">{t('row_2_1_desc')}</td>
                                             <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.row_2_1.employees)}</td>
                                             <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_1.turnover)}</td>
                                             <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_1.balance)}</td>
                                         </tr>
                                         <tr className="border-b bg-yellow-50">
                                             <td className="px-4 py-3 font-medium">2.2</td>
-                                            <td className="px-4 py-3">Partneruzņēmumu dati (proporcionāli)</td>
+                                            <td className="px-4 py-3">{t('row_2_2_desc')}</td>
                                             <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.row_2_2.employees)}</td>
                                             <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_2.turnover)}</td>
                                             <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_2.balance)}</td>
                                         </tr>
                                         <tr className="border-b bg-red-50">
                                             <td className="px-4 py-3 font-medium">2.3</td>
-                                            <td className="px-4 py-3">Saistīto uzņēmumu dati (100%)</td>
+                                            <td className="px-4 py-3">{t('row_2_3_desc')}</td>
                                             <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.row_2_3.employees)}</td>
                                             <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_3.turnover)}</td>
                                             <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.row_2_3.balance)}</td>
                                         </tr>
                                         <tr className="bg-primary text-white font-bold">
-                                            <td className="px-4 py-3" colSpan={2}>KOPĀ</td>
+                                            <td className="px-4 py-3" colSpan={2}>{t('total')}</td>
                                             <td className="px-4 py-3 text-right">{formatNumber(mvkData.summary_table.total.employees)}</td>
                                             <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.total.turnover)}</td>
                                             <td className="px-4 py-3 text-right">{formatCurrency(mvkData.summary_table.total.balance)}</td>
@@ -1006,23 +1021,23 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
 
                         {/* MVK Size Classification */}
                         <div className="bg-gradient-to-r from-primary to-primary-dark rounded-xl shadow-lg p-6 text-white">
-                            <h2 className="text-xl font-bold mb-4">🏢 MVK Klasifikācijas Rezultāts ({mvkData.year}. gads)</h2>
+                            <h2 className="text-xl font-bold mb-4">🏢 {t('classification_result', { year: mvkData.year })}</h2>
                             <div className="grid grid-cols-3 gap-4 mb-4">
                                 <div className="text-center">
                                     <p className="text-3xl font-bold">{formatNumber(mvkData.summary_table.total.employees)}</p>
-                                    <p className="text-sm opacity-80">Darbinieki</p>
+                                    <p className="text-sm opacity-80">{t('employees')}</p>
                                 </div>
                                 <div className="text-center">
                                     <p className="text-3xl font-bold">{formatCurrency(mvkData.summary_table.total.turnover)}</p>
-                                    <p className="text-sm opacity-80">Apgrozījums</p>
+                                    <p className="text-sm opacity-80">{t('turnover')}</p>
                                 </div>
                                 <div className="text-center">
                                     <p className="text-3xl font-bold">{formatCurrency(mvkData.summary_table.total.balance)}</p>
-                                    <p className="text-sm opacity-80">Bilances kopsumma</p>
+                                    <p className="text-sm opacity-80">{t('balance_total_short') || t('balance')}</p>
                                 </div>
                             </div>
                             <p className="text-sm opacity-80 text-center">
-                                Šie dati ir jāizmanto MVK/MVU statusa noteikšanai saskaņā ar ES regulu Nr. 651/2014
+                                {t('classification_note')}
                             </p>
                         </div>
                     </div>
@@ -1032,9 +1047,9 @@ KOPĀ\t${formatNumber(summary_table.total.employees)}\t${formatCurrency(summary_
                 {!mvkData && !loading && (
                     <div className="text-center py-16">
                         <div className="text-6xl mb-4">🔍</div>
-                        <h2 className="text-2xl font-bold text-gray-700 mb-2">Izvēlieties uzņēmumu</h2>
+                        <h2 className="text-2xl font-bold text-gray-700 mb-2">{t('empty_state_title')}</h2>
                         <p className="text-gray-500">
-                            Ievadiet uzņēmuma nosaukumu vai reģistrācijas numuru meklēšanas laukā
+                            {t('empty_state_desc')}
                         </p>
                     </div>
                 )}

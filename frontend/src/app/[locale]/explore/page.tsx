@@ -242,7 +242,7 @@ function ExploreContent() {
             },
             {
                 key: 'turnover_growth',
-                label: 'Izaugsme',
+                label: tTable('growth'),
                 align: 'right',
                 sortable: true,
                 render: (val: any) => val ? <span className="font-bold text-green-600">+{val}%</span> : <span className="text-gray-300">-</span>
@@ -339,11 +339,12 @@ function ExploreContent() {
 }
 
 export default function ExplorePage() {
+    const t = useTranslations('Common');
     return (
         <div className="min-h-screen bg-gray-50">
             <Navbar />
             <div className="container mx-auto px-4 py-8">
-                <Suspense fallback={<div className="text-center py-20">Lādē...</div>}>
+                <Suspense fallback={<div className="text-center py-20">{t('loading')}</div>}>
                     <ExploreContent />
                 </Suspense>
             </div>

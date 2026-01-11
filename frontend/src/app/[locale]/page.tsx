@@ -6,6 +6,7 @@ import Footer from "@/components/Footer"; // Assuming we have a footer, or I sho
 import HeroSearch from "@/components/dashboard/HeroSearch";
 import MarketPulse from "@/components/dashboard/MarketPulse";
 import BentoGrid from "@/components/dashboard/BentoGrid";
+import Roadmap from "@/components/dashboard/Roadmap";
 import { Link } from "@/i18n/routing";
 // Force rebuild
 import { useTranslations } from "next-intl";
@@ -104,6 +105,9 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Roadmap Section */}
+      <Roadmap />
 
       {/* Footer space if needed */}
       <div className="h-12"></div>

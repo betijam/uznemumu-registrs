@@ -2,6 +2,7 @@ import Navbar from "@/components/Navbar";
 import SearchInput from "@/components/SearchInput";
 import Link from "next/link";
 import { formatCompanyName } from "@/utils/formatCompanyName";
+import { getTranslations } from "next-intl/server";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
@@ -33,10 +34,15 @@ async function getPersonResults(query: string) {
 
 export default async function SearchPage({
     searchParams,
+    params
 }: {
     searchParams: Promise<{ q?: string; tab?: string }>;
+    params: Promise<{ locale: string }>;
 }) {
     const { q, tab } = await searchParams;
+    const { locale } = await params;
+    const t = await getTranslations({ locale, namespace: 'Search' });
+
     const query = q || "";
     const activeTab = tab || "all"; // 'all', 'companies', 'persons'
 
@@ -59,7 +65,7 @@ export default async function SearchPage({
             {/* Search Header */}
             <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-30">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                    <h1 className="text-2xl font-bold text-primary mb-4">Meklēšana</h1>
+                    <h1 className="text-2xl font-bold text-primary mb-4">{t('title')}</h1>
                     <div className="max-w-3xl">
                         <SearchInput />
                     </div>
@@ -71,29 +77,29 @@ export default async function SearchPage({
                         <Link
                             href={`/search?q=${encodeURIComponent(query)}&tab=all`}
                             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'all'
-                                    ? 'border-purple-500 text-purple-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                ? 'border-purple-500 text-purple-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                         >
-                            Visi
+                            {t('tabs.all')}
                         </Link>
                         <Link
                             href={`/search?q=${encodeURIComponent(query)}&tab=companies`}
                             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'companies'
-                                    ? 'border-purple-500 text-purple-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                ? 'border-purple-500 text-purple-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                         >
-                            Uzņēmumi ({totalCompanies})
+                            {t('tabs.companies')} ({totalCompanies})
                         </Link>
                         <Link
                             href={`/search?q=${encodeURIComponent(query)}&tab=persons`}
                             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'persons'
-                                    ? 'border-purple-500 text-purple-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                ? 'border-purple-500 text-purple-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                         >
-                            Personas ({totalPersons})
+                            {t('tabs.persons')} ({totalPersons})
                         </Link>
                     </nav>
                 </div>
@@ -102,16 +108,16 @@ export default async function SearchPage({
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
                 {!query ? (
                     <div className="text-center py-12">
-                        <h3 className="text-lg font-medium text-gray-900">Ievadiet meklēšanas vaicājumu</h3>
+                        <h3 className="text-lg font-medium text-gray-900">{t('placeholder')}</h3>
                     </div>
                 ) : !hasResults ? (
                     <div className="bg-white rounded-lg shadow-card p-12 text-center">
                         <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
-                        <h3 className="mt-4 text-lg font-medium text-gray-900">Nav rezultātu</h3>
+                        <h3 className="mt-4 text-lg font-medium text-gray-900">{t('no_results_title')}</h3>
                         <p className="mt-2 text-sm text-gray-500">
-                            Mēģiniet mainīt meklēšanas vaicājumu vai izmantojiet citus atslēgvārdus.
+                            {t('no_results_desc')}
                         </p>
                     </div>
                 ) : (
@@ -121,7 +127,7 @@ export default async function SearchPage({
                             <section>
                                 {(activeTab === 'all') && (
                                     <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                                        Uzņēmumi
+                                        {t('tabs.companies')}
                                         <span className="ml-2 bg-gray-100 text-gray-600 text-xs py-0.5 px-2 rounded-full">{totalCompanies}</span>
                                     </h2>
                                 )}
@@ -142,7 +148,7 @@ export default async function SearchPage({
                                                         </div>
                                                         <div>
                                                             <h3 className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">{formatCompanyName(company)}</h3>
-                                                            <p className="text-sm text-gray-500">Reģ. Nr. {company.regcode}</p>
+                                                            <p className="text-sm text-gray-500">Reg. Nr. {company.regcode}</p>
                                                         </div>
                                                     </div>
                                                     <div className="text-sm text-gray-600 ml-13 pl-0.5">
@@ -151,10 +157,10 @@ export default async function SearchPage({
                                                 </div>
                                                 <div className="flex flex-col items-end gap-2">
                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${company.status === 'active' ? 'bg-green-100 text-green-800' :
-                                                            company.status === 'monitoring' ? 'bg-yellow-100 text-yellow-800' :
-                                                                'bg-red-100 text-red-800'
+                                                        company.status === 'monitoring' ? 'bg-yellow-100 text-yellow-800' :
+                                                            'bg-red-100 text-red-800'
                                                         }`}>
-                                                        {company.status === 'active' ? 'AKTĪVS' : company.status === 'monitoring' ? 'MONITORINGS' : 'LIKVIDĒTS'}
+                                                        {company.status === 'active' ? t('status.active') : company.status === 'monitoring' ? t('status.monitoring') : t('status.liquidated')}
                                                     </span>
                                                 </div>
                                             </div>
@@ -169,7 +175,7 @@ export default async function SearchPage({
                             <section>
                                 {(activeTab === 'all') && (
                                     <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                                        Personas
+                                        {t('tabs.persons')}
                                         <span className="ml-2 bg-gray-100 text-gray-600 text-xs py-0.5 px-2 rounded-full">{totalPersons}</span>
                                     </h2>
                                 )}
@@ -190,11 +196,11 @@ export default async function SearchPage({
                                                     <div>
                                                         <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{person.name}</h3>
                                                         <div className="flex items-center gap-3 text-sm text-gray-500">
-                                                            <span>Personas kods: {person.person_code}</span>
+                                                            <span>{t('person_card.code')} {person.person_code}</span>
                                                             {person.birth_date && (
                                                                 <>
                                                                     <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                                                    <span>Dz. dat: {person.birth_date}</span>
+                                                                    <span>{t('person_card.birth_date')} {person.birth_date}</span>
                                                                 </>
                                                             )}
                                                         </div>
@@ -203,7 +209,7 @@ export default async function SearchPage({
 
                                                 <div className="text-right">
                                                     <div className="text-sm font-medium text-gray-900">
-                                                        {person.company_count} uzņēmumi
+                                                        {person.company_count} {t('person_card.companies')}
                                                     </div>
                                                     <div className="text-xs text-gray-500 mt-1 max-w-[200px] truncate">
                                                         {person.roles.join(", ")}
