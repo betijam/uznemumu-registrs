@@ -670,22 +670,6 @@
     "cookie_policy": "Sīkdatņu politika",
     "data_source": "Datu avots"
   },
-  "Roadmap": {
-    "section_title": "Ko mēs būvējam?",
-    "section_subtitle": "Šobrīd Company 360 ir publiskās Beta stadijā un ir pilnībā bezmaksas. Nākotnē pievienosim PRO rīkus vēl dziļākai analīzei.",
-    "status_ready": "Gatavs",
-    "ready_search": "Uzņēmumu meklētājs",
-    "ready_financials": "Finanšu dati",
-    "ready_top_lists": "TOP saraksti",
-    "status_in_progress": "Procesā",
-    "progress_export": "Datu eksports",
-    "progress_history": "Vēsturiskie grafiki",
-    "progress_map": "Uzlabota karte",
-    "status_planned": "Plānots",
-    "planned_api": "API integrācijas",
-    "planned_risk": "Kredītrisku rādītāji",
-    "planned_monitoring": "Monitorings"
-  },
   "ProFeature": {
     "modal_title": "PRO Funkcija",
     "modal_desc": "Funkcija '{feature}' ir pieejama tikai Pro plānā.",
@@ -873,25 +857,25 @@
       "content": "Ja Jums ir jautājumi par mūsu sīkdatņu izmantošanu, lūdzu, sazinieties ar mums:",
       "email": "E-pasts: info@company360.lv",
       "address": "Adrese: Rīga, Latvija"
-    },
-    "Roadmap": {
-      "section_title": "Ceļa karte",
-      "section_subtitle": "Sekojiet līdzi mūsu attīstībai un gaidāmajām funkcijām",
-      "status_ready": "Gatavs (Pieejams tūlīt)",
-      "status_in_progress": "Procesā (Būs pieejams drīzumā)",
-      "status_planned": "Plānots (Nākotnes vīzija)",
-      "ready_smart_search": "Gudrā meklēšana: Uzņēmumu un personu meklētājs ar reģistru datiem.",
-      "ready_financial_analytics": "Finanšu analītika: Dziļā finanšu datu analīze, reģionu un nozaru tendences.",
-      "ready_related_companies": "Saistītie uzņēmumi: Saistīto uzņēmumu un patieso labuma guvēju atlase.",
-      "ready_competitor_comparison": "Konkurentu salīdzināšana: Ērta rādītāju salīdzināšana blakus.",
-      "ready_personal_dashboard": "Personīgais darbagalds: Favorītu saraksti un ātrā piekļuve.",
-      "progress_historical_data": "Vēsturiskie dati: Amatpersonu un dalībnieku vēsture (10+ gadi).",
-      "progress_doc_archive": "Dokumentu arhīvs: Piekļuve statūtiem, gada pārskatiem un citiem publiskiem dokumentiem.",
-      "progress_mvk_declaration": "MVK Deklarācijas: Automatizēta MVK (Mazo un vidējo komersantu) statusa noteikšana un deklarācija.",
-      "progress_data_export": "Datu eksports: Iespēja lejupielādēt sarakstus un finanses Excel/CSV formātā.",
-      "planned_ai_reports": "AI Biznesa Atskaites: Automātiski ģenerēti ziņojumi, izmantojot mākslīgo intelektu un tīmekļa meklēšanu.",
-      "planned_monitoring_247": "Monitorings 24/7: E-pasta brīdinājumi par izmaiņām (nodokļu parādi, amatpersonas, tiesu procesi).",
-      "planned_reputation_analysis": "Reputācijas analīze: Mediju monitorings un pieminējumi presē."
     }
+  },
+  "Roadmap": {
+    "section_title": "Ceļa karte",
+    "section_subtitle": "Sekojiet līdzi mūsu attīstībai un gaidāmajām funkcijām",
+    "status_ready": "Gatavs (Pieejams tūlīt)",
+    "status_in_progress": "Procesā (Būs pieejams drīzumā)",
+    "status_planned": "Plānots (Nākotnes vīzija)",
+    "ready_smart_search": "Gudrā meklēšana: Uzņēmumu un personu meklētājs ar reģistru datiem.",
+    "ready_financial_analytics": "Finanšu analītika: Dziļā finanšu datu analīze, reģionu un nozaru tendences.",
+    "ready_related_companies": "Saistītie uzņēmumi: Saistīto uzņēmumu un patieso labuma guvēju atlase.",
+    "ready_competitor_comparison": "Konkurentu salīdzināšana: Ērta rādītāju salīdzināšana blakus.",
+    "ready_personal_dashboard": "Personīgais darbagalds: Favorītu saraksti un ātrā piekļuve.",
+    "progress_historical_data": "Vēsturiskie dati: Amatpersonu un dalībnieku vēsture (10+ gadi).",
+    "progress_doc_archive": "Dokumentu arhīvs: Piekļuve statūtiem, gada pārskatiem un citiem publiskiem dokumentiem.",
+    "progress_mvk_declaration": "MVK Deklarācijas: Automatizēta MVK (Mazo un vidējo komersantu) statusa noteikšana un deklarācija.",
+    "progress_data_export": "Datu eksports: Iespēja lejupielādēt sarakstus un finanses Excel/CSV formātā.",
+    "planned_ai_reports": "AI Biznesa Atskaites: Automātiski ģenerēti ziņojumi, izmantojot mākslīgo intelektu un tīmekļa meklēšanu.",
+    "planned_monitoring_247": "Monitorings 24/7: E-pasta brīdinājumi par izmaiņām (nodokļu parādi, amatpersonas, tiesu procesi).",
+    "planned_reputation_analysis": "Reputācijas analīze: Mediju monitorings un pieminējumi presē."
   }
 }
