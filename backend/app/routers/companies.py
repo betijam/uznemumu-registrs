@@ -701,8 +701,12 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             # Frontend will fetch via /graph endpoint if needed
             
             # 7. Get tax history
+            # 7. Get tax history
             tax_rows = conn.execute(text("""
-                SELECT year, iin, vsaoi, total_taxes
+                SELECT year, 
+                       labor_tax_iin as iin, 
+                       social_tax_vsaoi as vsaoi, 
+                       total_tax_paid as total_taxes
                 FROM tax_payments WHERE company_regcode = :r
                 ORDER BY year DESC
             """), {"r": regcode}).fetchall()

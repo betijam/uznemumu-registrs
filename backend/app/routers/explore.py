@@ -114,18 +114,18 @@ def list_companies(
     # The NULLS LAST clause handles any remaining edge cases
     order_clause = f"{sort_col} {order.upper()} NULLS LAST"
     
-    # Construct Query (without year filter in JOIN - use latest data per company)
+    # Construct Query (Full functionality requesting corrected View)
     main_query = f"""
         SELECT 
             c.regcode, c.name, c.name_in_quotes, c."type" as company_type, c.type_text,
             c.nace_text, c.registration_date, c.status,
-            s.turnover, s.profit, s.employees,
+            s.turnover, s.profit, s.employees, s.year as fin_year,
             s.avg_salary,
             s.tax_paid as total_tax_paid,
             s.profit_margin,
             s.turnover_growth
         FROM companies c
-        LEFT JOIN company_stats_materialized s ON s.regcode = c.regcode
+        LEFT JOIN company_stats_materialized s ON s.regcode = c.regcode AND s.year = :year
         WHERE {" AND ".join(where_clauses)}
         ORDER BY {order_clause}
         LIMIT :limit OFFSET :offset
@@ -139,7 +139,7 @@ def list_companies(
             SUM(COALESCE(s.profit, 0)) as total_profit,
             SUM(COALESCE(s.employees, 0)) as total_employees
         FROM companies c
-        LEFT JOIN company_stats_materialized s ON s.regcode = c.regcode
+        LEFT JOIN company_stats_materialized s ON s.regcode = c.regcode AND s.year = :year
         WHERE {" AND ".join(where_clauses)}
     """
     
