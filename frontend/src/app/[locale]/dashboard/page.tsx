@@ -279,15 +279,15 @@ export default function DashboardPage() {
                             <ul className="space-y-2 text-sm text-indigo-100 mb-6">
                                 <li className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
-                                    Excel datu eksports
+                                    Vēsturiskie dati (Amatpersonas & Īpašnieki)
                                 </li>
                                 <li className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full"></span>
-                                    Monitorings (Alerts)
+                                    Publisko dokumentu arhīvs
                                 </li>
                                 <li className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
-                                    10 gadu vēsture
+                                    AI ģenerētas biznesa atskaites
                                 </li>
                             </ul>
                             <button

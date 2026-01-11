@@ -209,7 +209,7 @@ export default function WorkforceView({ companies }: WorkforceViewProps) {
                                 >
                                     <div className="flex items-center justify-end gap-1">
                                         Apgrozījums / darbinieks
-                                        <SortIcon column="revenuePerEmployee" />
+                                        <SortIcon column="revenuePerEmployee" sortColumn={sortColumn} sortDirection={sortDirection} />
                                     </div>
                                 </th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
