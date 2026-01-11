@@ -609,7 +609,7 @@ async def get_company_quick(regcode: str, response: Response, request: Request):
 # LAZY-LOAD ENDPOINTS (For faster initial page render)
 # ================================================================================
 
-@router.get("/companies/{regcode}/financials")
+@router.get("/companies/{regcode}/financial-history")
 async def get_financial_history_endpoint(regcode: str, response: Response):
     """
     Lazy-load endpoint for full financial history.
@@ -693,7 +693,7 @@ async def get_financial_history_endpoint(regcode: str, response: Response):
         return {"financial_history": history}
 
 
-@router.get("/companies/{regcode}/taxes")
+@router.get("/companies/{regcode}/tax-history")
 async def get_tax_history_endpoint(regcode: str, response: Response):
     """Lazy-load endpoint for tax payment history."""
     response.headers["Cache-Control"] = "public, max-age=3600"
