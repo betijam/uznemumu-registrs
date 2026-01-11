@@ -10,6 +10,8 @@ import os
 from csv_cache import CSVCache
 from multiprocessing import Pool, cpu_count
 from functools import partial
+from io import StringIO
+import psycopg2
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -221,33 +223,60 @@ class ParallelFinanceETL:
             raise
     
     def _batch_update(self, all_updates):
-        """Batch update database"""
+        """ULTRA-FAST batch update using temp table"""
         if not all_updates:
             return
         
         total = len(all_updates)
-        logger.info(f"💾 Updating database in batches of {BATCH_SIZE}...")
+        logger.info(f"💾 Bulk updating {total} records using temp table...")
         
-        for i in range(0, total, BATCH_SIZE):
-            batch = all_updates[i:i + BATCH_SIZE]
+        # Convert to DataFrame for bulk operations
+        df = pd.DataFrame(all_updates)
+        
+        try:
+            # Get raw connection from SQLAlchemy
+            raw_conn = self.engine.raw_connection()
+            cursor = raw_conn.cursor()
             
-            try:
-                with self.engine.connect() as conn:
-                    conn.execute(
-                        text("""
-                            UPDATE financial_reports 
-                            SET accounts_receivable = :accounts_receivable,
-                                updated_at = NOW()
-                            WHERE company_regcode = :regcode AND year = :year
-                        """),
-                        batch
-                    )
-                    conn.commit()
-                
-                if (i // BATCH_SIZE) % 10 == 0:
-                    logger.info(f"  💾 Updated {i + len(batch)}/{total} records")
-            except Exception as e:
-                logger.error(f"Failed to update batch {i}: {e}")
+            # Create temp table
+            cursor.execute("""
+                CREATE TEMP TABLE temp_updates (
+                    regcode BIGINT,
+                    year INT,
+                    accounts_receivable NUMERIC
+                ) ON COMMIT DROP
+            """)
+            
+            # Prepare CSV data in memory
+            csv_buffer = StringIO()
+            df.to_csv(csv_buffer, index=False, header=False)
+            csv_buffer.seek(0)
+            
+            # COPY data to temp table (SUPER FAST!)
+            logger.info(f"  📥 Loading {total} records into temp table...")
+            cursor.copy_from(csv_buffer, 'temp_updates', sep=',', columns=('regcode', 'year', 'accounts_receivable'))
+            
+            # Single UPDATE FROM (updates all rows in one query!)
+            logger.info(f"  🚀 Executing bulk UPDATE...")
+            cursor.execute("""
+                UPDATE financial_reports fr
+                SET accounts_receivable = tu.accounts_receivable,
+                    updated_at = NOW()
+                FROM temp_updates tu
+                WHERE fr.company_regcode = tu.regcode 
+                  AND fr.year = tu.year
+            """)
+            
+            rows_updated = cursor.rowcount
+            raw_conn.commit()
+            cursor.close()
+            raw_conn.close()
+            
+            logger.info(f"  ✅ Updated {rows_updated} records in single operation!")
+            
+        except Exception as e:
+            logger.error(f"Bulk update failed: {e}")
+            raise
 
 if __name__ == '__main__':
     import argparse

@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const res = await fetch(`${backendUrl}/api/auth/verify-email?token=${token}`, {
+        const backendUrl = process.env.BACKEND_URL || process.env.INTERNAL_API_URL || process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+        const res = await fetch(`${backendUrl}/auth/verify-email?token=${token}`, {
             method: 'GET',
         });
 

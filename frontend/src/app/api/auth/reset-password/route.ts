@@ -4,8 +4,8 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
 
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const res = await fetch(`${backendUrl}/api/auth/reset-password`, {
+        const backendUrl = process.env.BACKEND_URL || process.env.INTERNAL_API_URL || process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+        const res = await fetch(`${backendUrl}/auth/reset-password`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
