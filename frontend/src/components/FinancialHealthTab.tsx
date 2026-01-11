@@ -166,7 +166,7 @@ export default function FinancialHealthTab({ company }: FinancialHealthTabProps)
             <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
                 <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-900">
-                        Detalizēti Finanšu Rādītāji
+                        Detalizēti finanšu rādītāji
                     </h3>
                 </div>
 
@@ -251,6 +251,16 @@ export default function FinancialHealthTab({ company }: FinancialHealthTabProps)
                                     <Sparkline data={financialHistory.slice(0, 5).reverse().map((f: any) => f.roa).filter((v: any) => v !== null)} />
                                 </td>
                                 <td className="px-6 py-4 text-sm text-gray-600">&gt; 5%</td>
+                            </tr>
+                            <tr>
+                                <td className="px-6 py-4 text-sm text-gray-900">EBITDA</td>
+                                <td className="px-6 py-4 text-sm text-right font-semibold text-gray-900">
+                                    {formatCurrency(ebitda)}
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                    <Sparkline data={financialHistory.slice(0, 5).reverse().map((f: any) => f.ebitda).filter((v: any) => v !== null)} />
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-600">Pozitīvs</td>
                             </tr>
 
                             {/* Solvency Ratios */}

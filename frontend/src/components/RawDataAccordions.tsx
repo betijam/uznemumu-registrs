@@ -110,15 +110,15 @@ export default function RawDataAccordions({ financialHistory }: RawDataAccordion
                                     ))}
                                 </tr>
                                 <tr className="bg-blue-50/50">
-                                    <td className="px-6 py-3 font-semibold text-gray-900">{t('ebitda')} / EBITDA</td>
+                                    <td className="px-6 py-3 font-semibold text-gray-900">
+                                        {t('ebitda')} / EBITDA
+                                        <div className="text-xs font-normal text-gray-500 mt-1">
+                                            = Peļņa + Nodokļi + Procenti + Nolietojums
+                                        </div>
+                                    </td>
                                     {yearsToShow.map(y => (
                                         <td key={y.year} className="px-6 py-3 text-right font-bold text-gray-900">
-                                            {formatCurrency(
-                                                (y.profit || 0) +
-                                                (y.interest_payment || 0) +
-                                                (y.corporate_income_tax || 0) +
-                                                (y.depreciation || 0)
-                                            )}
+                                            {formatCurrency(y.ebitda)}
                                         </td>
                                     ))}
                                 </tr>

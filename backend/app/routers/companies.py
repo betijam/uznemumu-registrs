@@ -658,21 +658,41 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                 ORDER BY year DESC
             """), {"r": regcode}).fetchall()
             
-            # 4. Get persons (officers, members, ubos)
-            officers = conn.execute(text("""
-                SELECT name, position, representation_rights, appointed_date, person_hash
-                FROM officers WHERE company_regcode = :r
+            # 4. Get persons (officers, members, ubos) from single 'persons' table
+            persons_rows = conn.execute(text("""
+                SELECT person_name, person_code, role, share_percent, date_from, 
+                       position, rights_of_representation, representation_with_at_least,
+                       number_of_shares, share_nominal_value, share_currency, legal_entity_regcode,
+                       nationality, residence
+                FROM persons WHERE company_regcode = :r
             """), {"r": regcode}).fetchall()
             
-            members = conn.execute(text("""
-                SELECT name, shares, share_value, registration_date, person_hash
-                FROM members WHERE company_regcode = :r
-            """), {"r": regcode}).fetchall()
+            # Process persons by role
+            officers, members, ubos = [], [], []
+            total_capital = sum((float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)) 
+                              for p in persons_rows if p.role == 'member')
             
-            ubos = conn.execute(text("""
-                SELECT name, birth_date, residence, registration_date, person_hash
-                FROM ubos WHERE company_regcode = :r
-            """), {"r": regcode}).fetchall()
+            for p in persons_rows:
+                if p.role == 'ubo':
+                    ubos.append({
+                        "name": p.person_name,
+                        "person_hash": p.person_code
+                    })
+                elif p.role == 'member':
+                    share_value = float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)
+                    percent = (share_value / total_capital * 100) if total_capital > 0 else 0
+                    members.append({
+                        "name": p.person_name,
+                        "shares": int(p.number_of_shares) if p.number_of_shares else None,
+                        "percent": round(percent, 2),
+                        "person_hash": p.person_code
+                    })
+                elif p.role == 'officer':
+                    officers.append({
+                        "name": p.person_name,
+                        "position": p.position,
+                        "person_hash": p.person_code
+                    })
             
             # 5. Get risks
             sanctions = conn.execute(text("""
@@ -738,9 +758,9 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                     # ... add other fields as needed
                 } for f in fin_history_rows
             ],
-            "officers": [{"name": o.name, "position": o.position, "person_hash": o.person_hash} for o in officers],
-            "members": [{"name": m.name, "shares": m.shares, "person_hash": m.person_hash} for m in members],
-            "ubos": [{"name": u.name, "person_hash": u.person_hash} for u in ubos],
+            "officers": officers,
+            "members": members,
+            "ubos": ubos,
             "risks": {
                 "sanctions": [{"program": s.program, "list": s.list_name} for s in sanctions],
                 "liquidations": [{"type": l.type, "start_date": str(l.start_date)} for l in liquidations]
