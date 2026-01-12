@@ -164,10 +164,6 @@
     "updated": "Atjaunots",
     "positive": "Pozitīvs",
     "not_applicable": "Nav attiecināms",
-    "foreign": "(ārvalstu)",
-    "parent": "Mātes",
-    "daughter": "Meitas",
-    "physical_person": "Fiziska persona",
     "status": {
       "partners": "PARTNERI",
       "linked": "SAISTĪTA",

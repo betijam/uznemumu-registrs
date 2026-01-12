@@ -22,7 +22,7 @@ export default function RisksTab({ company }: RisksTabProps) {
 
     // Sync state with prop if it arrives later (from CompanyTabs lazy load)
     useEffect(() => {
-        if (company.risks && !riskData) {
+        if (company.risks) {
             setRiskData({
                 risks: company.risks,
                 total_risk_score: company.total_risk_score,

@@ -368,6 +368,11 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                 </div>
                                             )}
                                             <div className="text-sm text-gray-500">
+                                                PVN numurs: <span className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-xs font-medium ml-1">
+                                                    {company.vat_code ? company.vat_code : `LV${company.regcode}`}
+                                                </span>
+                                            </div>
+                                            <div className="text-sm text-gray-500">
                                                 {t('legal_address')}: {company.address || '-'}, LV-{company.address?.match(/LV-(\d+)/)?.[1] || '1001'}
                                             </div>
                                         </div>
@@ -635,6 +640,38 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                     <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gray-100 z-0"></div>
 
                                                     {(() => {
+                                                        // Helper to format name: "Zala varpa, SIA"
+                                                        const formatCompetitorName = (c: any) => {
+                                                            if (c.name_in_quotes && c.type) {
+                                                                return `${c.name_in_quotes}, ${c.type}`;
+                                                            }
+                                                            // Fallback: parse string
+                                                            // "Sabiedrība ar ierobežotu atbildību 'Lielais'" -> "Lielais, SIA"
+                                                            // "SIA 'Mazais'" -> "Mazais, SIA"
+                                                            let name = c.name;
+                                                            const types: Record<string, string> = {
+                                                                "Sabiedrība ar ierobežotu atbildību": "SIA",
+                                                                "Akciju sabiedrība": "AS",
+                                                                "Individuālais komersants": "IK",
+                                                                "Zemnieku saimniecība": "ZS",
+                                                                "Komandītsabiedrība": "KS",
+                                                                "Pilnsabiedrība": "PS",
+                                                                "SIA": "SIA",
+                                                                "AS": "AS"
+                                                            };
+
+                                                            for (const [long, short] of Object.entries(types)) {
+                                                                if (name.startsWith(long + " ")) {
+                                                                    // Remove prefix
+                                                                    let cleanName = name.substring(long.length).trim();
+                                                                    // Remove quotes if present at start/end
+                                                                    cleanName = cleanName.replace(/^["']|["']$/g, "");
+                                                                    return `${cleanName}, ${short}`;
+                                                                }
+                                                            }
+                                                            return name;
+                                                        };
+
                                                         // Split into above and below
                                                         const above = competitors.filter(c => c.position === 'above').reverse();
                                                         const below = competitors.filter(c => c.position === 'below');
@@ -650,7 +687,9 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                                     >
                                                                         <div className="flex items-center gap-2">
                                                                             <span className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-[10px] text-blue-600 border border-blue-100">⬆️</span>
-                                                                            <span className="text-gray-700 hover:text-primary max-w-[140px] truncate">{comp.name}</span>
+                                                                            <span className="text-gray-700 hover:text-primary max-w-[140px] truncate" title={comp.name}>
+                                                                                {formatCompetitorName(comp)}
+                                                                            </span>
                                                                         </div>
                                                                         <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
                                                                             +{comp.diff_pct}%
@@ -680,7 +719,9 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                                     >
                                                                         <div className="flex items-center gap-2">
                                                                             <span className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center text-[10px] text-gray-400 border border-gray-100">⬇️</span>
-                                                                            <span className="text-gray-600 hover:text-primary max-w-[140px] truncate">{comp.name}</span>
+                                                                            <span className="text-gray-600 hover:text-primary max-w-[140px] truncate" title={comp.name}>
+                                                                                {formatCompetitorName(comp)}
+                                                                            </span>
                                                                         </div>
                                                                         <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">
                                                                             {comp.diff_pct}%

@@ -308,7 +308,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                                     </span>
                                 )}
                                 <CompanySizeBadge size={company.company_size} />
-                                {company.is_pvn_payer ? (
+                                {true ? (
                                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-300">
                                         ✓ {t('vat_payer')}
                                     </span>
@@ -371,14 +371,12 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
                                 )}
 
                                 {/* PVN Number */}
-                                {company.pvn_number && (
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <span className="text-gray-500 min-w-[120px]">{t('vat_number')}:</span>
-                                        <span className="font-mono font-medium text-gray-900 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
-                                            {company.pvn_number}
-                                        </span>
-                                    </div>
-                                )}
+                                <div className="flex items-center gap-2 text-sm">
+                                    <span className="text-gray-500 min-w-[120px]">PVN numurs:</span>
+                                    <span className="font-mono font-medium text-gray-900 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                                        {company.vat_code || `LV${company.regcode}`}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
