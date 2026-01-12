@@ -1805,36 +1805,69 @@ def save_cached_graph(conn, regcode: int, data: dict):
 @router.get("/companies/{regcode}/graph")
 def get_related_companies(regcode: int, year: int = 2024):
     """
-    Returns company relationship graph.
-    Uses pre-computed data from ETL if available.
-    Fallback to on-the-fly calculation.
+    Returns comprehensive company relationship data (EU SME classification).
+    Includes:
+    - Direct parents and subsidiaries
+    - Chain effects (A->B->C)
+    - Physical person control (F1 criterion)
+    - All with financial KPIs
     """
     
-    # 1. READ FROM PRE-COMPUTED CACHE
     with engine.connect() as conn:
-        try:
-            # Check cache (NO expiration check - trust ETL)
-            res = conn.execute(text("""
-                SELECT graph_data 
-                FROM company_graph_cache 
-                WHERE company_regcode = :r 
-            """), {"r": regcode}).fetchone()
+        # 1. Get SME detection result
+        logger.info(f"[GRAPH] Running comprehensive detection for {regcode}")
+        comp = find_all_linked_entities(conn, regcode, year)
+        
+        # 2. Collect all regcodes to fetch financials
+        all_regs = []
+        for e in comp["linked"]:
+            if e.get("regcode"): all_regs.append(e["regcode"])
+        for e in comp["partners"]:
+            if e.get("regcode"): all_regs.append(e["regcode"])
+        for e in comp["via_person"]:
+            if e.get("regcode"): all_regs.append(e["regcode"])
+        for e in comp["needs_confirmation"]:
+            if e.get("regcode"): all_regs.append(e["regcode"])
             
-            if res and res.graph_data:
-                logger.info(f"[CACHE] Hit for company {regcode}")
-                return res.graph_data
-                
-        except Exception as e:
-            logger.error(f"[CACHE] Error reading cache: {e}")
+        # 3. Bulk fetch financials
+        fin_map = bulk_fetch_financials(conn, list(set(all_regs)), year)
+        
+        # Helper to join fin data
+        def enrich(entity):
+            if entity.get("regcode") and entity["regcode"] in fin_map:
+                f = fin_map[entity["regcode"]]
+                return {**entity, "employees": f["employees"], "turnover": f["turnover"], "balance": f["balance"]}
+            return {**entity, "employees": None, "turnover": None, "balance": None}
 
-        # 2. FALLBACK: CALCULATE ON THE FLY
-        logger.info(f"[GRAPH] Cache miss for {regcode}. Calculating...")
-        result = calculate_company_graph(conn, regcode, year)
+        # 4. Determine status
+        status = "AUTONOMOUS"
+        if comp["linked"]: status = "LINKED"
+        elif comp["partners"] or comp["via_person"]: status = "PARTNER"
+
+        # 5. Build enriched lists
+        linked = [enrich(e) for e in comp["linked"]]
+        partners = [enrich(e) for e in comp["partners"]]
         
-        # Save to cache for next time (fill the gap)
-        save_cached_graph(conn, regcode, result)
+        # Map via_person to linked or partner based on classification
+        for e in comp["via_person"]:
+            enriched = enrich(e)
+            if e["classification"] == "linked":
+                linked.append(enriched)
+            else:
+                partners.append(enriched)
+                
+        # 6. Get total capital for the company
+        cap_row = conn.execute(text("SELECT total_capital FROM companies WHERE regcode = :r"), {"r": regcode}).fetchone()
         
-        return result
+        return {
+            "status": status,
+            "linked": linked,
+            "partners": partners,
+            "via_person": [enrich(e) for e in comp["via_person"]],
+            "needs_confirmation": [enrich(e) for e in comp["needs_confirmation"]],
+            "total_capital": float(cap_row.total_capital) if cap_row and cap_row.total_capital else 0,
+            "year": year
+        }
 
 # Alias route for compatibility (frontend may call without /companies/ prefix)
 @router.get("/mvk-declaration/{regcode}")

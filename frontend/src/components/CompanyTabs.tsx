@@ -969,18 +969,25 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-200">
                                                         {related.linked.map((item: any, idx: number) => (
-                                                            <tr key={idx} className="hover:bg-gray-50">
+                                                            <tr key={idx} className="hover:bg-gray-50 group">
                                                                 <td className="px-4 py-3 text-sm">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-lg">{item.entity_type === 'physical_person' ? '👤' : '🏢'}</span>
-                                                                        {item.regcode ? (
-                                                                            <Link href={`/company/${item.regcode}`} className="text-primary hover:underline font-medium">
-                                                                                {item.name}
-                                                                            </Link>
-                                                                        ) : (
-                                                                            <span className="text-gray-900">
-                                                                                {item.name}
-                                                                                {item.entity_type === 'legal_entity' && <span className="text-gray-400 text-xs ml-1">(ārvalstu)</span>}
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-lg">{item.entity_type === 'physical_person' ? '👤' : '🏢'}</span>
+                                                                            {item.regcode ? (
+                                                                                <Link href={`/company/${item.regcode}`} className="text-primary hover:underline font-medium">
+                                                                                    {item.name}
+                                                                                </Link>
+                                                                            ) : (
+                                                                                <span className="text-gray-900">
+                                                                                    {item.name}
+                                                                                    {item.entity_type === 'legal_entity' && <span className="text-gray-400 text-xs ml-1">(ārvalstu)</span>}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        {item.link_reason && (
+                                                                            <span className="text-[10px] text-gray-400 mt-0.5 ml-7 group-hover:text-gray-500 font-medium tracking-tight">
+                                                                                {item.link_reason}
                                                                             </span>
                                                                         )}
                                                                     </div>
@@ -988,16 +995,18 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                                 <td className="px-4 py-3 text-center">
                                                                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${item.entity_type === 'physical_person'
                                                                         ? 'bg-purple-100 text-purple-700'
-                                                                        : item.relation === 'owner'
+                                                                        : item.relation === 'owner' || item.relation === 'parent'
                                                                             ? 'bg-purple-100 text-purple-700'
                                                                             : 'bg-blue-100 text-blue-700'
                                                                         }`}>
                                                                         {item.entity_type === 'physical_person'
                                                                             ? t('physical_person')
-                                                                            : item.relation === 'owner' ? t('parent') : t('daughter')}
+                                                                            : (item.relation === 'owner' || item.relation === 'parent') ? t('parent') : t('subsidiary')}
                                                                     </span>
                                                                 </td>
-                                                                <td className="px-4 py-3 text-sm text-right font-bold text-red-600">{item.ownership_percent}%</td>
+                                                                <td className="px-4 py-3 text-sm text-right font-bold text-red-600">
+                                                                    {item.ownership_percent ? `${item.ownership_percent}%` : '-'}
+                                                                </td>
                                                                 {item.entity_type === 'physical_person' ? (
                                                                     <td colSpan={3} className="px-4 py-3 text-sm text-center text-gray-400 italic bg-gray-50">Nav attiecināms</td>
                                                                 ) : (
@@ -1036,18 +1045,25 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-200">
                                                         {related.partners.map((item: any, idx: number) => (
-                                                            <tr key={idx} className="hover:bg-gray-50">
+                                                            <tr key={idx} className="hover:bg-gray-50 group">
                                                                 <td className="px-4 py-3 text-sm">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-lg">{item.entity_type === 'physical_person' ? '👤' : '🏢'}</span>
-                                                                        {item.regcode ? (
-                                                                            <Link href={`/company/${item.regcode}`} className="text-primary hover:underline font-medium">
-                                                                                {item.name}
-                                                                            </Link>
-                                                                        ) : (
-                                                                            <span className="text-gray-900">
-                                                                                {item.name}
-                                                                                {item.entity_type === 'legal_entity' && <span className="text-gray-400 text-xs ml-1">(ārvalstu)</span>}
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-lg">{item.entity_type === 'physical_person' ? '👤' : '🏢'}</span>
+                                                                            {item.regcode ? (
+                                                                                <Link href={`/company/${item.regcode}`} className="text-primary hover:underline font-medium">
+                                                                                    {item.name}
+                                                                                </Link>
+                                                                            ) : (
+                                                                                <span className="text-gray-900">
+                                                                                    {item.name}
+                                                                                    {item.entity_type === 'legal_entity' && <span className="text-gray-400 text-xs ml-1">(ārvalstu)</span>}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        {item.link_reason && (
+                                                                            <span className="text-[10px] text-gray-400 mt-0.5 ml-7 group-hover:text-gray-500 font-medium tracking-tight">
+                                                                                {item.link_reason}
                                                                             </span>
                                                                         )}
                                                                     </div>
@@ -1055,16 +1071,18 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                                 <td className="px-4 py-3 text-center">
                                                                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${item.entity_type === 'physical_person'
                                                                         ? 'bg-purple-100 text-purple-700'
-                                                                        : item.relation === 'owner'
+                                                                        : (item.relation === 'owner' || item.relation === 'parent')
                                                                             ? 'bg-yellow-100 text-yellow-700'
                                                                             : 'bg-blue-100 text-blue-700'
                                                                         }`}>
                                                                         {item.entity_type === 'physical_person'
                                                                             ? t('physical_person')
-                                                                            : item.relation === 'owner' ? t('shareholder') : t('daughter')}
+                                                                            : (item.relation === 'owner' || item.relation === 'parent') ? t('shareholder') : t('subsidiary')}
                                                                     </span>
                                                                 </td>
-                                                                <td className="px-4 py-3 text-sm text-right font-semibold text-yellow-600">{item.ownership_percent}%</td>
+                                                                <td className="px-4 py-3 text-sm text-right font-semibold text-yellow-600">
+                                                                    {item.ownership_percent ? `${item.ownership_percent}%` : '-'}
+                                                                </td>
                                                                 {item.entity_type === 'physical_person' ? (
                                                                     <td colSpan={3} className="px-4 py-3 text-sm text-center text-gray-400 italic bg-gray-50">Nav attiecināms</td>
                                                                 ) : (
@@ -1074,6 +1092,62 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                                         <td className="px-4 py-3 text-sm text-right text-gray-600">{item.balance ? `${(item.balance / 1000).toLocaleString('lv-LV')} k€` : '-'}</td>
                                                                     </>
                                                                 )}
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* NEEDS CONFIRMATION Companies Table */}
+                                    {related?.needs_confirmation && related.needs_confirmation.length > 0 && (
+                                        <div>
+                                            <h4 className="text-md font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                                <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 text-sm">❓</span>
+                                                {t('needs_confirmation_title')}
+                                            </h4>
+                                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                                <table className="w-full">
+                                                    <thead className="bg-gray-50 border-b border-gray-200">
+                                                        <tr>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('company')}</th>
+                                                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('type')}</th>
+                                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">%</th>
+                                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('employees')}</th>
+                                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('turnover')}</th>
+                                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('balance')}</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-200">
+                                                        {related.needs_confirmation.map((item: any, idx: number) => (
+                                                            <tr key={idx} className="hover:bg-gray-50 group">
+                                                                <td className="px-4 py-3 text-sm">
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-lg">🏢</span>
+                                                                            <Link href={`/company/${item.regcode}`} className="text-primary hover:underline font-medium">
+                                                                                {item.name}
+                                                                            </Link>
+                                                                        </div>
+                                                                        {item.link_reason && (
+                                                                            <span className="text-[10px] text-gray-400 mt-0.5 ml-7 group-hover:text-gray-500 font-medium tracking-tight">
+                                                                                {item.link_reason}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-center">
+                                                                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-gray-100 text-gray-700">
+                                                                        {t('shareholder')}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-sm text-right font-medium text-gray-600">
+                                                                    {item.ownership_percent ? `${item.ownership_percent}%` : '-'}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-sm text-right text-gray-600">{item.employees || '-'}</td>
+                                                                <td className="px-4 py-3 text-sm text-right text-gray-600">{item.turnover ? `${(item.turnover / 1000).toLocaleString('lv-LV')} k€` : '-'}</td>
+                                                                <td className="px-4 py-3 text-sm text-right text-gray-600">{item.balance ? `${(item.balance / 1000).toLocaleString('lv-LV')} k€` : '-'}</td>
                                                             </tr>
                                                         ))}
                                                     </tbody>

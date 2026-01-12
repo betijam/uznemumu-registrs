@@ -257,9 +257,7 @@ export default function DashboardPage() {
                                 </div>
                             </div>
 
-                            <button className="w-full py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 text-slate-700">
-                                {t('edit_profile')}
-                            </button>
+
                             <button
                                 onClick={handleLogout}
                                 className="w-full mt-2 py-2 text-red-600 text-sm font-medium hover:underline text-center"
