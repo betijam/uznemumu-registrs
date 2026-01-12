@@ -266,6 +266,8 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
             members: members,
             ubos: ubos,
             risks: risks,
+            total_risk_score: fullData.total_risk_score,
+            risk_level: fullData.risk_level,
             tax_history: taxHistory,
             procurements: procurements
         };
