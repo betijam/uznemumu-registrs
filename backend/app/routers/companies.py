@@ -227,16 +227,16 @@ def get_rating(regcode: int):
 def get_risks(regcode: int):
     with engine.connect() as conn:
         rows = conn.execute(text("""
-            SELECT risk_type, description, start_date, risk_score,
+            SELECT risk_type, description, start_date, risk_score, active,
                    sanction_program, sanction_list_text, legal_base_url,
                    suspension_code, suspension_grounds,
                    measure_type, institution_name, case_number,
                    liquidation_type, liquidation_grounds
-            FROM risks WHERE company_regcode = :r AND active = TRUE
-            ORDER BY risk_score DESC, start_date DESC
+            FROM risks WHERE company_regcode = :r
+            ORDER BY active DESC, risk_score DESC, start_date DESC
         """), {"r": regcode}).fetchall()
         
-        total_score = sum(r.risk_score or 0 for r in rows)
+        total_score = sum(r.risk_score or 0 for r in rows if r.active)
         by_type = {'sanctions': [], 'liquidations': [], 'suspensions': [], 'securing_measures': []}
         for r in rows:
             risk = {
@@ -244,7 +244,7 @@ def get_risks(regcode: int):
                 "description": r.description,
                 "date": str(r.start_date) if r.start_date else None,
                 "score": r.risk_score,
-                "active": True # They are already filtered by active = TRUE
+                "active": r.active
             }
             if r.risk_type == 'sanction':
                 risk.update({"program": r.sanction_program, "list_text": r.sanction_list_text, "legal_base_url": r.legal_base_url})
@@ -691,7 +691,8 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                     officers.append({
                         "name": p.person_name,
                         "position": p.position,
-                        "person_hash": p.person_code
+                        "person_hash": p.person_code,
+                        "registered_on": str(p.date_from) if p.date_from else None
                     })
             
             # 5. Get risks using existing function
@@ -700,7 +701,6 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             # 6. Graph data is complex and cached separately - return empty for now
             # Frontend will fetch via /graph endpoint if needed
             
-            # 7. Get tax history
             # 7. Get tax history
             tax_rows = conn.execute(text("""
                 SELECT year, 
@@ -739,13 +739,39 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                     "turnover": safe_float(f.turnover),
                     "profit": safe_float(f.profit),
                     "employees": f.employees,
+                    # Balance Sheet & Ratios
+                    "total_assets": safe_float(f.total_assets),
+                    "equity": safe_float(f.equity),
+                    "current_liabilities": safe_float(f.current_liabilities),
+                    "non_current_liabilities": safe_float(f.non_current_liabilities),
+                    "total_current_assets": safe_float(f.total_current_assets),
+                    "cash_balance": safe_float(f.cash_balance),
+                    "accounts_receivable": safe_float(f.accounts_receivable),
+                    "inventories": safe_float(f.inventories),
+                    # Income Statement
                     "labour_costs": safe_float(f.by_nature_labour_expenses),
                     "interest_payment": safe_float(f.interest_expenses),
                     "depreciation": safe_float(f.depreciation_expenses),
                     "corporate_income_tax": safe_float(f.provision_for_income_taxes),
-                    "inventories": safe_float(f.inventories),
-                    "non_current_liabilities": safe_float(f.non_current_liabilities),
-                    # ... add other fields as needed
+                    # Ratios
+                    "current_ratio": safe_float(f.current_ratio),
+                    "quick_ratio": safe_float(f.quick_ratio),
+                    "cash_ratio": safe_float(f.cash_ratio),
+                    "net_profit_margin": safe_float(f.net_profit_margin),
+                    "roe": safe_float(f.roe),
+                    "roa": safe_float(f.roa),
+                    "debt_to_equity": safe_float(f.debt_to_equity),
+                    "equity_ratio": safe_float(f.equity_ratio),
+                    "ebitda": safe_float(f.ebitda),
+                    # Cash flow (Short names for frontend RawDataAccordions)
+                    "cfo": safe_float(f.cfo_im_net_operating_cash_flow),
+                    "cfi": safe_float(f.cfi_acquisition_of_fixed_assets_intangible_assets),
+                    "cff": safe_float(f.cff_net_financing_cash_flow),
+                    "taxes_paid_cf": safe_float(f.cfo_im_income_taxes_paid),
+                    # Long names if needed elsewhere
+                    "net_operating_cash_flow": safe_float(f.cfo_im_net_operating_cash_flow),
+                    "acquisition_of_fixed_assets": safe_float(f.cfi_acquisition_of_fixed_assets_intangible_assets),
+                    "net_financing_cash_flow": safe_float(f.cff_net_financing_cash_flow)
                 } for f in fin_history_rows
             ],
             "officers": officers,
