@@ -20,7 +20,6 @@ export default function PrivacyPage() {
                     <ul className="list-none space-y-1">
                         <li>{t('general_info.name')}</li>
                         <li>{t('general_info.reg_no')}</li>
-                        <li>{t('general_info.address')}</li>
                         <li>{t('general_info.email')}</li>
                     </ul>
                 </div>
