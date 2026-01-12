@@ -676,7 +676,8 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                 if p.role == 'ubo':
                     ubos.append({
                         "name": p.person_name,
-                        "person_hash": p.person_code
+                        "person_hash": p.person_code,
+                        "person_code": p.person_code
                     })
                 elif p.role == 'member':
                     share_value = float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)
@@ -685,14 +686,18 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                         "name": p.person_name,
                         "shares": int(p.number_of_shares) if p.number_of_shares else None,
                         "percent": round(percent, 2),
-                        "person_hash": p.person_code
+                        "person_hash": p.person_code,
+                        "person_code": p.person_code
                     })
                 elif p.role == 'officer':
                     officers.append({
                         "name": p.person_name,
                         "position": p.position,
                         "person_hash": p.person_code,
-                        "registered_on": str(p.date_from) if p.date_from else None
+                        "person_code": p.person_code,
+                        "registered_on": str(p.date_from) if p.date_from else None,
+                        "rights_of_representation": p.rights_of_representation,
+                        "representation_with_at_least": p.representation_with_at_least
                     })
             
             # 5. Get risks using existing function
