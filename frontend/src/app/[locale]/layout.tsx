@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Inter } from "next/font/google";
 import "@/app/globals.css";
 import "leaflet/dist/leaflet.css";
@@ -113,6 +114,16 @@ export default async function RootLayout({
           .flex{display:flex}
           .min-h-screen{min-height:100vh}
         `}} />
+        {/* Microsoft Clarity Analytics */}
+        <Script id="ms-clarity" strategy="afterInteractive">
+          {`
+            (function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", "v0agfq27f6");
+          `}
+        </Script>
       </head>
       <body className="antialiased flex flex-col min-h-screen">
         <NextIntlClientProvider messages={messages}>
