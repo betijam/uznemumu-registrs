@@ -638,7 +638,7 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             latest_fin = conn.execute(text("""
                 SELECT year, turnover, profit, employees, cash_balance
                 FROM financial_reports 
-                WHERE company_regcode = :r 
+                WHERE company_regcode = :r AND turnover IS NOT NULL
                 ORDER BY year DESC LIMIT 1
             """), {"r": regcode}).fetchone()
             
@@ -703,25 +703,55 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             # 5. Get risks using existing function
             risks_by_type, total_risk_score = get_risks(regcode)
             
-            # 6. Graph data is complex and cached separately - return empty for now
-            # Frontend will fetch via /graph endpoint if needed
-            
+            # 6. Graph data
+            graph_data = {"linked": [], "partners": [], "via_person": []}
+            try:
+                # Use cached or calculate
+                cached_graph = conn.execute(text("SELECT graph_data FROM company_graph_cache WHERE company_regcode = :r"), {"r": regcode}).fetchone()
+                if cached_graph and cached_graph.graph_data:
+                    graph_data = cached_graph.graph_data
+                else:
+                    # Calculate on fly (might be slow, but necessary if cache missing)
+                    graph_data = find_all_linked_entities(conn, regcode)
+            except Exception as ge:
+                logger.warning(f"Graph calculation failed: {ge}")
+
             # 7. Get tax history
             tax_rows = conn.execute(text("""
                 SELECT year, 
-                       labor_tax_iin as iin, 
-                       social_tax_vsaoi as vsaoi, 
-                       total_tax_paid as total_taxes
+                       labor_tax_iin, 
+                       social_tax_vsaoi, 
+                       total_tax_paid,
+                       avg_employees
                 FROM tax_payments WHERE company_regcode = :r
                 ORDER BY year DESC
             """), {"r": regcode}).fetchall()
             
-            # 8. Get procurements
+            # 8. Get procurements (with subject and date)
             proc_rows = conn.execute(text("""
-                SELECT authority_name as authority, subject, amount, contract_date
+                SELECT authority_name, subject, amount, contract_date
                 FROM procurements WHERE winner_regcode = :r
-                ORDER BY contract_date DESC LIMIT 10
+                ORDER BY contract_date DESC
             """), {"r": regcode}).fetchall()
+
+            # Process procurements: Group by subject+authority+date to sum amounts and remove duplicates
+            proc_map = {}
+            for p in proc_rows:
+                key = f"{p.contract_date}_{p.authority_name}_{p.subject}"
+                if key not in proc_map:
+                    proc_map[key] = {
+                        "authority": p.authority_name,
+                        "subject": p.subject,
+                        "amount": 0.0,
+                        "contract_date": str(p.contract_date) if p.contract_date else None,
+                        "count": 0
+                    }
+                proc_map[key]["amount"] += float(p.amount or 0)
+                proc_map[key]["count"] += 1
+            
+            processed_procurements = list(proc_map.values())
+            # Sort by date
+            processed_procurements.sort(key=lambda x: x["contract_date"] or "", reverse=True)
         
         # Build response
         return {
@@ -783,12 +813,15 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             "members": members,
             "ubos": ubos,
             "risks": risks_by_type,
-            "graph": {
-                "parents": [],
-                "children": []
-            },
-            "tax_history": [{"year": t.year, "total": safe_float(t.total_taxes)} for t in tax_rows],
-            "procurements": [{"authority": p.authority, "amount": safe_float(p.amount)} for p in proc_rows]
+            "graph": graph_data,
+            "tax_history": [{
+                "year": t.year, 
+                "total_tax_paid": safe_float(t.total_tax_paid),
+                "social_tax_vsaoi": safe_float(t.social_tax_vsaoi),
+                "labor_tax_iin": safe_float(t.labor_tax_iin),
+                "avg_employees": t.avg_employees
+            } for t in tax_rows],
+            "procurements": processed_procurements
         }
         
     except HTTPException:
