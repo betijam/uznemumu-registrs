@@ -124,6 +124,20 @@ export default async function RootLayout({
             })(window, document, "clarity", "script", "v0agfq27f6");
           `}
         </Script>
+
+        {/* Google Analytics (GA4) */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-3ZVGKT4KYF"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-3ZVGKT4KYF');
+          `}
+        </Script>
       </head>
       <body className="antialiased flex flex-col min-h-screen">
         <NextIntlClientProvider messages={messages}>

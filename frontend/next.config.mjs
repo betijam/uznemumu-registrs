@@ -39,6 +39,10 @@ const nextConfig = {
                 source: '/sitemap-persons-:id.xml',
                 destination: '/internal/sitemaps/persons/:id',
             },
+            {
+                source: '/favicon.ico',
+                destination: '/icon.png',
+            },
         ];
     },
 };
