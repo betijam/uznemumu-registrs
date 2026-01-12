@@ -9,6 +9,7 @@ from app.routers.auth import get_current_user
 from typing import Optional
 import json
 import time
+from app.routers.benchmarking import get_company_benchmark, get_top_competitors
 
 def time_execution(name, func, *args, **kwargs):
     start = time.time()
@@ -750,6 +751,12 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
     # Check Access Level
     has_full_access = await check_access(request)
     
+    # 🚀 PARALLEL OPTIMIZATION: Start benchmark and competitors in background threads
+    # These use separate DB connections and can run concurrently with main queries
+    executor = ThreadPoolExecutor(max_workers=2)
+    benchmark_future = executor.submit(get_company_benchmark, int(regcode))
+    competitors_future = executor.submit(get_top_competitors, regcode, 5)
+    
     try:
         with engine.connect() as conn:
             # 1. Get basic company info
@@ -759,9 +766,10 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             ).fetchone()
             
             if not company_row:
+                executor.shutdown(wait=False)
                 raise HTTPException(status_code=404, detail="Company not found")
             
-            # 2. Sequential fetching of base data (Optimized: No more parallel on the same connection)
+            # 2. Sequential fetching of base data
             fin_history_rows = conn.execute(text("""
                 SELECT year, turnover, profit, employees, cash_balance,
                        current_ratio, quick_ratio, cash_ratio,
@@ -1010,7 +1018,10 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             "risk_level": "CRITICAL" if total_risk_score >= 100 else "HIGH" if total_risk_score >= 50 else "MEDIUM" if total_risk_score >= 30 else "LOW" if total_risk_score > 0 else "NONE",
             "graph": graph_data,
             "tax_history": processed_tax_history,
-            "procurements": processed_procurements
+            "procurements": processed_procurements,
+            # 🚀 PARALLEL: Collect results from background threads
+            "benchmark": benchmark_future.result(),
+            "competitors": competitors_future.result()
         }
         
     except HTTPException:
@@ -1018,6 +1029,8 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
     except Exception as e:
         logger.error(f"Error fetching full data for {regcode}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        executor.shutdown(wait=False)
 
 
 # ================================================================================

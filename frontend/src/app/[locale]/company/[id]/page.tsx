@@ -254,11 +254,9 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
         taxHistory = fullData.tax_history || [];
         procurements = fullData.procurements || [];
 
-        // Get benchmark and competitors separately (these are computed, not just data fetch)
-        [benchmark, competitors] = await Promise.all([
-            getBenchmark(id, apiHeaders),
-            getCompetitors(id, apiHeaders)
-        ]);
+        // 🚀 OPTIMIZED: Get benchmark and competitors from the same /full response (eliminates 2 HTTP calls)
+        benchmark = fullData.benchmark || null;
+        competitors = fullData.competitors || [];
 
         // Merge all data into company object for CompanyTabs
         fullCompanyData = {
