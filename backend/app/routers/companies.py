@@ -635,11 +635,19 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                 raise HTTPException(status_code=404, detail="Company not found")
             
             # 2. Get latest financial data
+            # 2. Get latest financial data (skip empty years)
             latest_fin = conn.execute(text("""
                 SELECT year, turnover, profit, employees, cash_balance
                 FROM financial_reports 
-                WHERE company_regcode = :r AND turnover IS NOT NULL
+                WHERE company_regcode = :r AND (turnover IS NOT NULL OR employees IS NOT NULL)
                 ORDER BY year DESC LIMIT 1
+            """), {"r": regcode}).fetchone()
+
+            # 2.1 Get company rating
+            rating_row = conn.execute(text("""
+                SELECT rating_grade, last_evaluated_on, rating_explanation
+                FROM company_ratings
+                WHERE company_regcode = :r
             """), {"r": regcode}).fetchone()
             
             # 3. Get financial history (all years)
@@ -716,16 +724,47 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             except Exception as ge:
                 logger.warning(f"Graph calculation failed: {ge}")
 
-            # 7. Get tax history
+            # 7. Get tax history with metrics
             tax_rows = conn.execute(text("""
-                SELECT year, 
-                       labor_tax_iin, 
-                       social_tax_vsaoi, 
-                       total_tax_paid,
-                       avg_employees
-                FROM tax_payments WHERE company_regcode = :r
-                ORDER BY year DESC
+                SELECT tp.year, 
+                       tp.labor_tax_iin, 
+                       tp.social_tax_vsaoi, 
+                       tp.total_tax_paid,
+                       tp.avg_employees,
+                       cm.avg_gross_salary
+                FROM tax_payments tp
+                LEFT JOIN company_computed_metrics cm ON tp.company_regcode = cm.company_regcode AND tp.year = cm.year
+                WHERE tp.company_regcode = :r
+                ORDER BY tp.year DESC
             """), {"r": regcode}).fetchall()
+            
+            # Process tax history (Calculate salary if missing)
+            processed_tax_history = []
+            latest_avg_salary = None
+            VSAOI_RATE = 0.3409
+            
+            for t in tax_rows:
+                avg_gross = safe_float(t.avg_gross_salary)
+                
+                # Calculate from VSAOI if missing
+                if avg_gross is None and t.social_tax_vsaoi and t.avg_employees and float(t.avg_employees) > 0:
+                    try:
+                        monthly_vsaoi = float(t.social_tax_vsaoi) / 12 / float(t.avg_employees)
+                        avg_gross = monthly_vsaoi / VSAOI_RATE
+                    except:
+                        pass
+                
+                if latest_avg_salary is None and avg_gross:
+                    latest_avg_salary = avg_gross
+
+                processed_tax_history.append({
+                    "year": t.year, 
+                    "total_tax_paid": safe_float(t.total_tax_paid),
+                    "social_tax_vsaoi": safe_float(t.social_tax_vsaoi),
+                    "labor_tax_iin": safe_float(t.labor_tax_iin),
+                    "avg_employees": t.avg_employees,
+                    "avg_gross_salary": round(avg_gross, 2) if avg_gross else None
+                })
             
             # 8. Get procurements (with subject and date)
             proc_rows = conn.execute(text("""
@@ -767,6 +806,12 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                 "turnover": safe_float(latest_fin.turnover) if latest_fin else None,
                 "profit": safe_float(latest_fin.profit) if latest_fin else None,
                 "employees": latest_fin.employees if latest_fin else None,
+                "avg_salary": round(latest_avg_salary, 2) if latest_avg_salary else None,
+                "rating": {
+                    "grade": rating_row.rating_grade,
+                    "last_updated": str(rating_row.last_evaluated_on) if rating_row.last_evaluated_on else None,
+                    "explanation": rating_row.rating_explanation
+                } if rating_row else None
             },
             "financial_history": [
                 {
@@ -814,13 +859,7 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             "ubos": ubos,
             "risks": risks_by_type,
             "graph": graph_data,
-            "tax_history": [{
-                "year": t.year, 
-                "total_tax_paid": safe_float(t.total_tax_paid),
-                "social_tax_vsaoi": safe_float(t.social_tax_vsaoi),
-                "labor_tax_iin": safe_float(t.labor_tax_iin),
-                "avg_employees": t.avg_employees
-            } for t in tax_rows],
+            "tax_history": processed_tax_history,
             "procurements": processed_procurements
         }
         
