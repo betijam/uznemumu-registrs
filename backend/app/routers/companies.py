@@ -602,7 +602,14 @@ async def get_company_quick(regcode: str, response: Response, request: Request):
                         WHEN risk_type = 'securing_measure' THEN 10
                         ELSE 0 
                     END
-                )) as total_score
+                )) as total_score,
+                MAX(CASE 
+                    WHEN risk_type = 'sanction' THEN 4
+                    WHEN risk_type = 'liquidation' THEN 3
+                    WHEN risk_type = 'suspension' THEN 2
+                    WHEN risk_type = 'securing_measure' THEN 1
+                    ELSE 0
+                END) as max_severity
             FROM risks 
             WHERE company_regcode = :r AND (active = TRUE OR active IS NULL)
         """), {"r": regcode}).fetchone()
@@ -840,8 +847,16 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             # 5. Get risks using existing function
             risks_by_type, total_risk_score = get_risks(regcode)
             
-            # 6. Graph data (Unified logic)
-            graph_data = _get_graph_data_internal(conn, regcode, 2024)
+            # 6. Graph data (ASYNC OPTIMIZATION)
+            # Instead of calculating heavy graph here, we return basic structure.
+            # Frontend calls /companies/{regcode}/graph separately.
+            # This makes the initial page load FAST.
+            cached_graph = conn.execute(text("SELECT graph_data FROM company_graph_cache WHERE company_regcode = :r"), {"r": regcode}).fetchone()
+            if cached_graph and cached_graph.graph_data:
+                graph_data = cached_graph.graph_data
+            else:
+                # Return basic empty structure, let frontend fetch via dedicated endpoint
+                graph_data = {"status": "LOADING", "linked": [], "partners": [], "via_person": [], "needs_confirmation": []}
 
             # 7. Get tax history with metrics
             tax_rows = conn.execute(text("""
@@ -991,6 +1006,8 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             "members": members,
             "ubos": ubos,
             "risks": risks_by_type,
+            "total_risk_score": total_risk_score,
+            "risk_level": "CRITICAL" if total_risk_score >= 100 else "HIGH" if total_risk_score >= 50 else "MEDIUM" if total_risk_score >= 30 else "LOW" if total_risk_score > 0 else "NONE",
             "graph": graph_data,
             "tax_history": processed_tax_history,
             "procurements": processed_procurements

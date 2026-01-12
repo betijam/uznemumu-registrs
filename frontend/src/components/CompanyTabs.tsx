@@ -57,7 +57,7 @@ export default function CompanyTabs({
                         fetch(`${API_BASE_URL}/companies/${company.regcode}/financial-history`, { headers }),
                         fetch(`${API_BASE_URL}/companies/${company.regcode}/persons`, { headers }),
                         fetch(`${API_BASE_URL}/companies/${company.regcode}/risks`, { headers }),
-                        fetch(`${API_BASE_URL}/companies/${company.regcode}/graph`, { headers }),
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/graph`, { headers }), // This might return "LOADING" status
                         fetch(`${API_BASE_URL}/companies/${company.regcode}/benchmark`, { headers }),
                         fetch(`${API_BASE_URL}/companies/${company.regcode}/competitors`, { headers }),
                         fetch(`${API_BASE_URL}/companies/${company.regcode}/tax-history`, { headers }),
@@ -83,13 +83,30 @@ export default function CompanyTabs({
                         members: personsData.members,
                         ubos: personsData.ubos,
                         risks: (risksData as any).risks,
-                        total_risk_score: (risksData as any).total_risk_score,
+                        total_risk_score: (risksData as any).total_risk_score ?? prev.total_risk_score,
                         risk_level: (risksData as any).risk_level || prev.risk_level,
                         tax_history: taxData,
                         procurements: procData
                     }));
 
-                    setRelated(graphData);
+                    // Handle Graph Data (Lazy Load Real if needed)
+                    // If backend returns "LOADING" status, it means we need to fetch the heavy graph separately
+                    // But wait... we ALREADY fetched /graph above in parallel.
+                    // The backend /full endpoint returns a stub, but here we are calling the separate endpoints manually anyway.
+                    // Implementation note: The existing code calls endpoints individually. 
+                    // To follow the "get_company_full_data" pattern from backend properly:
+                    // If we were calling /full, we'd get the stub. But here the React code manually calls /graph.
+                    // So we actually get the full graph data here directly from the /graph endpoint.
+                    // The issue is that the /graph endpoint ITSELF might be slow.
+                    // 
+                    // Correction: The backend's /graph endpoint DOES the heavy calculation (or uses cache).
+                    // So line 60: fetch(`${API_BASE_URL}/companies/${company.regcode}/graph`
+                    // IS the slow call blocking this Promise.all.
+                    // 
+                    // TO FIX THE UI BLOCKING: We should REMOVE graph fetch from this Promise.all 
+                    // and let it load independently in a separate useEffect or separate async call.
+
+                    setRelated(graphData); // This will set the data only after the slow /graph call finishes
                     setBenchmark(benchData);
                     setCompetitors(compData);
 
@@ -100,7 +117,74 @@ export default function CompanyTabs({
                 }
             };
 
-            fetchDetails();
+            // Improved Pattern: Separate the heavy Graph fetch from the critical data fetch
+            const fetchGraphSeparately = async () => {
+                try {
+                    const res = await fetch(`/api/companies/${company.regcode}/graph`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setRelated(data);
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch graph separately", e);
+                }
+            };
+
+            // Redefine fetchDetails to NOT include graph
+            const fetchDetailsOptimized = async () => {
+                setIsLoadingDetails(true);
+                const API_BASE_URL = '/api';
+                try {
+                    const headers = { 'Content-Type': 'application/json' };
+
+                    // Fetch critical data first (fast)
+                    const [finHistoryRes, personsRes, risksRes, benchRes, compRes, taxRes, procRes] = await Promise.all([
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/financial-history`, { headers }),
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/persons`, { headers }),
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/risks`, { headers }),
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/benchmark`, { headers }),
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/competitors`, { headers }),
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/tax-history`, { headers }),
+                        fetch(`${API_BASE_URL}/companies/${company.regcode}/procurements`, { headers })
+                    ]);
+
+                    const [finData, personsData, risksData, benchData, compData, taxData, procData] = await Promise.all([
+                        finHistoryRes.ok ? (await finHistoryRes.json().then((d: any) => d.financial_history || (Array.isArray(d) ? d : []))) : [],
+                        personsRes.ok ? personsRes.json() : { officers: [], members: [], ubos: [] },
+                        risksRes.ok ? risksRes.json() : {},
+                        benchRes.ok ? benchRes.json() : null,
+                        compRes.ok ? compRes.json() : [],
+                        taxRes.ok ? (await taxRes.json().then((d: any) => d.tax_history || [])) : [],
+                        procRes.ok ? (await procRes.json().then((d: any) => d.procurements || [])) : []
+                    ]);
+
+                    setCompany((prev: any) => ({
+                        ...prev,
+                        financial_history: finData,
+                        officers: personsData.officers,
+                        members: personsData.members,
+                        ubos: personsData.ubos,
+                        risks: (risksData as any).risks,
+                        total_risk_score: (risksData as any).total_risk_score ?? prev.total_risk_score,
+                        risk_level: (risksData as any).risk_level || prev.risk_level,
+                        tax_history: taxData,
+                        procurements: procData
+                    }));
+
+                    setBenchmark(benchData);
+                    setCompetitors(compData);
+
+                    // Trigger graph fetch separately
+                    fetchGraphSeparately();
+
+                } catch (error) {
+                    console.error("Failed to load company details:", error);
+                } finally {
+                    setIsLoadingDetails(false);
+                }
+            };
+
+            fetchDetailsOptimized();
         }
     }, [company.regcode]);
 
