@@ -634,24 +634,8 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             if not company_row:
                 raise HTTPException(status_code=404, detail="Company not found")
             
-            # 2. Get latest financial data
-            # 2. Get latest financial data (skip empty years)
-            latest_fin = conn.execute(text("""
-                SELECT year, turnover, profit, employees, cash_balance
-                FROM financial_reports 
-                WHERE company_regcode = :r AND (turnover IS NOT NULL OR employees IS NOT NULL)
-                ORDER BY year DESC LIMIT 1
-            """), {"r": regcode}).fetchone()
-
-            # 2.1 Get company rating
-            rating_row = conn.execute(text("""
-                SELECT rating_grade, last_evaluated_on, rating_explanation
-                FROM company_ratings
-                WHERE company_regcode = :r
-            """), {"r": regcode}).fetchone()
-            
-            # 3. Get financial history (all years)
-            fin_history_rows = conn.execute(text("""
+            # 2. Parallel fetching of base data using executor
+            future_history = _executor.submit(lambda: conn.execute(text("""
                 SELECT year, turnover, profit, employees, cash_balance,
                        current_ratio, quick_ratio, cash_ratio,
                        net_profit_margin, roe, roa, debt_to_equity, equity_ratio, ebitda,
@@ -664,16 +648,32 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                 FROM financial_reports 
                 WHERE company_regcode = :r 
                 ORDER BY year DESC
-            """), {"r": regcode}).fetchall()
+            """), {"r": regcode}).fetchall())
             
-            # 4. Get persons (officers, members, ubos) from single 'persons' table
-            persons_rows = conn.execute(text("""
+            future_rating = _executor.submit(lambda: conn.execute(text("""
+                SELECT cr.rating_grade, cr.last_evaluated_on, cr.rating_explanation, c.nace_code, c.nace_name
+                FROM companies c
+                LEFT JOIN company_ratings cr ON c.regcode = cr.company_regcode
+                WHERE c.regcode = :r
+            """), {"r": regcode}).fetchone())
+
+            future_persons = _executor.submit(lambda: conn.execute(text("""
                 SELECT person_name, person_code, role, share_percent, date_from, 
                        position, rights_of_representation, representation_with_at_least,
                        number_of_shares, share_nominal_value, share_currency, legal_entity_regcode,
                        nationality, residence
                 FROM persons WHERE company_regcode = :r
-            """), {"r": regcode}).fetchall()
+            """), {"r": regcode}).fetchall())
+
+            # Wait for results
+            fin_history_rows = future_history.result()
+            rating_row = future_rating.result()
+            persons_rows = future_persons.result()
+
+            # Derive latest_fin from history (guarantees consistency with charts)
+            latest_fin = fin_history_rows[0] if fin_history_rows else None
+            
+            # 4. Get persons (officers, members, ubos) from single 'persons' table
             
             # Process persons by role
             officers, members, ubos = [], [], []
@@ -711,18 +711,11 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             # 5. Get risks using existing function
             risks_by_type, total_risk_score = get_risks(regcode)
             
-            # 6. Graph data
+            # 6. Graph data (CACHE ONLY for performance)
             graph_data = {"linked": [], "partners": [], "via_person": []}
-            try:
-                # Use cached or calculate
-                cached_graph = conn.execute(text("SELECT graph_data FROM company_graph_cache WHERE company_regcode = :r"), {"r": regcode}).fetchone()
-                if cached_graph and cached_graph.graph_data:
-                    graph_data = cached_graph.graph_data
-                else:
-                    # Calculate on fly (might be slow, but necessary if cache missing)
-                    graph_data = find_all_linked_entities(conn, regcode)
-            except Exception as ge:
-                logger.warning(f"Graph calculation failed: {ge}")
+            cached_graph = conn.execute(text("SELECT graph_data FROM company_graph_cache WHERE company_regcode = :r"), {"r": regcode}).fetchone()
+            if cached_graph and cached_graph.graph_data:
+                graph_data = cached_graph.graph_data
 
             # 7. Get tax history with metrics
             tax_rows = conn.execute(text("""
@@ -801,23 +794,26 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
         # Build response
         return {
             "company": {
-                "regcode": company_row.regcode,
+                "regcode": regcode,
                 "name": company_row.name,
                 "type": company_row.type if hasattr(company_row, 'type') else None,
                 "address": company_row.address,
                 "registration_date": str(company_row.registration_date),
                 "status": company_row.status,
                 "has_full_access": has_full_access,
+                "latest_year": latest_fin.year if latest_fin else None,
                 # Latest financials
                 "turnover": safe_float(latest_fin.turnover) if latest_fin else None,
                 "profit": safe_float(latest_fin.profit) if latest_fin else None,
                 "employees": latest_fin.employees if latest_fin else (processed_tax_history[0]["avg_employees"] if processed_tax_history else None),
+                "nace_code": rating_row.nace_code if rating_row else None,
+                "nace_name": rating_row.nace_name if rating_row else None,
                 "avg_salary": round(latest_avg_salary, 2) if latest_avg_salary else None,
                 "rating": {
-                    "grade": rating_row.rating_grade,
-                    "last_updated": str(rating_row.last_evaluated_on) if rating_row.last_evaluated_on else None,
-                    "explanation": rating_row.rating_explanation
-                } if rating_row else None
+                    "grade": rating_row.rating_grade if rating_row else None,
+                    "last_updated": str(rating_row.last_evaluated_on) if rating_row and rating_row.last_evaluated_on else None,
+                    "explanation": rating_row.rating_explanation if rating_row else None
+                } if rating_row and rating_row.rating_grade else None
             },
             "financial_history": [
                 {
