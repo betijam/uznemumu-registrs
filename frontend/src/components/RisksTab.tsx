@@ -65,7 +65,21 @@ export default function RisksTab({ company }: RisksTabProps) {
 
     // Use fetched values -> then fallback to summary from 'quick' -> then company root props -> then defaults
     const totalRiskScore = riskData?.total_risk_score ?? company.risk_summary?.total_score ?? company.total_risk_score ?? 0;
-    const riskLevel = riskData?.risk_level ?? company.risk_summary?.level ?? company.risk_level ?? 'NONE';
+
+    // Calculate risk level from score if not provided
+    const calculateRiskLevel = (score: number): string => {
+        if (score >= 100) return 'CRITICAL';
+        if (score >= 50) return 'HIGH';
+        if (score >= 30) return 'MEDIUM';
+        if (score > 0) return 'LOW';
+        return 'NONE';
+    };
+
+    // Prioritize fetched risk_level, but recalculate from score if missing
+    const riskLevel = riskData?.risk_level ||
+        company.risk_summary?.level ||
+        company.risk_level ||
+        calculateRiskLevel(totalRiskScore);
 
     const formatDate = (dateStr: string | null) => {
         if (!dateStr) return '-';

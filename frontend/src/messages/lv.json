@@ -522,9 +522,9 @@
       "p2": "Mēs esam apņēmušies aizsargāt jūsu privātumu un nodrošināt godīgu un pārredzamu datu apstrādi saskaņā ar Vispārīgo datu aizsardzības regulu (VDAR) un Latvijas Republikas likumiem.",
       "controller_title": "Datu pārziņa rekvizīti:",
       "name": "Nosaukums: SIA \"Animas\"",
-      "reg_no": "Reģistrācijas Nr.: [Reģistrācijas numurs]",
+      "reg_no": "Reģistrācijas numurs: 40203360721",
       "address": "Juridiskā adrese: [Adrese]",
-      "email": "E-pasts saziņai: info@company360.lv"
+      "email": "E-pasts saziņai: company360@animas.lv"
     },
     "data_we_collect": {
       "title": "Kādus datus mēs ievācam?",
@@ -922,7 +922,7 @@
     "contact": {
       "title": "Kontakti",
       "content": "Ja Jums ir jautājumi par mūsu sīkdatņu izmantošanu, lūdzu, sazinieties ar mums:",
-      "email": "E-pasts: info@company360.lv",
+      "email": "E-pasts: company360@animas.lv",
       "address": "Adrese: Rīga, Latvija"
     }
   },
