@@ -92,7 +92,7 @@ def get_stats():
 def search_companies(q: str = "", nace: str = None):
     """
     Search companies by name/regcode with optional industry filter.
-    Flexible matching: case/accent insensitive, word order independent.
+    Uses pg_trgm for fast, ranked similarity search.
     
     Args:
         q: Search query (name or registration code)
@@ -102,16 +102,18 @@ def search_companies(q: str = "", nace: str = None):
         return []
     
     # Split query into words for flexible matching
-    query_words = q.strip().split() if q else []
+    raw_query = q.strip()
+    query_words = raw_query.split() if raw_query else []
     
     # Build WHERE clause
     where_conditions = []
     params = {}
     
-    # Ensure unaccent extension
+    # Ensure extensions (idempotent, fast if already exists)
     with engine.connect() as conn:
         try:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent;"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm;"))
             conn.commit()
         except:
             pass
@@ -120,60 +122,57 @@ def search_companies(q: str = "", nace: str = None):
     TYPE_ABBREVIATIONS = ['sia', 'as', 'ik', 'zs', 'ks', 'ps', 'biedrība', 'nodibinājums']
     
     # Separate type words from name words
-    name_words = []
-    type_words = []
-    for word in query_words:
-        word_lower = word.lower()
-        if word_lower in TYPE_ABBREVIATIONS:
-            type_words.append(word_lower)
-        else:
-            name_words.append(word)
+    name_words = [w for w in query_words if w.lower() not in TYPE_ABBREVIATIONS]
+    type_words = [w for w in query_words if w.lower() in TYPE_ABBREVIATIONS]
     
-    # Text search - match ALL words in any order, accent-insensitive
-    if query_words:
-        # Check if it's a regcode search (all digits)
-        if query_words[0].isdigit():
-            where_conditions.append("CAST(regcode AS TEXT) LIKE :q_pattern")
-            params["q_pattern"] = f"{query_words[0]}%"
-        else:
-            # Name word conditions
-            for i, word in enumerate(name_words):
-                where_conditions.append(f"immutable_unaccent(lower(name)) LIKE immutable_unaccent(lower(:word{i}))")
-                params[f"word{i}"] = f"%{word}%"
-            
-            # Type conditions (if any type abbreviations in query)
-            if type_words:
-                type_cond = " OR ".join([f"LOWER(\"type\") = :type{i}" for i in range(len(type_words))])
-                where_conditions.append(f"({type_cond})")
-                for i, tw in enumerate(type_words):
-                    params[f"type{i}"] = tw.lower()
-    
-    # Industry filter
-    if nace:
-        where_conditions.append("nace_section = :nace")
-        params["nace"] = nace
-    
-    where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
-    
-    # Build ORDER BY - prioritize exact prefix matches
-    if query_words and not query_words[0].isdigit():
-        params["first_word"] = f"{query_words[0]}%"
-        # Improve ranking: 
-        # 1. Active companies
-        # 2. Exact word match at start of name OR name_in_quotes
-        # 3. Contains match
+    # Determine search mode and ORDER BY
+    if query_words and query_words[0].isdigit():
+        # REGCODE SEARCH
+        where_conditions.append("CAST(regcode AS TEXT) LIKE :q_pattern")
+        params["q_pattern"] = f"{query_words[0]}%"
+        order_by = "regcode ASC"
+    else:
+        # TEXT SEARCH with SIMILARITY RANKING
+        
+        # A) Name word conditions (AND logic - all words must be present)
+        for i, word in enumerate(name_words):
+            where_conditions.append(f"immutable_unaccent(lower(name)) LIKE immutable_unaccent(lower(:word{i}))")
+            params[f"word{i}"] = f"%{word}%"
+        
+        # B) Type conditions (if any type abbreviations in query)
+        if type_words:
+            type_cond = " OR ".join([f"LOWER(\"type\") = :type{i}" for i in range(len(type_words))])
+            where_conditions.append(f"({type_cond})")
+            for i, tw in enumerate(type_words):
+                params[f"type{i}"] = tw.lower()
+        
+        # C) Industry filter
+        if nace:
+            where_conditions.append("nace_section = :nace")
+            params["nace"] = nace
+        
+        # D) SIMILARITY RANKING (🚀 Key improvement)
+        # Full query string for similarity calculation
+        clean_query_str = " ".join(name_words)
+        params["full_query"] = clean_query_str
+        
+        # ORDER BY logic:
+        # 1. Active companies first
+        # 2. Exact prefix match (starts with query)
+        # 3. SIMILARITY score (pg_trgm magic - how closely text matches)
+        # 4. Shorter names first (if searching "Lido", prefer "Lido" over "Lido Restaurants Ltd")
         order_by = """
             CASE WHEN status = 'active' THEN 0 ELSE 1 END,
             CASE 
-                WHEN immutable_unaccent(lower(name)) LIKE immutable_unaccent(lower(:first_word)) THEN 0 
-                WHEN immutable_unaccent(lower(name_in_quotes)) LIKE immutable_unaccent(lower(:first_word)) THEN 0
+                WHEN immutable_unaccent(lower(name)) LIKE immutable_unaccent(lower(:full_query)) || '%' THEN 0
+                WHEN immutable_unaccent(lower(name_in_quotes)) LIKE immutable_unaccent(lower(:full_query)) || '%' THEN 0
                 ELSE 1 
             END,
-            length(name) ASC, 
-            name ASC
+            SIMILARITY(immutable_unaccent(lower(name)), immutable_unaccent(lower(:full_query))) DESC,
+            length(name) ASC
         """
-    else:
-        order_by = "CASE WHEN status = 'active' THEN 0 ELSE 1 END, name ASC"
+    
+    where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
     
     sql = f"""
     SELECT regcode, name, name_in_quotes, "type" as company_type, type_text,
@@ -203,4 +202,3 @@ def search_companies(q: str = "", nace: str = None):
             })
             
     return result_data
-
