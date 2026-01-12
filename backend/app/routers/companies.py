@@ -773,18 +773,24 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                 ORDER BY contract_date DESC
             """), {"r": regcode}).fetchall()
 
-            # Process procurements: Group by subject+authority+date to sum amounts and remove duplicates
+            # Process procurements: Group by authority+date to sum amounts and show all parts
             proc_map = {}
             for p in proc_rows:
-                key = f"{p.contract_date}_{p.authority_name}_{p.subject}"
+                # Key based on date and authority (to group parts of same tender)
+                key = f"{p.contract_date}_{p.authority_name}"
                 if key not in proc_map:
                     proc_map[key] = {
                         "authority": p.authority_name,
-                        "subject": p.subject,
+                        "subject": p.subject,  # Initial subject
                         "amount": 0.0,
                         "contract_date": str(p.contract_date) if p.contract_date else None,
                         "count": 0
                     }
+                else:
+                    # Append subject if different (to show parts)
+                    if p.subject and p.subject not in proc_map[key]["subject"]:
+                        proc_map[key]["subject"] += f"; {p.subject}"
+                
                 proc_map[key]["amount"] += float(p.amount or 0)
                 proc_map[key]["count"] += 1
             
@@ -805,7 +811,7 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                 # Latest financials
                 "turnover": safe_float(latest_fin.turnover) if latest_fin else None,
                 "profit": safe_float(latest_fin.profit) if latest_fin else None,
-                "employees": latest_fin.employees if latest_fin else None,
+                "employees": latest_fin.employees if latest_fin else (processed_tax_history[0]["avg_employees"] if processed_tax_history else None),
                 "avg_salary": round(latest_avg_salary, 2) if latest_avg_salary else None,
                 "rating": {
                     "grade": rating_row.rating_grade,
