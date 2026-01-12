@@ -29,13 +29,32 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'HomePage' });
 
+  // Clean title: Remove HTML tags (like <gradient>) for metadata
+  const cleanTitle = t('title').replace(/<[^>]+>/g, '');
+
   return {
-    title: t('title'),
-    description: t('subtitle'), // Or a specific metadata description key
+    title: cleanTitle,
+    description: t('subtitle'),
+    metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://company360.lv'),
     icons: {
       icon: '/icon.png',
       apple: '/apple-icon.png'
-    }
+    },
+    openGraph: {
+      title: cleanTitle,
+      description: t('subtitle'),
+      url: process.env.NEXT_PUBLIC_APP_URL || 'https://company360.lv',
+      siteName: 'Company 360',
+      images: [
+        {
+          url: '/icon.png', // Fallback to icon if OG image missing
+          width: 512,       // Standard icon size usually
+          height: 512,
+        }
+      ],
+      locale: locale,
+      type: 'website',
+    },
   };
 }
 

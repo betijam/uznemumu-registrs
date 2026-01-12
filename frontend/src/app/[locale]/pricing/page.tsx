@@ -181,44 +181,7 @@ export default function PricingPage() {
                 </div>
             </div>
 
-            {/* Comparison Table */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-                <div className="max-w-4xl mx-auto">
-                    <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">{t('comparison_title')}</h2>
-                    <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th scope="col" className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                                        {t('feature')}
-                                    </th>
-                                    <th scope="col" className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
-                                        {t('basic')}
-                                    </th>
-                                    <th scope="col" className="px-6 py-4 text-center text-sm font-semibold text-purple-900 bg-purple-50">
-                                        {t('pro')}
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {comparisonFeatures.map((feature, idx) => (
-                                    <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                                            {t(feature.key)}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700 text-center">
-                                            {feature.basic}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-purple-900 font-semibold text-center bg-purple-50">
-                                            {feature.pro}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+
 
             {/* FAQ Section */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">

@@ -43,6 +43,17 @@ async def lifespan(app: FastAPI):
             logger.info("🔄 Checking and updating DB schema (materialized views) in background...")
             update_materialized_view()
             logger.info("✅ DB Schema update complete.")
+
+            # Run critical migrations
+            try: 
+                from apply_waitlist_schema import run_migration as run_waitlist_migration
+                logger.info("📜 Applying waitlist schema migration...")
+                run_waitlist_migration()
+            except ImportError:
+                logger.warning("Could not import waitlist migration script")
+            except Exception as e:
+                logger.error(f"Failed to apply waitlist migration: {e}")
+
         except Exception as e:
             logger.error(f"⚠️ Failed to update DB schema: {e}")
 
