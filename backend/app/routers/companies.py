@@ -706,8 +706,12 @@ def _get_graph_data_internal(conn, regcode: int, year: int = 2024):
     if linked: status = "LINKED"
     elif partners: status = "PARTNER"
 
-    # 7. Get total capital
-    cap_row = conn.execute(text("SELECT total_capital FROM companies WHERE regcode = :r"), {"r": regcode}).fetchone()
+    # 7. Get total capital (Calculated from persons as column might not exist in companies)
+    cap_row = conn.execute(text("""
+        SELECT SUM(number_of_shares * share_nominal_value) as total_capital 
+        FROM persons 
+        WHERE company_regcode = :r AND role = 'member'
+    """), {"r": regcode}).fetchone()
     total_capital = float(cap_row.total_capital) if cap_row and cap_row.total_capital else 0
     
     result = {
