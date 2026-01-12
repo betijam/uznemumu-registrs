@@ -270,7 +270,13 @@ def get_persons(regcode: int):
             FROM persons WHERE company_regcode = :r
         """), {"r": regcode}).fetchall()
         
-        total_capital = sum((float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)) for p in rows if p.role == 'member')
+        # Try to get total capital from company first if possible
+        company_reg = conn.execute(text("SELECT total_capital FROM companies WHERE regcode = :r"), {"r": regcode}).fetchone()
+        db_total_capital = float(company_reg.total_capital) if company_reg and company_reg.total_capital else 0
+        
+        calc_total_capital = sum((float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)) for p in rows if p.role == 'member')
+        total_capital = max(calc_total_capital, db_total_capital)
+        
         ubos, members, officers = [], [], []
         for p in rows:
             birth_date = str(p.birth_date) if hasattr(p, 'birth_date') and p.birth_date else None
@@ -282,11 +288,20 @@ def get_persons(regcode: int):
             elif p.role == 'member':
                 share_value = float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)
                 percent = (share_value / total_capital * 100) if total_capital > 0 else 0
+                
+                # Fallback to stored percent
+                if (percent == 0 or percent is None) and hasattr(p, 'share_percent') and p.share_percent:
+                    percent = float(p.share_percent)
+                
+                # If we have percent but share_value is 0, back-calculate from total_capital
+                if share_value == 0 and percent > 0 and total_capital > 0:
+                    share_value = total_capital * (percent / 100)
+                
                 members.append({
                     "name": p.person_name, "person_code": p.person_code,
                     "legal_entity_regcode": int(p.legal_entity_regcode) if p.legal_entity_regcode else None,
                     "number_of_shares": int(p.number_of_shares) if p.number_of_shares else None,
-                    "share_value": share_value, "share_currency": p.share_currency or "EUR",
+                    "share_value": round(share_value, 2), "share_currency": p.share_currency or "EUR",
                     "percent": round(percent, 2), "date_from": str(p.date_from) if p.date_from else None, "birth_date": birth_date
                 })
             elif p.role == 'officer':
@@ -670,25 +685,41 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             
             # Process persons by role
             officers, members, ubos = [], [], []
-            total_capital = sum((float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)) 
+            db_total_capital = float(company_row.total_capital) if hasattr(company_row, 'total_capital') and company_row.total_capital else 0
+            calc_total_capital = sum((float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)) 
                               for p in persons_rows if p.role == 'member')
+            total_capital = max(calc_total_capital, db_total_capital)
             
             for p in persons_rows:
+                birth_date = str(p.birth_date) if hasattr(p, 'birth_date') and p.birth_date else None
                 if p.role == 'ubo':
                     ubos.append({
                         "name": p.person_name,
                         "person_hash": p.person_code,
-                        "person_code": p.person_code
+                        "person_code": p.person_code,
+                        "birth_date": birth_date
                     })
                 elif p.role == 'member':
                     share_value = float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)
                     percent = (share_value / total_capital * 100) if total_capital > 0 else 0
+                    if (percent == 0 or percent is None) and hasattr(p, 'share_percent') and p.share_percent:
+                        percent = float(p.share_percent)
+                    
+                    # Back-calculate value if missing
+                    if share_value == 0 and percent > 0 and total_capital > 0:
+                        share_value = total_capital * (percent / 100)
+
                     members.append({
                         "name": p.person_name,
-                        "shares": int(p.number_of_shares) if p.number_of_shares else None,
+                        "number_of_shares": int(p.number_of_shares) if p.number_of_shares else None,
+                        "share_value": round(share_value, 2),
+                        "share_currency": p.share_currency or 'EUR',
                         "percent": round(percent, 2),
                         "person_hash": p.person_code,
-                        "person_code": p.person_code
+                        "person_code": p.person_code,
+                        "date_from": str(p.date_from) if p.date_from else None,
+                        "legal_entity_regcode": p.legal_entity_regcode,
+                        "birth_date": birth_date
                     })
                 elif p.role == 'officer':
                     officers.append({
@@ -810,7 +841,8 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                     "grade": rating_row.rating_grade if rating_row else None,
                     "last_updated": str(rating_row.last_evaluated_on) if rating_row and rating_row.last_evaluated_on else None,
                     "explanation": rating_row.rating_explanation if rating_row else None
-                } if rating_row and rating_row.rating_grade else None
+                } if rating_row and rating_row.rating_grade else None,
+                "total_capital": total_capital
             },
             "financial_history": [
                 {
@@ -1064,37 +1096,54 @@ async def get_persons_endpoint(regcode: str, response: Response):
     
     with engine.connect() as conn:
         rows = conn.execute(text("""
-            SELECT person_name, person_code, role, share_percent, date_from, 
+            SELECT person_name, person_code, role, share_percent, date_from, birth_date,
                    position, rights_of_representation, representation_with_at_least,
                    number_of_shares, share_nominal_value, share_currency, legal_entity_regcode,
                    nationality, residence
             FROM persons WHERE company_regcode = :r
         """), {"r": regcode}).fetchall()
         
-        total_capital = sum((float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)) for p in rows if p.role == 'member')
+        # Try to get total capital from company first if possible
+        company_reg = conn.execute(text("SELECT total_capital FROM companies WHERE regcode = :r"), {"r": regcode}).fetchone()
+        db_total_capital = float(company_reg.total_capital) if company_reg and company_reg.total_capital else 0
+
+        calc_total_capital = sum((float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)) for p in rows if p.role == 'member')
+        total_capital = max(calc_total_capital, db_total_capital)
+        
         ubos, members, officers = [], [], []
         
         for p in rows:
+            birth_date = str(p.birth_date) if hasattr(p, 'birth_date') and p.birth_date else None
             if p.role == 'ubo':
                 ubos.append({
                     "name": p.person_name, "person_code": p.person_code, "nationality": p.nationality,
-                    "residence": p.residence, "registered_on": str(p.date_from) if p.date_from else None
+                    "residence": p.residence, "registered_on": str(p.date_from) if p.date_from else None,
+                    "birth_date": birth_date
                 })
             elif p.role == 'member':
                 share_value = float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)
                 percent = (share_value / total_capital * 100) if total_capital > 0 else 0
+                if (percent == 0 or percent is None) and hasattr(p, 'share_percent') and p.share_percent:
+                    percent = float(p.share_percent)
+
+                # Back-calculate value if missing
+                if share_value == 0 and percent > 0 and total_capital > 0:
+                    share_value = total_capital * (percent / 100)
+
                 members.append({
                     "name": p.person_name, "person_code": p.person_code, "legal_entity_regcode": int(p.legal_entity_regcode) if p.legal_entity_regcode else None,
                     "number_of_shares": int(p.number_of_shares) if p.number_of_shares else None,
-                    "share_value": share_value, "share_currency": p.share_currency or "EUR",
-                    "percent": round(percent, 2), "date_from": str(p.date_from) if p.date_from else None
+                    "share_value": round(share_value, 2), "share_currency": p.share_currency or "EUR",
+                    "percent": round(percent, 2), "date_from": str(p.date_from) if p.date_from else None,
+                    "birth_date": birth_date
                 })
             elif p.role == 'officer':
                 officers.append({
                     "name": p.person_name, "person_code": p.person_code, "position": p.position,
                     "rights_of_representation": p.rights_of_representation,
                     "representation_with_at_least": int(p.representation_with_at_least) if p.representation_with_at_least else None,
-                    "registered_on": str(p.date_from) if p.date_from else None
+                    "registered_on": str(p.date_from) if p.date_from else None,
+                    "birth_date": birth_date
                 })
                 
         return {"ubos": ubos, "members": members, "officers": officers, "total_capital": total_capital}
