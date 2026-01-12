@@ -233,18 +233,34 @@ def get_risks(regcode: int):
                    measure_type, institution_name, case_number,
                    liquidation_type, liquidation_grounds
             FROM risks WHERE company_regcode = :r
-            ORDER BY active DESC, risk_score DESC, start_date DESC
+            ORDER BY COALESCE(active, TRUE) DESC, risk_score DESC, start_date DESC
         """), {"r": regcode}).fetchall()
         
-        total_score = sum(r.risk_score or 0 for r in rows if r.active)
+        # Default scores if missing in DB
+        DEFAULT_SCORES = {
+            'sanction': 100,
+            'liquidation': 50,
+            'suspension': 30,
+            'securing_measure': 10
+        }
+        
+        total_score = 0
         by_type = {'sanctions': [], 'liquidations': [], 'suspensions': [], 'securing_measures': []}
         for r in rows:
+            is_active = r.active if r.active is not None else True
+            
+            # Use DB score if provided and >0, else fallback to default
+            current_score = r.risk_score if (r.risk_score and r.risk_score > 0) else DEFAULT_SCORES.get(r.risk_type, 0)
+            
+            if is_active:
+                total_score += current_score
+                
             risk = {
                 "type": r.risk_type,
                 "description": r.description,
                 "date": str(r.start_date) if r.start_date else None,
-                "score": r.risk_score,
-                "active": r.active
+                "score": current_score,
+                "active": is_active
             }
             if r.risk_type == 'sanction':
                 risk.update({"program": r.sanction_program, "list_text": r.sanction_list_text, "legal_base_url": r.legal_base_url})
@@ -574,14 +590,24 @@ async def get_company_quick(regcode: str, response: Response, request: Request):
         if not res:
             raise HTTPException(status_code=404, detail="Company not found")
         
-        # Get active risks count and total score (single query)
+        # Get active risks count and total score (single query with fallback scoring)
         risks_summary = conn.execute(text("""
-            SELECT COUNT(*) as count, COALESCE(SUM(risk_score), 0) as total_score
+            SELECT 
+                COUNT(*) as count, 
+                SUM(COALESCE(NULLIF(risk_score, 0), 
+                    CASE 
+                        WHEN risk_type = 'sanction' THEN 100
+                        WHEN risk_type = 'liquidation' THEN 50
+                        WHEN risk_type = 'suspension' THEN 30
+                        WHEN risk_type = 'securing_measure' THEN 10
+                        ELSE 0 
+                    END
+                )) as total_score
             FROM risks 
-            WHERE company_regcode = :r AND active = TRUE
+            WHERE company_regcode = :r AND (active = TRUE OR active IS NULL)
         """), {"r": regcode}).fetchone()
         
-        total_risk_score = int(risks_summary.total_score) if risks_summary else 0
+        total_risk_score = int(risks_summary.total_score) if risks_summary and risks_summary.total_score else 0
         
         return {
             "regcode": res.regcode,
@@ -623,6 +649,81 @@ async def get_company_quick(regcode: str, response: Response, request: Request):
 # ================================================================================
 # OPTIMIZED FULL DATA ENDPOINT (Replaces 9 separate API calls with 1)
 # ================================================================================
+
+# Helper for graph data (Unified logic for full profile and graph endpoint)
+def _get_graph_data_internal(conn, regcode: int, year: int = 2024):
+    """
+    Retrieves or calculates comprehensive company graph data.
+    - Checks cache first
+    - If miss: Calculates chain effects, physical person control, etc.
+    - Fetches financials
+    - Enriches and formats data
+    - Saves to cache
+    """
+    # 1. Try Cache
+    cached_graph = conn.execute(text("SELECT graph_data FROM company_graph_cache WHERE company_regcode = :r"), {"r": regcode}).fetchone()
+    if cached_graph and cached_graph.graph_data:
+        return cached_graph.graph_data
+
+    # 2. Calculate
+    logger.info(f"[GRAPH] Cache miss for {regcode}, calculating...")
+    comp = find_all_linked_entities(conn, regcode, year)
+    
+    # 3. Collect regs for financials
+    all_regs = []
+    for e in comp["linked"]:
+        if e.get("regcode"): all_regs.append(e["regcode"])
+    for e in comp["partners"]:
+        if e.get("regcode"): all_regs.append(e["regcode"])
+    for e in comp["via_person"]:
+        if e.get("regcode"): all_regs.append(e["regcode"])
+    for e in comp["needs_confirmation"]:
+        if e.get("regcode"): all_regs.append(e["regcode"])
+        
+    # 4. Bulk fetch financials
+    fin_map = bulk_fetch_financials(conn, list(set(all_regs)), year)
+    
+    def enrich(entity):
+        if entity.get("regcode") and entity["regcode"] in fin_map:
+            f = fin_map[entity["regcode"]]
+            return {**entity, "employees": f["employees"], "turnover": f["turnover"], "balance": f["balance"]}
+        return {**entity, "employees": None, "turnover": None, "balance": None}
+
+    # 5. Build enriched lists and merge via_person
+    linked = [enrich(e) for e in comp["linked"]]
+    partners = [enrich(e) for e in comp["partners"]]
+    
+    # Merge via_person into linked/partners based on classification
+    for e in comp["via_person"]:
+        enriched = enrich(e)
+        if e["classification"] == "linked":
+            linked.append(enriched)
+        else:
+            partners.append(enriched)
+            
+    # 6. Determine status
+    status = "AUTONOMOUS"
+    if linked: status = "LINKED"
+    elif partners: status = "PARTNER"
+
+    # 7. Get total capital
+    cap_row = conn.execute(text("SELECT total_capital FROM companies WHERE regcode = :r"), {"r": regcode}).fetchone()
+    total_capital = float(cap_row.total_capital) if cap_row and cap_row.total_capital else 0
+    
+    result = {
+        "status": status,
+        "linked": linked,
+        "partners": partners,
+        "via_person": [enrich(e) for e in comp["via_person"]], # Keep separately for UI if needed
+        "needs_confirmation": [enrich(e) for e in comp["needs_confirmation"]],
+        "total_capital": total_capital,
+        "year": year
+    }
+    
+    # 8. Save to Cache
+    save_cached_graph(conn, regcode, result)
+    
+    return result
 
 @router.get("/companies/{regcode}/full")
 async def get_company_full_data(regcode: str, response: Response, request: Request):
@@ -735,11 +836,8 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             # 5. Get risks using existing function
             risks_by_type, total_risk_score = get_risks(regcode)
             
-            # 6. Graph data (CACHE ONLY for performance)
-            graph_data = {"linked": [], "partners": [], "via_person": []}
-            cached_graph = conn.execute(text("SELECT graph_data FROM company_graph_cache WHERE company_regcode = :r"), {"r": regcode}).fetchone()
-            if cached_graph and cached_graph.graph_data:
-                graph_data = cached_graph.graph_data
+            # 6. Graph data (Unified logic)
+            graph_data = _get_graph_data_internal(conn, regcode, 2024)
 
             # 7. Get tax history with metrics
             tax_rows = conn.execute(text("""
@@ -1806,68 +1904,9 @@ def save_cached_graph(conn, regcode: int, data: dict):
 def get_related_companies(regcode: int, year: int = 2024):
     """
     Returns comprehensive company relationship data (EU SME classification).
-    Includes:
-    - Direct parents and subsidiaries
-    - Chain effects (A->B->C)
-    - Physical person control (F1 criterion)
-    - All with financial KPIs
     """
-    
     with engine.connect() as conn:
-        # 1. Get SME detection result
-        logger.info(f"[GRAPH] Running comprehensive detection for {regcode}")
-        comp = find_all_linked_entities(conn, regcode, year)
-        
-        # 2. Collect all regcodes to fetch financials
-        all_regs = []
-        for e in comp["linked"]:
-            if e.get("regcode"): all_regs.append(e["regcode"])
-        for e in comp["partners"]:
-            if e.get("regcode"): all_regs.append(e["regcode"])
-        for e in comp["via_person"]:
-            if e.get("regcode"): all_regs.append(e["regcode"])
-        for e in comp["needs_confirmation"]:
-            if e.get("regcode"): all_regs.append(e["regcode"])
-            
-        # 3. Bulk fetch financials
-        fin_map = bulk_fetch_financials(conn, list(set(all_regs)), year)
-        
-        # Helper to join fin data
-        def enrich(entity):
-            if entity.get("regcode") and entity["regcode"] in fin_map:
-                f = fin_map[entity["regcode"]]
-                return {**entity, "employees": f["employees"], "turnover": f["turnover"], "balance": f["balance"]}
-            return {**entity, "employees": None, "turnover": None, "balance": None}
-
-        # 4. Determine status
-        status = "AUTONOMOUS"
-        if comp["linked"]: status = "LINKED"
-        elif comp["partners"] or comp["via_person"]: status = "PARTNER"
-
-        # 5. Build enriched lists
-        linked = [enrich(e) for e in comp["linked"]]
-        partners = [enrich(e) for e in comp["partners"]]
-        
-        # Map via_person to linked or partner based on classification
-        for e in comp["via_person"]:
-            enriched = enrich(e)
-            if e["classification"] == "linked":
-                linked.append(enriched)
-            else:
-                partners.append(enriched)
-                
-        # 6. Get total capital for the company
-        cap_row = conn.execute(text("SELECT total_capital FROM companies WHERE regcode = :r"), {"r": regcode}).fetchone()
-        
-        return {
-            "status": status,
-            "linked": linked,
-            "partners": partners,
-            "via_person": [enrich(e) for e in comp["via_person"]],
-            "needs_confirmation": [enrich(e) for e in comp["needs_confirmation"]],
-            "total_capital": float(cap_row.total_capital) if cap_row and cap_row.total_capital else 0,
-            "year": year
-        }
+        return _get_graph_data_internal(conn, regcode, year)
 
 # Alias route for compatibility (frontend may call without /companies/ prefix)
 @router.get("/mvk-declaration/{regcode}")

@@ -132,9 +132,15 @@ export default function RisksTab({ company }: RisksTabProps) {
                                                     {formatDate(sanction.date)}
                                                 </div>
                                             </div>
-                                            <div className="col-span-2">
+                                            <div className="col-span-1">
+                                                <div className="text-xs text-gray-500 uppercase">Score</div>
+                                                <div className="text-sm font-bold text-red-600 mt-1">
+                                                    +{sanction.score || 100}
+                                                </div>
+                                            </div>
+                                            <div className="col-span-1">
                                                 <div className="text-xs text-gray-500 uppercase">{t('list')}</div>
-                                                <div className="text-sm text-gray-900 mt-1">
+                                                <div className="text-sm text-gray-900 mt-1 line-clamp-1">
                                                     {sanction.list_text || '-'}
                                                 </div>
                                             </div>
@@ -194,10 +200,16 @@ export default function RisksTab({ company }: RisksTabProps) {
                                                     {formatDate(liq.date)}
                                                 </div>
                                             </div>
-                                            <div className="col-span-2">
+                                            <div className="col-span-1">
                                                 <div className="text-xs text-gray-500 uppercase">{t('grounds')}</div>
                                                 <div className="text-sm text-gray-900 mt-1">
                                                     {liq.grounds || '-'}
+                                                </div>
+                                            </div>
+                                            <div className="col-span-1">
+                                                <div className="text-xs text-gray-500 uppercase">Score</div>
+                                                <div className="text-sm font-bold text-gray-900 mt-1">
+                                                    +{liq.score || 50}
                                                 </div>
                                             </div>
                                         </div>
@@ -234,10 +246,16 @@ export default function RisksTab({ company }: RisksTabProps) {
                                                     {formatDate(susp.date)}
                                                 </div>
                                             </div>
-                                            <div className="col-span-2">
+                                            <div className="col-span-1">
                                                 <div className="text-xs text-gray-500 uppercase">{t('reason')}</div>
                                                 <div className="text-sm text-gray-900 mt-1">
                                                     {susp.grounds || '-'}
+                                                </div>
+                                            </div>
+                                            <div className="col-span-1">
+                                                <div className="text-xs text-gray-500 uppercase">Score</div>
+                                                <div className="text-sm font-bold text-gray-900 mt-1">
+                                                    +{susp.score || 30}
                                                 </div>
                                             </div>
                                         </div>
@@ -279,6 +297,9 @@ export default function RisksTab({ company }: RisksTabProps) {
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                                 {t('case_number')}
                                             </th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                                                Score
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
@@ -295,6 +316,9 @@ export default function RisksTab({ company }: RisksTabProps) {
                                                 </td>
                                                 <td className="px-6 py-4 text-sm text-gray-600 font-mono">
                                                     {measure.case_number || '-'}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-right font-bold text-gray-900">
+                                                    +{measure.score || 10}
                                                 </td>
                                             </tr>
                                         ))}
