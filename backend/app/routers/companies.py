@@ -634,41 +634,34 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
             if not company_row:
                 raise HTTPException(status_code=404, detail="Company not found")
             
-            # 2. Parallel fetching of base data using executor
-            future_history = _executor.submit(lambda: conn.execute(text("""
+            # 2. Sequential fetching of base data (Optimized: No more parallel on the same connection)
+            fin_history_rows = conn.execute(text("""
                 SELECT year, turnover, profit, employees, cash_balance,
                        current_ratio, quick_ratio, cash_ratio,
                        net_profit_margin, roe, roa, debt_to_equity, equity_ratio, ebitda,
-                       total_assets, equity, current_liabilities, non_current_liabilities,
-                       total_current_assets, accounts_receivable, inventories,
-                       by_nature_labour_expenses, interest_expenses, depreciation_expenses,
-                       provision_for_income_taxes,
-                       cfo_im_net_operating_cash_flow, cfo_im_income_taxes_paid,
-                       cfi_acquisition_of_fixed_assets_intangible_assets, cff_net_financing_cash_flow
+                       interest_expenses, depreciation_expenses, provision_for_income_taxes, by_nature_labour_expenses,
+                       accounts_receivable, inventories, current_liabilities, non_current_liabilities, equity, total_assets, total_current_assets,
+                       cfo_im_net_operating_cash_flow, cff_net_financing_cash_flow, cfi_acquisition_of_fixed_assets_intangible_assets,
+                       cfo_im_income_taxes_paid
                 FROM financial_reports 
                 WHERE company_regcode = :r 
                 ORDER BY year DESC
-            """), {"r": regcode}).fetchall())
+            """), {"r": regcode}).fetchall()
             
-            future_rating = _executor.submit(lambda: conn.execute(text("""
-                SELECT cr.rating_grade, cr.last_evaluated_on, cr.rating_explanation, c.nace_code, c.nace_name
+            rating_row = conn.execute(text("""
+                SELECT cr.rating_grade, cr.last_evaluated_on, cr.rating_explanation, c.nace_code, c.nace_text
                 FROM companies c
                 LEFT JOIN company_ratings cr ON c.regcode = cr.company_regcode
                 WHERE c.regcode = :r
-            """), {"r": regcode}).fetchone())
+            """), {"r": regcode}).fetchone()
 
-            future_persons = _executor.submit(lambda: conn.execute(text("""
+            persons_rows = conn.execute(text("""
                 SELECT person_name, person_code, role, share_percent, date_from, 
                        position, rights_of_representation, representation_with_at_least,
                        number_of_shares, share_nominal_value, share_currency, legal_entity_regcode,
                        nationality, residence
                 FROM persons WHERE company_regcode = :r
-            """), {"r": regcode}).fetchall())
-
-            # Wait for results
-            fin_history_rows = future_history.result()
-            rating_row = future_rating.result()
-            persons_rows = future_persons.result()
+            """), {"r": regcode}).fetchall()
 
             # Derive latest_fin from history (guarantees consistency with charts)
             latest_fin = fin_history_rows[0] if fin_history_rows else None
@@ -780,9 +773,9 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                         "count": 0
                     }
                 else:
-                    # Append subject if different (to show parts)
-                    if p.subject and p.subject not in proc_map[key]["subject"]:
-                        proc_map[key]["subject"] += f"; {p.subject}"
+                    existing_subject = proc_map[key]["subject"] or ""
+                    if p.subject and p.subject not in existing_subject:
+                        proc_map[key]["subject"] = f"{existing_subject}; {p.subject}" if existing_subject else p.subject
                 
                 proc_map[key]["amount"] += float(p.amount or 0)
                 proc_map[key]["count"] += 1
@@ -802,13 +795,17 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                 "status": company_row.status,
                 "has_full_access": has_full_access,
                 "latest_year": latest_fin.year if latest_fin else None,
-                # Latest financials
-                "turnover": safe_float(latest_fin.turnover) if latest_fin else None,
-                "profit": safe_float(latest_fin.profit) if latest_fin else None,
-                "employees": latest_fin.employees if latest_fin else (processed_tax_history[0]["avg_employees"] if processed_tax_history else None),
                 "nace_code": rating_row.nace_code if rating_row else None,
-                "nace_name": rating_row.nace_name if rating_row else None,
-                "avg_salary": round(latest_avg_salary, 2) if latest_avg_salary else None,
+                "nace_text": rating_row.nace_text if rating_row else None,
+                "finances": {
+                    "year": latest_fin.year if latest_fin else None,
+                    "turnover": safe_float(latest_fin.turnover) if latest_fin else None,
+                    "profit": safe_float(latest_fin.profit) if latest_fin else None,
+                    "employees": (latest_fin.employees if latest_fin and latest_fin.employees is not None 
+                              else (processed_tax_history[0]["avg_employees"] if processed_tax_history and processed_tax_history[0]["avg_employees"] is not None 
+                              else (company_row.employee_count if hasattr(company_row, 'employee_count') else None))),
+                    "avg_salary": round(latest_avg_salary, 2) if latest_avg_salary else None,
+                },
                 "rating": {
                     "grade": rating_row.rating_grade if rating_row else None,
                     "last_updated": str(rating_row.last_evaluated_on) if rating_row and rating_row.last_evaluated_on else None,
