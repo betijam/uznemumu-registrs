@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import Navbar from '@/components/Navbar';
 import { Link } from '@/i18n/routing';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import DataDiggingLoader from '@/components/DataDiggingLoader';
 import FinancialHistoryChart from '@/components/FinancialHistoryChart';
 import SubIndustryList from '@/components/SubIndustryList';
 import { useTranslations } from 'next-intl';
@@ -105,11 +105,9 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
 
     if (loading && !data) {
         return (
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <Navbar />
-                <div className="flex justify-center items-center py-32">
-                    <LoadingSpinner size="lg" />
-                </div>
+                <DataDiggingLoader />
             </div>
         );
     }

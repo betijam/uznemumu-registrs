@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import DataDiggingLoader from "@/components/DataDiggingLoader";
 
 interface LocationStats {
     name: string;
@@ -74,14 +75,9 @@ export default function LocationDetailPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <Navbar />
-                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-                        <p className="mt-4 text-gray-500">Ielādē datus...</p>
-                    </div>
-                </main>
+                <DataDiggingLoader />
             </div>
         );
     }
