@@ -815,26 +815,23 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                         {(company.members || []).slice(0, 3).map((member: any, idx: number) => (
                                                             <tr key={`member-${idx}`} className="hover:bg-gray-50">
                                                                 <td className="py-3 text-sm font-medium">
-                                                                    {member.legal_entity_regcode ? (
-                                                                        // If it's a legal entity
-                                                                        member.has_profile !== false ? (
-                                                                            // Has profile - show link
-                                                                            <a href={`/company/${member.legal_entity_regcode}`} className="text-primary hover:underline flex items-center gap-1">
-                                                                                {member.name}
-                                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                                                                            </a>
-                                                                        ) : (
-                                                                            // No profile (foreign entity) - show tooltip
-                                                                            <span
-                                                                                className="text-gray-700 cursor-help"
-                                                                                title={t('foreign_data_later')}
-                                                                            >
-                                                                                {member.name}
-                                                                                <span className="ml-1 text-xs text-gray-400">(ārvalstu)</span>
-                                                                            </span>
-                                                                        )
+                                                                    {member.entity_type === 'FOREIGN_ENTITY' || member.has_profile === false ? (
+                                                                        // Foreign entity without profile - show tooltip
+                                                                        <span
+                                                                            className="text-gray-700 cursor-help"
+                                                                            title={t('foreign_data_later')}
+                                                                        >
+                                                                            {member.name}
+                                                                            <span className="ml-1 text-xs text-gray-400">(ārvalstu)</span>
+                                                                        </span>
+                                                                    ) : member.legal_entity_regcode ? (
+                                                                        // Legal entity with profile - show link
+                                                                        <a href={`/company/${member.legal_entity_regcode}`} className="text-primary hover:underline flex items-center gap-1">
+                                                                            {member.name}
+                                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                                        </a>
                                                                     ) : (
-                                                                        // If it's a person, link to person profile
+                                                                        // Physical person - link to person profile
                                                                         <Link
                                                                             href={generatePersonUrlSync(member.person_code, member.name, member.birth_date)}
                                                                             className="text-primary hover:underline"
