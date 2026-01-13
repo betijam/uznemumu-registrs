@@ -105,9 +105,11 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
 
     if (loading && !data) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="min-h-screen flex flex-col bg-gray-50">
                 <Navbar />
-                <DataDiggingLoader />
+                <div className="flex-1 flex items-center justify-center">
+                    <DataDiggingLoader />
+                </div>
             </div>
         );
     }
