@@ -4,6 +4,7 @@ from app.core.database import engine
 import logging
 import hashlib
 from typing import Optional
+from app.routers.person import resolve_person_identifier
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -54,7 +55,16 @@ def get_career_timeline(identifier: str, limit: int = 10, offset: int = 0, respo
         
         # Get all career events from persons table
         # We create events for: date_from (new_role), date_to (exit), and active roles
+        # Optimization: Calculate total capital for member roles in the main query using a subquery
         events_data = conn.execute(text("""
+            WITH CompanyCapital AS (
+                SELECT 
+                    company_regcode,
+                    SUM(number_of_shares * share_nominal_value) as total_capital
+                FROM persons
+                WHERE role = 'member'
+                GROUP BY company_regcode
+            )
             SELECT 
                 p.company_regcode as regcode,
                 c.name as company_name,
@@ -64,9 +74,11 @@ def get_career_timeline(identifier: str, limit: int = 10, offset: int = 0, respo
                 p.date_from,
                 p.date_to,
                 p.number_of_shares,
-                p.share_nominal_value
+                p.share_nominal_value,
+                cc.total_capital
             FROM persons p
             JOIN companies c ON p.company_regcode = c.regcode
+            LEFT JOIN CompanyCapital cc ON p.company_regcode = cc.company_regcode
             WHERE p.person_code = :pc AND p.person_name = :pn
             ORDER BY 
                 COALESCE(p.date_to, p.date_from, '9999-12-31') DESC,
@@ -86,19 +98,17 @@ def get_career_timeline(identifier: str, limit: int = 10, offset: int = 0, respo
                 is_current = row.date_to is None and row.company_status == 'active'
                 
                 # Build description
-                if row.role == 'member' and row.number_of_shares and row.share_nominal_value:
+                if row.role == 'member' and row.number_of_shares and row.share_nominal_value and row.total_capital:
                     # Calculate share percentage for description
-                    total_capital_result = conn.execute(text("""
-                        SELECT SUM(number_of_shares * share_nominal_value) as total
-                        FROM persons
-                        WHERE company_regcode = :rc AND role = 'member'
-                    """), {"rc": row.regcode}).fetchone()
-                    
-                    if total_capital_result and total_capital_result.total and total_capital_result.total > 0:
-                        my_value = float(row.number_of_shares) * float(row.share_nominal_value)
-                        share_percent = safe_float((my_value / float(total_capital_result.total)) * 100)
-                        if share_percent:
-                            role_desc = f"{role_desc} ({round(share_percent, 1)}%)"
+                    try:
+                         my_value = float(row.number_of_shares) * float(row.share_nominal_value)
+                         total = float(row.total_capital)
+                         if total > 0:
+                             share_percent = safe_float((my_value / total) * 100)
+                             if share_percent:
+                                 role_desc = f"{role_desc} ({round(share_percent, 1)}%)"
+                    except (ValueError, TypeError):
+                        pass
                 
                 timeline_events.append({
                     "date": str(row.date_from),

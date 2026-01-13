@@ -157,6 +157,51 @@ def resolve_person_identifier(conn, identifier: str) -> Optional[tuple]:
                         logger.info(f"[resolve_person_identifier] Legacy/Name Match found! {cand.person_code}, {cand.person_name}")
                         return (cand.person_code, cand.person_name)
 
+    # Fallback: Try name-only slug lookup (for foreign persons without person_code)
+    # The identifier is treated as a slugified name
+    logger.info(f"[resolve_person_identifier] Trying name-only slug lookup for: {identifier}")
+    
+    # We need to find a person whose name slugifies to the identifier
+    # This is expensive, so we limit candidate search or use a broad match first.
+    # Since we can't reverse the slug easily, we'll try to find persons with NULL person_code first?
+    # Or just search by name pattern?
+    
+    # Optimization: The slug usually contains name parts.
+    # Let's replace dashes with spaces and try to find a person_name match
+    potential_name_search = identifier.replace('-', '%')
+    
+    candidates = conn.execute(text("""
+        SELECT DISTINCT person_code, person_name
+        FROM persons 
+        WHERE (person_code IS NULL OR person_code = '') 
+          AND person_name ILIKE :pattern
+    """), {"pattern": f"%{potential_name_search}%"}).fetchall()
+    
+    import re
+    normalized_input_slug = identifier.lower().strip()
+    
+    for cand in candidates:
+        # Normalize and slugify candidate name
+        # Logic must match frontend: lowercase -> replace lv chars -> slugify
+        
+        # Simple slugify helper (matching frontend roughly)
+        def _slugify(text):
+            text = text.lower()
+            # Basic LV char map
+            charmap = {
+                'ā': 'a', 'č': 'c', 'ē': 'e', 'ģ': 'g', 'ī': 'i', 'ķ': 'k', 'ļ': 'l', 'ņ': 'n', 'š': 's', 'ū': 'u', 'ž': 'z'
+            }
+            for k, v in charmap.items():
+                text = text.replace(k, v)
+            text = re.sub(r'[^a-z0-9]+', '-', text)
+            return text.strip('-')
+
+        cand_slug = _slugify(cand.person_name)
+        
+        if cand_slug == normalized_input_slug:
+             logger.info(f"[resolve_person_identifier] Name-only Match found! code={cand.person_code}, name={cand.person_name}")
+             return (cand.person_code, cand.person_name)
+
     return None
 
 
