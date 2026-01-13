@@ -236,6 +236,9 @@ def get_location_stats(
     # For parish, we still need to calculate on the fly as it's not in the materialized view (yet)
     if location_type == 'parish':
          with engine.connect() as conn:
+            # Get latest year first for explicit JOIN (much faster than LATERAL)
+            latest_year = conn.execute(text("SELECT MAX(year) FROM financial_reports")).scalar() or 2023
+            
             result = conn.execute(text(f"""
                 SELECT 
                     a.parish_name as name,
@@ -244,21 +247,14 @@ def get_location_stats(
                     SUM(fr.turnover) as total_revenue,
                     SUM(fr.profit) as total_profit,
                     AVG(fr.turnover) as avg_revenue_per_company,
-                    AVG(fr.avg_salary) as avg_salary
+                    AVG(CASE WHEN fr.employees > 0 THEN fr.turnover / fr.employees ELSE NULL END) as avg_salary
                 FROM companies c
                 JOIN address_dimension a ON c.addressid = a.address_id
-                LEFT JOIN LATERAL (
-                    SELECT employees, turnover, profit,
-                           CASE WHEN employees > 0 THEN turnover / employees ELSE NULL END as avg_salary
-                    FROM financial_reports
-                    WHERE company_regcode = c.regcode
-                    ORDER BY year DESC
-                    LIMIT 1
-                ) fr ON true
+                LEFT JOIN financial_reports fr ON c.regcode = fr.company_regcode AND fr.year = :year
                 WHERE a.parish_name = :name
                   AND c.status = 'active'
                 GROUP BY a.parish_name
-            """), {"name": name})
+            """), {"name": name, "year": latest_year})
             
             row = result.fetchone()
             if not row:

@@ -54,17 +54,9 @@ def get_career_timeline(identifier: str, limit: int = 10, offset: int = 0, respo
         logger.info(f"[get_career_timeline] Resolved {identifier} to {person_code}, {person_name}")
         
         # Get all career events from persons table
-        # We create events for: date_from (new_role), date_to (exit), and active roles
-        # Optimization: Calculate total capital for member roles in the main query using a subquery
+        # OPTIMIZATION: Calculate total capital only for companies where this person has a role
+        # Using a correlated subquery instead of aggregating the entire persons table
         events_data = conn.execute(text("""
-            WITH CompanyCapital AS (
-                SELECT 
-                    company_regcode,
-                    SUM(number_of_shares * share_nominal_value) as total_capital
-                FROM persons
-                WHERE role = 'member'
-                GROUP BY company_regcode
-            )
             SELECT 
                 p.company_regcode as regcode,
                 c.name as company_name,
@@ -75,10 +67,14 @@ def get_career_timeline(identifier: str, limit: int = 10, offset: int = 0, respo
                 p.date_to,
                 p.number_of_shares,
                 p.share_nominal_value,
-                cc.total_capital
+                (
+                    SELECT SUM(p2.number_of_shares * p2.share_nominal_value)
+                    FROM persons p2
+                    WHERE p2.company_regcode = p.company_regcode
+                      AND p2.role = 'member'
+                ) as total_capital
             FROM persons p
             JOIN companies c ON p.company_regcode = c.regcode
-            LEFT JOIN CompanyCapital cc ON p.company_regcode = cc.company_regcode
             WHERE p.person_code = :pc AND p.person_name = :pn
             ORDER BY 
                 COALESCE(p.date_to, p.date_from, '9999-12-31') DESC,

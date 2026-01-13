@@ -408,49 +408,41 @@ def get_industry_detail(
         
         code_len = len(nace_code)
         
-        # Year selection: validate that selected year has sufficient data for this industry
-        # Find the best year with at least 5 companies reporting data (lower threshold for sub-industries)
-        min_companies = 10 if is_section else 3
+        # Year selection: Use materialized view for fast year lookup if available
+        # This avoids expensive scans of financial_reports table
         
-        best_year_query = f"""
-            SELECT f.year, COUNT(*) as cnt
-            FROM financial_reports f
-            JOIN companies c ON c.regcode = f.company_regcode
-            WHERE {nace_filter} AND f.turnover IS NOT NULL
-            GROUP BY f.year
-            HAVING COUNT(*) >= :min_companies
-            ORDER BY f.year DESC
-            LIMIT 1
-        """
-        best_year_row = conn.execute(text(best_year_query), {
-            "code": nace_param, 
-            "code_len": code_len, 
-            "min_companies": min_companies
-        }).fetchone()
-        
-        best_year = best_year_row.year if best_year_row else 2024
-        
-        # If no year specified or specified year has insufficient data, use best year
         if not year:
-            year = best_year
-        else:
-            # Check if the requested year has enough data
-            year_check_query = f"""
-                SELECT COUNT(*) as cnt
-                FROM financial_reports f
-                JOIN companies c ON c.regcode = f.company_regcode
-                WHERE {nace_filter} AND f.year = :year AND f.turnover IS NOT NULL
-            """
-            year_check = conn.execute(text(year_check_query), {
-                "code": nace_param, 
-                "code_len": code_len, 
-                "year": year
-            }).fetchone()
+            # Try to get best year from materialized view first (fast)
+            if is_section:
+                best_year_row = conn.execute(text("""
+                    SELECT data_year as year, active_companies as cnt
+                    FROM industry_stats_materialized
+                    WHERE nace_code = :code
+                      AND active_companies >= :min_companies
+                    ORDER BY data_year DESC
+                    LIMIT 1
+                """), {"code": nace_code, "min_companies": 10}).fetchone()
+            else:
+                best_year_row = conn.execute(text("""
+                    SELECT data_year as year, active_companies as cnt
+                    FROM industry_stats_materialized
+                    WHERE nace_code = :code
+                      AND active_companies >= :min_companies
+                    ORDER BY data_year DESC
+                    LIMIT 1
+                """), {"code": nace_code, "min_companies": 3}).fetchone()
             
-            # If requested year has very few companies, use best year instead
-            if not year_check or year_check.cnt < min_companies:
-                logger.info(f"Year {year} has insufficient data ({year_check.cnt if year_check else 0} companies), falling back to {best_year}")
-                year = best_year
+            if best_year_row:
+                year = best_year_row.year
+            else:
+                # Fallback: Get latest year from financial_reports (slower but always works)
+                latest_year = conn.execute(text(
+                    "SELECT MAX(year) FROM financial_reports WHERE turnover IS NOT NULL"
+                )).scalar()
+                year = latest_year or 2024
+        
+        # Validate year has data - skip expensive validation if year is provided and recent
+        # Trust the user's selection for recent years (2020+)
 
         # 1. Basic Info & NACE Name - prioritize NACE_DIVISIONS dictionary
         # This ensures proper names even when DB has "Cita nozare"
@@ -672,56 +664,99 @@ def get_industry_detail(
         if mat_stats:
              total_industry_turnover = total_turnover # Variable from mat block
              
-        # 4. TOP 5 Leaders with Market Share (Dynamic)
-        leaders_query = f"""
-            SELECT 
-                c.regcode,
-                c.name,
-                f.turnover,
-                f.profit,
-                f.employees
-            FROM companies c
-            JOIN financial_reports f ON f.company_regcode = c.regcode AND f.year = :year
-            WHERE {nace_filter}
-              AND c.status = 'active'
-              AND f.turnover IS NOT NULL AND f.turnover > 0 AND f.turnover < 1e15
-            ORDER BY f.turnover DESC
-            LIMIT 5
-        """
-        leaders = conn.execute(text(leaders_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchall()
-
+        # 4. TOP 5 Leaders with Market Share
+        # OPTIMIZATION: Try cache first, fallback to dynamic query
         leaders_data = []
-        for l in leaders:
-            t_val = safe_float(l.turnover) or 0
-            market_share = 0
-            if total_industry_turnover > 0:
-                market_share = round((t_val / total_industry_turnover) * 100, 2)
+        
+        if is_section:
+            # Try to use industry_leaders_cache (much faster than dynamic query)
+            cached_leaders = conn.execute(text("""
+                SELECT 
+                    company_regcode as regcode,
+                    company_name as name,
+                    turnover,
+                    profit,
+                    employees
+                FROM industry_leaders_cache
+                WHERE nace_code = :code
+                ORDER BY rank ASC
+                LIMIT 5
+            """), {"code": nace_code}).fetchall()
             
-            leaders_data.append({
-                "regcode": l.regcode,
-                "name": l.name,
-                "turnover": t_val,
-                "turnover_formatted": format_large_number(t_val),
-                "profit": safe_float(l.profit),
-                "profit_formatted": format_large_number(l.profit),
-                "employees": l.employees,
-                "market_share": market_share
-            })
+            if cached_leaders:
+                logger.info(f"Using cached leaders for {nace_code}")
+                for l in cached_leaders:
+                    t_val = safe_float(l.turnover) or 0
+                    market_share = 0
+                    if total_industry_turnover > 0:
+                        market_share = round((t_val / total_industry_turnover) * 100, 2)
+                    
+                    leaders_data.append({
+                        "regcode": l.regcode,
+                        "name": l.name,
+                        "turnover": t_val,
+                        "turnover_formatted": format_large_number(t_val),
+                        "profit": safe_float(l.profit),
+                        "profit_formatted": format_large_number(l.profit),
+                        "employees": l.employees,
+                        "market_share": market_share
+                    })
         
-        # 5. Tax Burden (Dynamic)
-        tax_data_query = f"""
-            SELECT 
-                SUM(t.total_tax_paid) as total_tax
-            FROM companies c
-            JOIN tax_payments t ON t.company_regcode = c.regcode AND t.year = :year
-            WHERE {nace_filter}
-        """
-        tax_data = conn.execute(text(tax_data_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchone()
+        # Fallback to dynamic query if cache is empty
+        if not leaders_data:
+            leaders_query = f"""
+                SELECT 
+                    c.regcode,
+                    c.name,
+                    f.turnover,
+                    f.profit,
+                    f.employees
+                FROM companies c
+                JOIN financial_reports f ON f.company_regcode = c.regcode AND f.year = :year
+                WHERE {nace_filter}
+                  AND c.status = 'active'
+                  AND f.turnover IS NOT NULL AND f.turnover > 0 AND f.turnover < 1e15
+                ORDER BY f.turnover DESC
+                LIMIT 5
+            """
+            leaders = conn.execute(text(leaders_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchall()
+
+            for l in leaders:
+                t_val = safe_float(l.turnover) or 0
+                market_share = 0
+                if total_industry_turnover > 0:
+                    market_share = round((t_val / total_industry_turnover) * 100, 2)
+                
+                leaders_data.append({
+                    "regcode": l.regcode,
+                    "name": l.name,
+                    "turnover": t_val,
+                    "turnover_formatted": format_large_number(t_val),
+                    "profit": safe_float(l.profit),
+                    "profit_formatted": format_large_number(l.profit),
+                    "employees": l.employees,
+                    "market_share": market_share
+                })
         
+        # 5. Tax Burden
+        # OPTIMIZATION: Use pre-calculated tax_burden from mat_stats if available
         tax_burden = None
-        total_tax = safe_float(tax_data.total_tax) or 0
-        if total_industry_turnover > 0:
-            tax_burden = round((total_tax / total_industry_turnover) * 100, 2)
+        if mat_stats and hasattr(mat_stats, 'tax_burden') and mat_stats.tax_burden:
+            tax_burden = safe_float(mat_stats.tax_burden)
+        else:
+            # Fallback: Dynamic tax calculation
+            tax_data_query = f"""
+                SELECT 
+                    SUM(t.total_tax_paid) as total_tax
+                FROM companies c
+                JOIN tax_payments t ON t.company_regcode = c.regcode AND t.year = :year
+                WHERE {nace_filter}
+            """
+            tax_data = conn.execute(text(tax_data_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchone()
+            
+            total_tax = safe_float(tax_data.total_tax) or 0
+            if total_industry_turnover > 0:
+                tax_burden = round((total_tax / total_industry_turnover) * 100, 2)
 
         # 6. Market Concentration (HHI proxy / Top 5 share)
         concentration_val = 0

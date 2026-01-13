@@ -283,6 +283,8 @@ async def get_person_profile(identifier: str, response: Response, request: Reque
                 raise HTTPException(status_code=404, detail="Person not found")
 
         # Get all related companies
+        # OPTIMIZATION: Use LATERAL JOIN with LIMIT 1 instead of correlated MAX(year) subquery
+        # This is faster because PostgreSQL can use indexes more effectively
         companies = conn.execute(text("""
             SELECT 
                 p.company_regcode as regcode,
@@ -306,8 +308,13 @@ async def get_person_profile(identifier: str, response: Response, request: Reque
                 c.nace_section_text
             FROM persons p
             JOIN companies c ON p.company_regcode = c.regcode
-            LEFT JOIN financial_reports fr ON c.regcode = fr.company_regcode 
-                AND fr.year = (SELECT MAX(year) FROM financial_reports WHERE company_regcode = c.regcode)
+            LEFT JOIN LATERAL (
+                SELECT turnover, profit, employees, equity, year
+                FROM financial_reports
+                WHERE company_regcode = c.regcode
+                ORDER BY year DESC
+                LIMIT 1
+            ) fr ON true
             WHERE p.person_code = :pc AND p.person_name = :pn
             ORDER BY 
                 CASE WHEN p.date_to IS NULL THEN 0 ELSE 1 END,
@@ -421,20 +428,35 @@ async def get_person_profile(identifier: str, response: Response, request: Reque
         # Group companies by regcode
         companies_map = {}
         
+        # OPTIMIZATION: Pre-calculate total capital for all companies where this person is a member
+        # This eliminates N+1 query problem (one query per company in the loop)
+        member_company_regcodes = [comp.regcode for comp in companies if comp.role == 'member']
+        
+        company_capital_map = {}
+        if member_company_regcodes:
+            # Build a single query to get total capital for all relevant companies
+            capital_results = conn.execute(text("""
+                SELECT 
+                    company_regcode,
+                    SUM(number_of_shares * share_nominal_value) as total_capital
+                FROM persons
+                WHERE company_regcode = ANY(:regcodes) AND role = 'member'
+                GROUP BY company_regcode
+            """), {"regcodes": member_company_regcodes}).fetchall()
+            
+            for row in capital_results:
+                company_capital_map[row.company_regcode] = float(row.total_capital) if row.total_capital else 0
+        
         for comp in companies:
             # Calculate ownership percentage for members
             share_percent = None
             if comp.role == 'member' and comp.number_of_shares and comp.share_nominal_value:
-                # Get total capital for this company
-                total_capital_result = conn.execute(text("""
-                    SELECT SUM(number_of_shares * share_nominal_value) as total
-                    FROM persons
-                    WHERE company_regcode = :rc AND role = 'member'
-                """), {"rc": comp.regcode}).fetchone()
+                # Use pre-calculated total capital
+                total_capital = company_capital_map.get(comp.regcode, 0)
                 
-                if total_capital_result and total_capital_result.total and total_capital_result.total > 0:
+                if total_capital > 0:
                     my_value = float(comp.number_of_shares) * float(comp.share_nominal_value)
-                    raw_percent = (my_value / float(total_capital_result.total)) * 100
+                    raw_percent = (my_value / total_capital) * 100
                     share_percent = safe_float(raw_percent)
                     if share_percent is not None:
                         share_percent = round(share_percent, 2)
