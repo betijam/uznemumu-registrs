@@ -154,7 +154,7 @@ def get_top_competitors(regcode: str, limit: int = 5):
         # Using a UNION to get neighbors
         query = text("""
             (
-                SELECT c.regcode, c.name, c.nace_text, fr.turnover, fr.profit, fr.year, 'above' as position
+                SELECT c.regcode, c.name, c.name_in_quotes, c.type, c.nace_text, fr.turnover, fr.profit, fr.year, 'above' as position
                 FROM companies c
                 JOIN financial_reports fr ON fr.company_regcode = c.regcode
                     AND fr.year = (SELECT MAX(year) FROM financial_reports WHERE company_regcode = c.regcode)
@@ -166,7 +166,7 @@ def get_top_competitors(regcode: str, limit: int = 5):
             )
             UNION ALL
             (
-                SELECT c.regcode, c.name, c.nace_text, fr.turnover, fr.profit, fr.year, 'below' as position
+                SELECT c.regcode, c.name, c.name_in_quotes, c.type, c.nace_text, fr.turnover, fr.profit, fr.year, 'below' as position
                 FROM companies c
                 JOIN financial_reports fr ON fr.company_regcode = c.regcode
                     AND fr.year = (SELECT MAX(year) FROM financial_reports WHERE company_regcode = c.regcode)
@@ -203,6 +203,8 @@ def get_top_competitors(regcode: str, limit: int = 5):
             results.append({
                 "regcode": c.regcode,
                 "name": c.name,
+                "name_in_quotes": c.name_in_quotes,
+                "type": c.type,
                 "nace_text": c.nace_text,
                 "turnover": c_turnover,
                 "profit": safe_json_float(c.profit),

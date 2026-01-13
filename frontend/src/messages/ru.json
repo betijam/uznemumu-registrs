@@ -61,6 +61,7 @@
     "high_risk": "Высокий риск",
     "very_high_risk": "Очень высокий риск",
     "financial_dynamic": "Финансовая динамика",
+    "industry": "Отрасль",
     "market_position": "Позиция на рынке",
     "size": "Размер",
     "top_rank": "ТОП место",
@@ -436,7 +437,7 @@
       "name": "Название: SIA \"Animas\"",
       "reg_no": "Регистрационный №: [Регистрационный номер]",
       "address": "Юридический адрес: [Адрес]",
-      "email": "Эл. почта для связи: info@company360.lv"
+      "email": "Эл. почта для связи: company360@animas.lv"
     },
     "data_we_collect": {
       "title": "Какие данные мы собираем?",

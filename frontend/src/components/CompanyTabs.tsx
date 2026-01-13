@@ -679,29 +679,41 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                         return (
                                                             <>
                                                                 {/* Bigger Competitors */}
-                                                                {above.map((comp: any) => (
-                                                                    <Link
-                                                                        key={comp.regcode}
-                                                                        href={`/company/${comp.regcode}`}
-                                                                        className="flex justify-between items-center text-sm hover:bg-gray-50 rounded pl-0 pr-1 py-1 transition-colors relative z-10"
-                                                                    >
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-[10px] text-blue-600 border border-blue-100">⬆️</span>
-                                                                            <span className="text-gray-700 hover:text-primary max-w-[140px] truncate" title={comp.name}>
-                                                                                {formatCompetitorName(comp)}
+                                                                {above.map((comp: any) => {
+                                                                    const isForeign = comp.type && comp.type.toLowerCase().includes('ārvalst');
+                                                                    const Wrapper = isForeign ? 'div' : Link;
+                                                                    const props = isForeign ? {
+                                                                        title: t('foreign_data_later'),
+                                                                        className: "flex justify-between items-center text-sm hover:bg-gray-50 rounded pl-0 pr-1 py-1 transition-colors relative z-10 cursor-help"
+                                                                    } : {
+                                                                        href: `/company/${comp.regcode}`,
+                                                                        className: "flex justify-between items-center text-sm hover:bg-gray-50 rounded pl-0 pr-1 py-1 transition-colors relative z-10"
+                                                                    };
+
+                                                                    return (
+                                                                        // @ts-ignore
+                                                                        <Wrapper
+                                                                            key={comp.regcode}
+                                                                            {...props}
+                                                                        >
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-[10px] text-blue-600 border border-blue-100">⬆️</span>
+                                                                                <span className="text-gray-700 hover:text-primary max-w-[140px] truncate" title={comp.name}>
+                                                                                    {formatCompetitorName(comp)}
+                                                                                </span>
+                                                                            </div>
+                                                                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                                                                +{comp.diff_pct}%
                                                                             </span>
-                                                                        </div>
-                                                                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                                                                            +{comp.diff_pct}%
-                                                                        </span>
-                                                                    </Link>
-                                                                ))}
+                                                                        </Wrapper>
+                                                                    );
+                                                                })}
 
                                                                 {/* Current Company 📍 */}
                                                                 <div className="flex justify-between items-center text-sm bg-primary/5 border border-primary/10 rounded pl-0 pr-2 py-1.5 relative z-10 shadow-sm">
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-[10px] text-white shadow-sm ring-2 ring-white">📍</span>
-                                                                        <span className="font-bold text-primary truncate max-w-[140px] uppercase tracking-tight text-[11px]">{t('current_company_marker')}</span>
+                                                                        <span className="font-bold text-primary truncate max-w-[140px] uppercase tracking-tight text-[11px]">{company.name}</span>
                                                                     </div>
                                                                     <span className="text-[11px] font-bold text-primary">
                                                                         {company.finances?.turnover >= 1000000
@@ -711,23 +723,35 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                                                 </div>
 
                                                                 {/* Smaller Competitors */}
-                                                                {below.map((comp: any) => (
-                                                                    <Link
-                                                                        key={comp.regcode}
-                                                                        href={`/company/${comp.regcode}`}
-                                                                        className="flex justify-between items-center text-sm hover:bg-gray-50 rounded pl-0 pr-1 py-1 transition-colors relative z-10"
-                                                                    >
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center text-[10px] text-gray-400 border border-gray-100">⬇️</span>
-                                                                            <span className="text-gray-600 hover:text-primary max-w-[140px] truncate" title={comp.name}>
-                                                                                {formatCompetitorName(comp)}
+                                                                {below.map((comp: any) => {
+                                                                    const isForeign = comp.type && comp.type.toLowerCase().includes('ārvalst');
+                                                                    const Wrapper = isForeign ? 'div' : Link;
+                                                                    const props = isForeign ? {
+                                                                        title: t('foreign_data_later'),
+                                                                        className: "flex justify-between items-center text-sm hover:bg-gray-50 rounded pl-0 pr-1 py-1 transition-colors relative z-10 cursor-help"
+                                                                    } : {
+                                                                        href: `/company/${comp.regcode}`,
+                                                                        className: "flex justify-between items-center text-sm hover:bg-gray-50 rounded pl-0 pr-1 py-1 transition-colors relative z-10"
+                                                                    };
+
+                                                                    return (
+                                                                        // @ts-ignore
+                                                                        <Wrapper
+                                                                            key={comp.regcode}
+                                                                            {...props}
+                                                                        >
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center text-[10px] text-gray-400 border border-gray-100">⬇️</span>
+                                                                                <span className="text-gray-600 hover:text-primary max-w-[140px] truncate" title={comp.name}>
+                                                                                    {formatCompetitorName(comp)}
+                                                                                </span>
+                                                                            </div>
+                                                                            <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">
+                                                                                {comp.diff_pct}%
                                                                             </span>
-                                                                        </div>
-                                                                        <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">
-                                                                            {comp.diff_pct}%
-                                                                        </span>
-                                                                    </Link>
-                                                                ))}
+                                                                        </Wrapper>
+                                                                    );
+                                                                })}
                                                             </>
                                                         );
                                                     })()}
