@@ -331,57 +331,70 @@ def get_location_top_companies(
     column = column_map[location_type]
     
     with engine.connect() as conn:
-        # Determine year if not provided - find year with actual data for this location
-        if not year:
-            # Get latest year that has financial data (not necessarily current year)
-            year_res = conn.execute(text("""
-                SELECT MAX(fr.year) 
-                FROM financial_reports fr
-                WHERE fr.turnover IS NOT NULL
-            """)).scalar()
-            year = year_res or 2023
+        # OPTIMIZATION: Use company_stats_materialized which has latest data per company
+        # This avoids missing companies that haven't filed report for the very latest global year
         
-        # Try primary query with address_dimension
-        result = conn.execute(text(f"""
+        # 1. Try primary query with address_dimension JOIN
+        primary_query = f"""
             SELECT 
                 c.regcode,
                 c.name,
-                fr.turnover,
-                fr.profit,
-                fr.employees,
+                s.turnover,
+                s.profit,
+                s.employees,
                 c.nace_text
             FROM companies c
             JOIN address_dimension a ON c.addressid = a.address_id
-            JOIN financial_reports fr ON c.regcode = fr.company_regcode AND fr.year = :year
+            JOIN company_stats_materialized s ON c.regcode = s.regcode
             WHERE a.{column} = :name
               AND c.status = 'active'
-              AND fr.turnover IS NOT NULL
-            ORDER BY fr.turnover DESC
+            ORDER BY s.turnover DESC
             LIMIT :limit
-        """), {"name": name, "limit": limit, "year": year})
-        
+        """
+        result = conn.execute(text(primary_query), {"name": name, "limit": limit})
         rows = result.fetchall()
         
-        # Fallback: If address_dimension join returned nothing, try address text search
-        if not rows:
-            logger.warning(f"No results from address_dimension for {location_type}={name}, trying address text fallback")
-            result = conn.execute(text("""
+        # 2. Fallback: If address_dimension yielded insufficient results (less than limit), 
+        # try text search on address field to fill gaps or specific cases like mis-linked addresses
+        if len(rows) < limit:
+            logger.info(f"Insufficient results ({len(rows)}) from address_dimension for {location_type}={name}, trying address fallback")
+            
+            exclude_regcodes = [r.regcode for r in rows]
+            
+            # Simple fix for list of regcodes in ANY()
+            if not exclude_regcodes:
+                exclude_regcodes = [-1] 
+
+            fallback_query = """
                 SELECT 
                     c.regcode,
                     c.name,
-                    fr.turnover,
-                    fr.profit,
-                    fr.employees,
+                    s.turnover,
+                    s.profit,
+                    s.employees,
                     c.nace_text
                 FROM companies c
-                JOIN financial_reports fr ON c.regcode = fr.company_regcode AND fr.year = :year
+                JOIN company_stats_materialized s ON c.regcode = s.regcode
                 WHERE c.address ILIKE :search_pattern
                   AND c.status = 'active'
-                  AND fr.turnover IS NOT NULL
-                ORDER BY fr.turnover DESC
-                LIMIT :limit
-            """), {"search_pattern": f"%{name}%", "limit": limit, "year": year})
-            rows = result.fetchall()
+                  AND c.regcode != ALL(:exclude_regcodes)
+                ORDER BY s.turnover DESC
+                LIMIT :remaining_limit
+            """
+            
+            remaining_limit = limit - len(rows)
+            fallback_rows = conn.execute(text(fallback_query), {
+                "search_pattern": f"%{name}%", 
+                "remaining_limit": remaining_limit,
+                "exclude_regcodes": exclude_regcodes
+            }).fetchall()
+            
+            rows.extend(fallback_rows)
+            
+            # Re-sort combined results just in case
+            rows.sort(key=lambda x: safe_float(x.turnover) or 0, reverse=True)
+            rows = rows[:limit]
+
         
         return [
             TopCompanyInLocation(

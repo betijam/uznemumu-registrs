@@ -59,6 +59,27 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
         );
     }
 
+    // Calculate domain for YAxis to ensure negative values are handled correctly
+    const allValues = data.flatMap(d => {
+        const vals = [];
+        if (d.turnover !== null) vals.push(d.turnover);
+        if (d.profit !== null) vals.push(d.profit);
+        return vals;
+    });
+
+    const minVal = Math.min(0, ...allValues);
+    const maxVal = Math.max(0, ...allValues);
+
+    // Add margin
+    const domainMin = minVal < 0 ? minVal * 1.1 : 0;
+    const domainMax = maxVal > 0 ? maxVal * 1.1 : 0;
+
+    // If all values are 0, set a default range to avoid flat line issues
+    const finalDomain = [
+        domainMin,
+        domainMax === 0 && domainMin === 0 ? 1000 : domainMax
+    ];
+
     return (
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
             <div className="flex items-center justify-between mb-6">
@@ -106,14 +127,8 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                             axisLine={false}
                             tickLine={false}
                             tick={{ fill: '#6B7280', fontSize: 12 }}
-                            domain={[
-                                (dataMin: number) => {
-                                    // Calculate minimum including negative profits
-                                    const minProfit = Math.min(...data.map(d => d.profit ?? 0));
-                                    return Math.min(minProfit * 1.2, dataMin * 1.1, 0);
-                                },
-                                (dataMax: number) => Math.max(dataMax * 1.1, 0)
-                            ]}
+                            domain={finalDomain}
+                            allowDataOverflow={false}
                             tickFormatter={(value) => {
                                 if (value === 0) return '0 €';
                                 if (Math.abs(value) >= 1000000000) return `${(value / 1000000000).toFixed(0)}B`;
