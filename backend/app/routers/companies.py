@@ -815,7 +815,7 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                 SELECT person_name, person_code, role, share_percent, date_from, 
                        position, rights_of_representation, representation_with_at_least,
                        number_of_shares, share_nominal_value, share_currency, legal_entity_regcode,
-                       nationality, residence
+                       nationality, residence, entity_type
                 FROM persons WHERE company_regcode = :r
             """), {"r": regcode}).fetchall()
 
@@ -850,6 +850,17 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                     if share_value == 0 and percent > 0 and total_capital > 0:
                         share_value = total_capital * (percent / 100)
 
+                    # Correctly identify Foreign Entities
+                    entity_type = p.entity_type if hasattr(p, 'entity_type') else None
+                    has_profile = entity_type != 'FOREIGN_ENTITY'
+                    
+                    legal_regcode = None
+                    if p.legal_entity_regcode:
+                        try:
+                            legal_regcode = int(str(p.legal_entity_regcode))
+                        except:
+                            legal_regcode = None # Keep as None if not parseable
+
                     members.append({
                         "name": p.person_name,
                         "number_of_shares": int(p.number_of_shares) if p.number_of_shares else None,
@@ -859,7 +870,9 @@ async def get_company_full_data(regcode: str, response: Response, request: Reque
                         "person_hash": p.person_code,
                         "person_code": p.person_code,
                         "date_from": str(p.date_from) if p.date_from else None,
-                        "legal_entity_regcode": p.legal_entity_regcode,
+                        "legal_entity_regcode": legal_regcode,
+                        "entity_type": entity_type,
+                        "has_profile": has_profile,
                         "birth_date": birth_date
                     })
                 elif p.role == 'officer':
