@@ -27,7 +27,8 @@ def process_persons(officers_path: str, members_path: str, ubo_path: str):
             'latvian_identity_number_masked': 'person_code',
             'position': 'position',
             'rights_of_representation_type': 'rights_of_representation',
-            'representation_with_at_least': 'representation_with_at_least'
+            'representation_with_at_least': 'representation_with_at_least',
+            'entity_type': 'entity_type'  # NEW: Read entity_type from CSV
         })
         
         df_off['person_name'] = df_off['person_name'].fillna('').str.strip()
@@ -35,7 +36,8 @@ def process_persons(officers_path: str, members_path: str, ubo_path: str):
         
         # Pārliecinās, ka kolonnas eksistē
         officer_cols = ['company_regcode', 'person_name', 'role', 'person_code', 'date_from',
-                        'position', 'rights_of_representation', 'representation_with_at_least']
+                        'position', 'rights_of_representation', 'representation_with_at_least',
+                        'entity_type']  # NEW: Added entity_type
         for c in officer_cols:
             if c not in df_off.columns:
                 df_off[c] = None
@@ -60,14 +62,16 @@ def process_persons(officers_path: str, members_path: str, ubo_path: str):
             'number_of_shares': 'number_of_shares',
             'share_nominal_value': 'share_nominal_value',
             'share_currency': 'share_currency',
-            'legal_entity_registration_number': 'legal_entity_regcode'
+            'legal_entity_registration_number': 'legal_entity_regcode',
+            'entity_type': 'entity_type'  # NEW: Read entity_type from CSV
         })
         
         df_mem['person_name'] = df_mem['person_name'].fillna('').str.strip()
         df_mem['role'] = 'member'
         
         member_cols = ['company_regcode', 'person_name', 'role', 'person_code', 'date_from',
-                       'number_of_shares', 'share_nominal_value', 'share_currency', 'legal_entity_regcode']
+                       'number_of_shares', 'share_nominal_value', 'share_currency', 'legal_entity_regcode',
+                       'entity_type']  # NEW: Added entity_type
         for c in member_cols:
             if c not in df_mem.columns:
                 df_mem[c] = None
@@ -133,7 +137,9 @@ def process_persons(officers_path: str, members_path: str, ubo_path: str):
         # UBOs
         'nationality', 'residence',
         # Birth date (calculated)
-        'birth_date'
+        'birth_date',
+        # Entity type (from CSV) - NEW
+        'entity_type'
     ]
     
     for c in target_cols:
