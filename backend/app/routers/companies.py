@@ -317,7 +317,7 @@ def get_persons(regcode: int):
                     share_value = total_capital * (percent / 100)
                 
                 # Determine if entity has a profile page
-                # FOREIGN_ENTITY = no profile, others = has profile
+                # FOREIGN_ENTITY = no profile, others = has profile (redeploy trigger)
                 legal_regcode = int(p.legal_entity_regcode) if p.legal_entity_regcode else None
                 has_profile = entity_type != 'FOREIGN_ENTITY'  # FOREIGN_ENTITY never has profile
                 
