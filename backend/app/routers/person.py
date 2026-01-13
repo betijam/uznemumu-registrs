@@ -230,7 +230,27 @@ async def get_person_profile(identifier: str, response: Response, request: Reque
         logger.info(f"[get_person_profile] Resolved {identifier} to person_code={person_code}, person_name={person_name}")
         
         # Get basic person info from first available record
-        person_info = conn.execute(text("""
+        # Handle cases where person_code might be None/Empty or Masked (e.g. 181285-*****)
+        
+        query_conditions = "person_name = :pn"
+        params = {"pn": person_name}
+        
+        if person_code:
+            if '*' in person_code:
+                # Handle search with masked code (e.g. from hash resolution)
+                # Use LIKE with DB wildcards
+                pc_pattern = person_code.replace('*', '%')
+                query_conditions += " AND person_code LIKE :pc"
+                params["pc"] = pc_pattern
+            else:
+                # Exact match
+                query_conditions += " AND person_code = :pc"
+                params["pc"] = person_code
+        else:
+            # Foreign person with no code - ensure DB record also has no code (or empty)
+            query_conditions += " AND (person_code IS NULL OR person_code = '')"
+
+        person_info = conn.execute(text(f"""
             SELECT DISTINCT
                 person_name,
                 person_code,
@@ -238,12 +258,29 @@ async def get_person_profile(identifier: str, response: Response, request: Reque
                 nationality,
                 residence
             FROM persons
-            WHERE person_code = :pc AND person_name = :pn
+            WHERE {query_conditions}
             LIMIT 1
-        """), {"pc": person_code, "pn": person_name}).fetchone()
+        """), params).fetchone()
         
         if not person_info:
-            raise HTTPException(status_code=404, detail="Person not found")
+            logger.warning(f"[get_person_profile] Detail lookup failed for resolved person: {person_name}, code={person_code}")
+            # Fallback: Try looser name match if we failed with code
+            if person_code:
+                 person_info = conn.execute(text("""
+                    SELECT DISTINCT
+                        person_name,
+                        person_code,
+                        birth_date,
+                        nationality,
+                        residence
+                    FROM persons
+                    WHERE person_name = :pn
+                    ORDER BY person_code DESC -- Prefer entries with code?
+                    LIMIT 1
+                """), {"pn": person_name}).fetchone()
+            
+            if not person_info:
+                raise HTTPException(status_code=404, detail="Person not found")
 
         # Get all related companies
         companies = conn.execute(text("""

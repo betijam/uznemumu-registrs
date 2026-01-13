@@ -106,7 +106,9 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                             axisLine={false}
                             tickLine={false}
                             tick={{ fill: '#6B7280', fontSize: 12 }}
+                            domain={[(dataMin: number) => Math.min(0, dataMin * 1.1), (dataMax: number) => Math.max(0, dataMax * 1.1)]}
                             tickFormatter={(value) => {
+                                if (value === 0) return '0 €';
                                 if (Math.abs(value) >= 1000000000) return `${(value / 1000000000).toFixed(0)}B`;
                                 if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(0)}M`;
                                 if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(0)}k`;
@@ -114,7 +116,7 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                             }}
                         />
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-                        <ReferenceLine y={0} stroke="#9CA3AF" />
+                        <ReferenceLine y={0} stroke="#4B5563" strokeDasharray="3 3" />
 
                         <Area
                             type="monotone"
@@ -129,7 +131,7 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                             dataKey="profit"
                             name="profit"
                             barSize={32}
-                            radius={[4, 4, 4, 4]}
+                        // radius prop removed to ensure negative bars render correctly downwards
                         >
                             {data.map((entry, index) => (
                                 <Cell
