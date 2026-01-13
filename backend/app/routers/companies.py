@@ -319,7 +319,7 @@ def get_persons(regcode: int):
                 # Determine if entity has a profile page
                 # FOREIGN_ENTITY = no profile, others = has profile
                 legal_regcode = int(p.legal_entity_regcode) if p.legal_entity_regcode else None
-                has_profile = entity_type != 'FOREIGN_ENTITY' if legal_regcode else True  # Physical persons always have profiles
+                has_profile = entity_type != 'FOREIGN_ENTITY'  # FOREIGN_ENTITY never has profile
                 
                 members.append({
                     "name": p.person_name, "person_code": p.person_code,
