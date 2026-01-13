@@ -331,11 +331,17 @@ def get_location_top_companies(
     column = column_map[location_type]
     
     with engine.connect() as conn:
-        # Determine year if not provided
+        # Determine year if not provided - find year with actual data for this location
         if not year:
-            # Get latest year with significant data
-            year_res = conn.execute(text("SELECT MAX(year) FROM financial_reports")).scalar()
+            # Get latest year that has financial data (not necessarily current year)
+            year_res = conn.execute(text("""
+                SELECT MAX(fr.year) 
+                FROM financial_reports fr
+                WHERE fr.turnover IS NOT NULL
+            """)).scalar()
             year = year_res or 2023
+        
+        # Try primary query with address_dimension
         result = conn.execute(text(f"""
             SELECT 
                 c.regcode,
@@ -354,6 +360,29 @@ def get_location_top_companies(
             LIMIT :limit
         """), {"name": name, "limit": limit, "year": year})
         
+        rows = result.fetchall()
+        
+        # Fallback: If address_dimension join returned nothing, try address text search
+        if not rows:
+            logger.warning(f"No results from address_dimension for {location_type}={name}, trying address text fallback")
+            result = conn.execute(text("""
+                SELECT 
+                    c.regcode,
+                    c.name,
+                    fr.turnover,
+                    fr.profit,
+                    fr.employees,
+                    c.nace_text
+                FROM companies c
+                JOIN financial_reports fr ON c.regcode = fr.company_regcode AND fr.year = :year
+                WHERE c.address ILIKE :search_pattern
+                  AND c.status = 'active'
+                  AND fr.turnover IS NOT NULL
+                ORDER BY fr.turnover DESC
+                LIMIT :limit
+            """), {"search_pattern": f"%{name}%", "limit": limit, "year": year})
+            rows = result.fetchall()
+        
         return [
             TopCompanyInLocation(
                 regcode=row.regcode,
@@ -363,5 +392,5 @@ def get_location_top_companies(
                 employees=row.employees,
                 nace_text=row.nace_text
             )
-            for row in result.fetchall()
+            for row in rows
         ]

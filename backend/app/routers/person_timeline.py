@@ -65,6 +65,7 @@ def get_career_timeline(identifier: str, limit: int = 10, offset: int = 0, respo
             person_filter = "(p.person_code IS NULL OR p.person_code = '') AND p.person_name = :pn"
             person_params = {"pn": person_name}
         
+        # STEP 1: Get base career events (without capital calculation)
         events_data = conn.execute(text(f"""
             SELECT 
                 p.company_regcode as regcode,
@@ -75,13 +76,7 @@ def get_career_timeline(identifier: str, limit: int = 10, offset: int = 0, respo
                 p.date_from,
                 p.date_to,
                 p.number_of_shares,
-                p.share_nominal_value,
-                (
-                    SELECT SUM(p2.number_of_shares * p2.share_nominal_value)
-                    FROM persons p2
-                    WHERE p2.company_regcode = p.company_regcode
-                      AND p2.role = 'member'
-                ) as total_capital
+                p.share_nominal_value
             FROM persons p
             JOIN companies c ON p.company_regcode = c.regcode
             WHERE {person_filter}
@@ -89,6 +84,24 @@ def get_career_timeline(identifier: str, limit: int = 10, offset: int = 0, respo
                 COALESCE(p.date_to, p.date_from, '9999-12-31') DESC,
                 p.date_from DESC NULLS LAST
         """), person_params).fetchall()
+        
+        # STEP 2: Pre-fetch total capital for member companies in one query
+        # This eliminates N+1 problem (correlated subquery per row)
+        member_regcodes = list(set(row.regcode for row in events_data if row.role == 'member'))
+        
+        capital_map = {}
+        if member_regcodes:
+            capital_results = conn.execute(text("""
+                SELECT 
+                    company_regcode,
+                    SUM(number_of_shares * share_nominal_value) as total_capital
+                FROM persons
+                WHERE company_regcode = ANY(:regcodes) AND role = 'member'
+                GROUP BY company_regcode
+            """), {"regcodes": member_regcodes}).fetchall()
+            
+            for row in capital_results:
+                capital_map[row.company_regcode] = float(row.total_capital) if row.total_capital else 0
         
         # Build timeline events
         timeline_events = []
@@ -102,14 +115,14 @@ def get_career_timeline(identifier: str, limit: int = 10, offset: int = 0, respo
                 event_type = "active_role" if row.date_to is None and row.company_status == 'active' else "new_role"
                 is_current = row.date_to is None and row.company_status == 'active'
                 
-                # Build description
-                if row.role == 'member' and row.number_of_shares and row.share_nominal_value and row.total_capital:
+                # Build description with share percentage for members
+                total_capital = capital_map.get(row.regcode, 0) if row.role == 'member' else 0
+                if row.role == 'member' and row.number_of_shares and row.share_nominal_value and total_capital > 0:
                     # Calculate share percentage for description
                     try:
                          my_value = float(row.number_of_shares) * float(row.share_nominal_value)
-                         total = float(row.total_capital)
-                         if total > 0:
-                             share_percent = safe_float((my_value / total) * 100)
+                         if total_capital > 0:
+                             share_percent = safe_float((my_value / total_capital) * 100)
                              if share_percent:
                                  role_desc = f"{role_desc} ({round(share_percent, 1)}%)"
                     except (ValueError, TypeError):
