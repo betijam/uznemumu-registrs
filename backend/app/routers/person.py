@@ -285,7 +285,17 @@ async def get_person_profile(identifier: str, response: Response, request: Reque
         # Get all related companies
         # OPTIMIZATION: Use LATERAL JOIN with LIMIT 1 instead of correlated MAX(year) subquery
         # This is faster because PostgreSQL can use indexes more effectively
-        companies = conn.execute(text("""
+        
+        # Build WHERE clause dynamically to handle NULL person_code (foreign persons)
+        if person_code:
+            person_filter = "p.person_code = :pc AND p.person_name = :pn"
+            person_params = {"pc": person_code, "pn": person_name}
+        else:
+            # For foreign persons with NULL person_code, match by name only with NULL code check
+            person_filter = "(p.person_code IS NULL OR p.person_code = '') AND p.person_name = :pn"
+            person_params = {"pn": person_name}
+        
+        companies = conn.execute(text(f"""
             SELECT 
                 p.company_regcode as regcode,
                 c.name,
@@ -315,11 +325,11 @@ async def get_person_profile(identifier: str, response: Response, request: Reque
                 ORDER BY year DESC
                 LIMIT 1
             ) fr ON true
-            WHERE p.person_code = :pc AND p.person_name = :pn
+            WHERE {person_filter}
             ORDER BY 
                 CASE WHEN p.date_to IS NULL THEN 0 ELSE 1 END,
                 fr.turnover DESC NULLS LAST
-        """), {"pc": person_code, "pn": person_name}).fetchall()
+        """), person_params).fetchall()
         
         # Calculate KPIs in Python to avoid double counting multiple roles
         active_companies_count = 0
@@ -408,7 +418,8 @@ async def get_person_profile(identifier: str, response: Response, request: Reque
 
         
         # Get risk indicators
-        risk_data = conn.execute(text("""
+        # Use same person_filter from companies query to handle NULL person_code
+        risk_data = conn.execute(text(f"""
             SELECT 
                 COUNT(DISTINCT CASE 
                     WHEN r.risk_type = 'sanction' THEN c.regcode 
@@ -419,8 +430,8 @@ async def get_person_profile(identifier: str, response: Response, request: Reque
             FROM persons p
             JOIN companies c ON c.regcode = p.company_regcode
             LEFT JOIN risks r ON r.company_regcode = c.regcode AND r.active = true
-            WHERE p.person_code = :pc AND p.person_name = :pn AND p.date_to IS NULL
-        """), {"pc": person_code, "pn": person_name}).fetchone()
+            WHERE {person_filter} AND p.date_to IS NULL
+        """), person_params).fetchone()
         
         
         # Calculate share percentages and format company list
@@ -504,7 +515,15 @@ async def get_person_profile(identifier: str, response: Response, request: Reque
         # Added STRING_AGG for company names
         # Get collaboration network (co-occurring persons)
         # Fetch raw data and aggregate in Python to handle name normalization (e.g. "Janis Berzins" vs "Berzins Janis")
-        network_raw = conn.execute(text("""
+        # Build network filter for p1 (same logic as person_filter)
+        if person_code:
+            network_p1_filter = "p1.person_code = :pc AND p1.person_name = :pn"
+            network_params = {"pc": person_code, "pn": person_name}
+        else:
+            network_p1_filter = "(p1.person_code IS NULL OR p1.person_code = '') AND p1.person_name = :pn"
+            network_params = {"pn": person_name}
+        
+        network_raw = conn.execute(text(f"""
             SELECT DISTINCT
                 p2.person_name,
                 p2.person_code,
@@ -512,11 +531,11 @@ async def get_person_profile(identifier: str, response: Response, request: Reque
                 c.regcode as company_regcode
             FROM persons p1
             JOIN persons p2 ON p1.company_regcode = p2.company_regcode 
-                AND (p2.person_code != p1.person_code OR p2.person_name != p1.person_name)
+                AND (COALESCE(p2.person_code, '') != COALESCE(p1.person_code, '') OR p2.person_name != p1.person_name)
                 AND p2.person_code IS NOT NULL
             JOIN companies c ON c.regcode = p2.company_regcode
-            WHERE p1.person_code = :pc AND p1.person_name = :pn
-        """), {"pc": person_code, "pn": person_name}).fetchall()
+            WHERE {network_p1_filter}
+        """), network_params).fetchall()
         
         # Aggregate in Python with normalization
         network_map = {}

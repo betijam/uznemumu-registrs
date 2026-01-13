@@ -56,7 +56,16 @@ def get_career_timeline(identifier: str, limit: int = 10, offset: int = 0, respo
         # Get all career events from persons table
         # OPTIMIZATION: Calculate total capital only for companies where this person has a role
         # Using a correlated subquery instead of aggregating the entire persons table
-        events_data = conn.execute(text("""
+        
+        # Build WHERE clause to handle NULL person_code (foreign persons)
+        if person_code:
+            person_filter = "p.person_code = :pc AND p.person_name = :pn"
+            person_params = {"pc": person_code, "pn": person_name}
+        else:
+            person_filter = "(p.person_code IS NULL OR p.person_code = '') AND p.person_name = :pn"
+            person_params = {"pn": person_name}
+        
+        events_data = conn.execute(text(f"""
             SELECT 
                 p.company_regcode as regcode,
                 c.name as company_name,
@@ -75,11 +84,11 @@ def get_career_timeline(identifier: str, limit: int = 10, offset: int = 0, respo
                 ) as total_capital
             FROM persons p
             JOIN companies c ON p.company_regcode = c.regcode
-            WHERE p.person_code = :pc AND p.person_name = :pn
+            WHERE {person_filter}
             ORDER BY 
                 COALESCE(p.date_to, p.date_from, '9999-12-31') DESC,
                 p.date_from DESC NULLS LAST
-        """), {"pc": person_code, "pn": person_name}).fetchall()
+        """), person_params).fetchall()
         
         # Build timeline events
         timeline_events = []
