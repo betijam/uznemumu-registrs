@@ -3,10 +3,10 @@
 import React from 'react';
 
 const DataDiggingLoader = () => {
-    return (
-        <div className="flex flex-col items-center justify-center p-8">
-            <div className="drill-loader relative w-[60px] h-[100px]">
-                <style jsx>{`
+  return (
+    <div className="flex flex-col items-center justify-center p-8">
+      <div className="drill-loader relative w-[60px] h-[100px]">
+        <style jsx>{`
           /* Urbja konteiners */
           .drill-loader {
             position: relative;
@@ -84,20 +84,20 @@ const DataDiggingLoader = () => {
           }
         `}</style>
 
-                <div className="drill-bit"></div>
-                <div className="data-layer layer-1"></div>
-                <div className="data-layer layer-2"></div>
-                <div className="data-layer layer-3"></div>
-                <div className="particle p1"></div>
-                <div className="particle p2"></div>
-                <div className="particle p3"></div>
-            </div>
+        <div className="drill-bit"></div>
+        <div className="data-layer layer-1"></div>
+        <div className="data-layer layer-2"></div>
+        <div className="data-layer layer-3"></div>
+        <div className="particle p1"></div>
+        <div className="particle p2"></div>
+        <div className="particle p3"></div>
+      </div>
 
-            <p className="mt-8 text-slate-600 font-medium animate-pulse">
-                Iegūstam datus...
-            </p>
-        </div>
-    );
+      <p className="mt-8 text-slate-600 font-medium animate-pulse">
+        IEGŪSTAM DATUS...
+      </p>
+    </div>
+  );
 };
 
 export default DataDiggingLoader;
