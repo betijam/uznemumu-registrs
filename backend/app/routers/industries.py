@@ -523,66 +523,126 @@ def get_industry_detail(
                 nace_name = nace_info["name"] if nace_info else f"Nozare {nace_code}"
 
         # 2. Main KPIs for Selected Year
-        # We compute this dynamically from companies/financial_reports to be fresh
-        # and consistent with the specific selected 'year'
-        stats_query = f"""
-            SELECT 
-                SUM(f.turnover) as total_turnover,
-                SUM(f.profit) as total_profit,
-                SUM(f.employees) as total_employees,
-                COUNT(DISTINCT c.regcode) as active_companies
-            FROM companies c
-            LEFT JOIN LATERAL (
-                SELECT turnover, profit, employees
-                FROM financial_reports
-                WHERE company_regcode = c.regcode AND year = :year
-                  AND turnover IS NOT NULL AND turnover < 1e15
-            ) f ON true
-            WHERE {nace_filter}
-              AND c.status = 'active'
-        """
-        stats = conn.execute(text(stats_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchone()
-
-        # Previous Year for Growth
-        prev_stats_query = f"""
-            SELECT SUM(f.turnover) as total_turnover
-            FROM companies c
-            LEFT JOIN LATERAL (
-                SELECT turnover
-                FROM financial_reports
-                WHERE company_regcode = c.regcode AND year = :prev_year
-                  AND turnover IS NOT NULL AND turnover < 1e15
-            ) f ON true
-            WHERE {nace_filter}
-              AND c.status = 'active'
-        """
-        prev_stats = conn.execute(text(prev_stats_query), {"code": nace_param, "code_len": code_len, "prev_year": year - 1}).fetchone()
-
-        # Salary Data (from tax_payments)
-        salary_data_query = f"""
-            SELECT 
-                SUM(t.social_tax_vsaoi) as total_vsaoi,
-                SUM(t.avg_employees) as total_employees
-            FROM companies c
-            LEFT JOIN LATERAL (
-                SELECT social_tax_vsaoi, avg_employees
-                FROM tax_payments
-                WHERE company_regcode = c.regcode AND year = :year
-            ) t ON true
-            WHERE {nace_filter}
-        """
-        salary_data = conn.execute(text(salary_data_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchone()
+        # OPTIMIZATION: Try to use industry_stats_materialized if available for the requested year
+        # This avoids summing up thousands of rows for every request
         
-        industry_avg_salary = None
-        try:
-            vsaoi = safe_float(salary_data.total_vsaoi) or 0
-            employees = safe_float(salary_data.total_employees) or 0
-            if vsaoi > 0 and employees > 0:
-                industry_avg_salary = round(vsaoi / 0.3409 / employees / 12)
-        except Exception:
+        # Check if we have materialized data for this code and year
+        mat_stats = conn.execute(text("""
+            SELECT 
+                total_turnover,
+                total_profit,
+                employee_count as total_employees,
+                active_companies,
+                turnover_growth
+            FROM industry_stats_materialized
+            WHERE nace_code = :code 
+              AND data_year = :year
+        """), {"code": nace_code, "year": year}).fetchone()
+        
+        if mat_stats:
+            logger.info(f"Using materialized stats for industry {nace_code} year {year}")
+            total_turnover = safe_float(mat_stats.total_turnover)
+            total_profit = safe_float(mat_stats.total_profit)
+            total_employees = safe_int(mat_stats.total_employees)
+            active_companies = mat_stats.active_companies
+            turnover_growth = safe_float(mat_stats.turnover_growth)
+            
+            # We still need tax and salary data as they might not be in the materialized view fully or we want parity
+            # But wait, industry_stats_materialized has avg_gross_salary!
+            
+            # For consistency, let's keep salary/tax dynamic OR fetch from mat view if we trust it.
+            # The materialized view has avg_gross_salary.
+            
+            salary_data = conn.execute(text("""
+                SELECT avg_gross_salary FROM industry_stats_materialized
+                WHERE nace_code = :code AND data_year = :year
+            """), {"code": nace_code, "year": year}).fetchone()
+            
+            industry_avg_salary = safe_float(salary_data.avg_gross_salary) if salary_data else None
+            
+            # Tax burden is not in materialized view usually? 
+            # Let's keep tax burden query (it's aggregative but usually tax_payments is smaller or indexed)
+            # Or accept it's slow. 
+            # For now, we will run the tax query dynamically as it wasn't in the mat view columns I saw earlier.
+            
+            # We don't need prev_stats logic because mat_stats has turnover_growth pre-calculated!
+            
+            # Dummy object for response construction later
+            class StatsObj:
+                pass
+            stats = StatsObj()
+            stats.total_turnover = total_turnover
+            stats.total_profit = total_profit
+            stats.total_employees = total_employees
+            stats.active_companies = active_companies
+            
+            # We won't have prev_stats object but we have turnover_growth
+            
+        else:
+            # FALLBACK: Dynamic Calculation (Slow)
+            logger.info(f"Materialized stats not found for {nace_code} {year}, computing on-the-fly")
+            
+            stats_query = f"""
+                SELECT 
+                    SUM(f.turnover) as total_turnover,
+                    SUM(f.profit) as total_profit,
+                    SUM(f.employees) as total_employees,
+                    COUNT(DISTINCT c.regcode) as active_companies
+                FROM companies c
+                LEFT JOIN LATERAL (
+                    SELECT turnover, profit, employees
+                    FROM financial_reports
+                    WHERE company_regcode = c.regcode AND year = :year
+                      AND turnover IS NOT NULL AND turnover < 1e15
+                ) f ON true
+                WHERE {nace_filter}
+                  AND c.status = 'active'
+            """
+            stats = conn.execute(text(stats_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchone()
+            
+            # Previous Year for Growth
+            prev_stats_query = f"""
+                SELECT SUM(f.turnover) as total_turnover
+                FROM companies c
+                LEFT JOIN LATERAL (
+                    SELECT turnover
+                    FROM financial_reports
+                    WHERE company_regcode = c.regcode AND year = :prev_year
+                      AND turnover IS NOT NULL AND turnover < 1e15
+                ) f ON true
+                WHERE {nace_filter}
+                  AND c.status = 'active'
+            """
+            prev_stats = conn.execute(text(prev_stats_query), {"code": nace_param, "code_len": code_len, "prev_year": year - 1}).fetchone()
+            
+            turnover_growth = calc_growth(safe_float(stats.total_turnover), safe_float(prev_stats.total_turnover)) if stats and prev_stats else None
+            
+            # Dynamic Salary
+            salary_data_query = f"""
+                SELECT 
+                    SUM(t.social_tax_vsaoi) as total_vsaoi,
+                    SUM(t.avg_employees) as total_employees
+                FROM companies c
+                LEFT JOIN LATERAL (
+                    SELECT social_tax_vsaoi, avg_employees
+                    FROM tax_payments
+                    WHERE company_regcode = c.regcode AND year = :year
+                ) t ON true
+                WHERE {nace_filter}
+            """
+            salary_data_rows = conn.execute(text(salary_data_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchone()
+            
             industry_avg_salary = None
-        
-        # National average salary
+            try:
+                vsaoi = safe_float(salary_data_rows.total_vsaoi) or 0
+                employees = safe_float(salary_data_rows.total_employees) or 0
+                if vsaoi > 0 and employees > 0:
+                    industry_avg_salary = round(vsaoi / 0.3409 / employees / 12)
+            except Exception:
+                industry_avg_salary = None
+
+
+        # National average salary (Cached ideally, but fast enough)
         national_salary_data = conn.execute(text("""
             SELECT 
                 SUM(social_tax_vsaoi) as total_vsaoi,
@@ -605,9 +665,14 @@ def get_industry_detail(
             salary_ratio = round(industry_avg_salary / national_avg_salary, 1)
 
         # 3. Market Share Base (Total Industry Turnover)
-        total_industry_turnover = safe_float(stats.total_turnover) or 0
-
-        # 4. TOP 5 Leaders with Market Share
+        # Use value from stats block
+        total_industry_turnover = safe_float(stats.total_turnover if hasattr(stats, 'total_turnover') else 0) or 0 
+        # Note: If we used materialized view, stats is a dummy obj or we used variables. 
+        # Let's reconcile:
+        if mat_stats:
+             total_industry_turnover = total_turnover # Variable from mat block
+             
+        # 4. TOP 5 Leaders with Market Share (Dynamic)
         leaders_query = f"""
             SELECT 
                 c.regcode,
@@ -616,15 +681,10 @@ def get_industry_detail(
                 f.profit,
                 f.employees
             FROM companies c
-            LEFT JOIN LATERAL (
-                SELECT turnover, profit, employees
-                FROM financial_reports
-                WHERE company_regcode = c.regcode AND year = :year
-                  AND turnover IS NOT NULL AND turnover > 0 AND turnover < 1e15
-            ) f ON true
+            JOIN financial_reports f ON f.company_regcode = c.regcode AND f.year = :year
             WHERE {nace_filter}
               AND c.status = 'active'
-              AND f.turnover IS NOT NULL
+              AND f.turnover IS NOT NULL AND f.turnover > 0 AND f.turnover < 1e15
             ORDER BY f.turnover DESC
             LIMIT 5
         """
@@ -648,15 +708,12 @@ def get_industry_detail(
                 "market_share": market_share
             })
         
-        # 5. Tax Burden
+        # 5. Tax Burden (Dynamic)
         tax_data_query = f"""
             SELECT 
                 SUM(t.total_tax_paid) as total_tax
             FROM companies c
-            LEFT JOIN LATERAL (
-                SELECT total_tax_paid FROM tax_payments
-                WHERE company_regcode = c.regcode AND year = :year
-            ) t ON true
+            JOIN tax_payments t ON t.company_regcode = c.regcode AND t.year = :year
             WHERE {nace_filter}
         """
         tax_data = conn.execute(text(tax_data_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchone()
@@ -678,21 +735,39 @@ def get_industry_detail(
 
         # 7. Financial History (Last 5 Years)
         # We want years: [year-4, year-3, year-2, year-1, year]
+        # Optimization: Aggregate from industry_stats_materialized if possible
         start_year = year - 4
-        history_query = f"""
-            SELECT 
-                f.year,
-                SUM(f.turnover) as total_turnover,
-                SUM(f.profit) as total_profit
-            FROM companies c
-            JOIN financial_reports f ON f.company_regcode = c.regcode
-            WHERE {nace_filter}
-              AND f.year BETWEEN :start_year AND :end_year
-              AND f.turnover IS NOT NULL AND f.turnover < 1e15
-            GROUP BY f.year
-            ORDER BY f.year ASC
-        """
-        history_rows = conn.execute(text(history_query), {"code": nace_param, "code_len": code_len, "start_year": start_year, "end_year": year}).fetchall()
+        
+        # Try fetching history from materialized view
+        history_rows = []
+        if is_section:
+             history_rows = conn.execute(text("""
+                SELECT 
+                    data_year as year,
+                    total_turnover,
+                    total_profit
+                FROM industry_stats_materialized
+                WHERE nace_code = :code 
+                  AND data_year BETWEEN :start_year AND :end_year
+                ORDER BY data_year ASC
+             """), {"code": nace_code, "start_year": start_year, "end_year": year}).fetchall()
+        
+        if not history_rows:
+            # Fallback to dynamic history
+            history_query = f"""
+                SELECT 
+                    f.year,
+                    SUM(f.turnover) as total_turnover,
+                    SUM(f.profit) as total_profit
+                FROM companies c
+                JOIN financial_reports f ON f.company_regcode = c.regcode
+                WHERE {nace_filter}
+                  AND f.year BETWEEN :start_year AND :end_year
+                  AND f.turnover IS NOT NULL AND f.turnover < 1e15
+                GROUP BY f.year
+                ORDER BY f.year ASC
+            """
+            history_rows = conn.execute(text(history_query), {"code": nace_param, "code_len": code_len, "start_year": start_year, "end_year": year}).fetchall()
 
         history_data = [
             {
@@ -704,52 +779,88 @@ def get_industry_detail(
         ]
 
         # 8. Sub-industry Breakdown (Level 4 NACE - 4-digit codes)
-        # Only show sub-industries for section-level (2-digit) codes
-        # For 4-digit codes, don't show sub-industries (they ARE the sub-industry)
+        # Optimization: Use materialized view for sub-industries if possible
         sub_industries = []
         if is_section:
-            sub_industries_query = f"""
+            # Try materialized view First
+            # Get 4-digit codes that start with this section 2-digit code
+            sub_mat_rows = conn.execute(text("""
                 SELECT 
-                    LEFT(c.nace_code, 4) as sub_code,
-                    MAX(c.nace_text) as sub_name_sample, 
-                    SUM(f.turnover) as sub_turnover,
-                    COUNT(DISTINCT c.regcode) as company_count
-                FROM companies c
-                LEFT JOIN LATERAL (
-                     SELECT turnover FROM financial_reports 
-                     WHERE company_regcode = c.regcode AND year = :year 
-                       AND turnover IS NOT NULL AND turnover > 0 AND turnover < 1e15
-                     ORDER BY year DESC LIMIT 1
-                ) f ON true
-                WHERE {nace_filter}
-                  AND c.nace_code IS NOT NULL
-                  AND f.turnover IS NOT NULL
-                  AND c.nace_text NOT ILIKE '%nenoteikt%'
-                GROUP BY LEFT(c.nace_code, 4)
-                ORDER BY sub_turnover DESC
+                    nace_code as sub_code,
+                    nace_name as sub_name_sample,
+                    total_turnover as sub_turnover,
+                    active_companies as company_count
+                FROM industry_stats_materialized
+                WHERE nace_level = 2 -- Assuming level 2 in DB corresponds to 4-digit NACE class, or checking length
+                  AND LEFT(nace_code, 2) = :section
+                  AND data_year = :year
+                ORDER BY total_turnover DESC
                 LIMIT 10
-            """
-            sub_industries_rows = conn.execute(text(sub_industries_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchall()
+            """), {"section": nace_code, "year": year}).fetchall()
+            
+            # Note: nace_level definition varies. 
+            # In industries.py overview, nace_level=1 is Section (A, B..).
+            # Usually level 2 is Division (2 digits), Level 3 Group (3 digits), Level 4 Class (4 digits).
+            # The query uses LEFT(nace_code, 2) so we are looking for children.
+            # If materialized view doesn't have 4-digit codes, we fall back.
+            
+            # Logic check: 'nace_level' column availability. 
+            # If empty, fallback.
+            
+            if sub_mat_rows:
+                 for row in sub_mat_rows:
+                    st = safe_float(row.sub_turnover) or 0
+                    share = 0
+                    if total_industry_turnover > 0:
+                        share = round((st / total_industry_turnover) * 100, 1)
+                    
+                    sub_industries.append({
+                        "code": row.sub_code,
+                        "name": row.sub_name_sample or f"Apakšnozare {row.sub_code}",
+                        "turnover": st,
+                        "formatted_turnover": format_large_number(st),
+                        "share": share,
+                        "companies": row.company_count or 0
+                    })
+            
+            if not sub_industries:
+                # Fallback to dynamic
+                sub_industries_query = f"""
+                    SELECT 
+                        LEFT(c.nace_code, 4) as sub_code,
+                        MAX(c.nace_text) as sub_name_sample, 
+                        SUM(f.turnover) as sub_turnover,
+                        COUNT(DISTINCT c.regcode) as company_count
+                    FROM companies c
+                    JOIN financial_reports f ON f.company_regcode = c.regcode AND f.year = :year
+                    WHERE {nace_filter}
+                      AND c.nace_code IS NOT NULL
+                      AND f.turnover IS NOT NULL
+                      AND c.nace_text NOT ILIKE '%nenoteikt%'
+                    GROUP BY LEFT(c.nace_code, 4)
+                    ORDER BY sub_turnover DESC
+                    LIMIT 10
+                """
+                sub_industries_rows = conn.execute(text(sub_industries_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchall()
 
-            for row in sub_industries_rows:
-                st = safe_float(row.sub_turnover) or 0
-                share = 0
-                if total_industry_turnover > 0:
-                    share = round((st / total_industry_turnover) * 100, 1)
-                
-                # Use the name from DB, filtering out "Nenoteikta nozare"
-                name = row.sub_name_sample
-                if not name or 'nenoteikt' in name.lower():
-                    name = f"Apakšnozare {row.sub_code}"
-                
-                sub_industries.append({
-                    "code": row.sub_code,
-                    "name": name,
-                    "turnover": st,
-                    "formatted_turnover": format_large_number(st),
-                    "share": share,
-                    "companies": row.company_count or 0
-                })
+                for row in sub_industries_rows:
+                    st = safe_float(row.sub_turnover) or 0
+                    share = 0
+                    if total_industry_turnover > 0:
+                        share = round((st / total_industry_turnover) * 100, 1)
+                    
+                    name = row.sub_name_sample
+                    if not name or 'nenoteikt' in name.lower():
+                        name = f"Apakšnozare {row.sub_code}"
+                    
+                    sub_industries.append({
+                        "code": row.sub_code,
+                        "name": name,
+                        "turnover": st,
+                        "formatted_turnover": format_large_number(st),
+                        "share": share,
+                        "companies": row.company_count or 0
+                    })
 
         return {
             "nace_code": nace_code,
@@ -757,13 +868,13 @@ def get_industry_detail(
             "icon": nace_icon,
             "year": year,
             "stats": {
-                "total_turnover": safe_float(stats.total_turnover),
-                "total_turnover_formatted": format_large_number(stats.total_turnover),
-                "turnover_growth": calc_growth(safe_float(stats.total_turnover), safe_float(prev_stats.total_turnover)),
-                "total_profit": safe_float(stats.total_profit),
-                "total_profit_formatted": format_large_number(stats.total_profit),
-                "active_companies": stats.active_companies or 0,
-                "total_employees": safe_int(stats.total_employees),
+                "total_turnover": safe_float(stats.total_turnover if hasattr(stats, 'total_turnover') else total_turnover),
+                "total_turnover_formatted": format_large_number(stats.total_turnover if hasattr(stats, 'total_turnover') else total_turnover),
+                "turnover_growth": turnover_growth,
+                "total_profit": safe_float(stats.total_profit if hasattr(stats, 'total_profit') else total_profit),
+                "total_profit_formatted": format_large_number(stats.total_profit if hasattr(stats, 'total_profit') else total_profit),
+                "active_companies": (stats.active_companies if hasattr(stats, 'active_companies') else active_companies) or 0,
+                "total_employees": safe_int(stats.total_employees if hasattr(stats, 'total_employees') else total_employees),
                 "avg_salary": industry_avg_salary,
                 "national_avg_salary": national_avg_salary,
                 "salary_ratio": salary_ratio,

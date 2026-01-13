@@ -312,12 +312,13 @@ def get_location_stats(
 def get_location_top_companies(
     location_type: str,
     name: str,
+    year: Optional[int] = Query(None, description="Year for financial data"),
     limit: int = Query(20, ge=1, le=100),
     response: Response = None,
 ):
     """
     Get top companies in a specific location by turnover.
-    location_type: 'city' or 'municipality'
+    Refactored to use explicit year JOIN for performance (avoids active scan).
     """
     if response:
         response.headers["Cache-Control"] = "public, max-age=3600"
@@ -334,6 +335,11 @@ def get_location_top_companies(
     column = column_map[location_type]
     
     with engine.connect() as conn:
+        # Determine year if not provided
+        if not year:
+            # Get latest year with significant data
+            year_res = conn.execute(text("SELECT MAX(year) FROM financial_reports")).scalar()
+            year = year_res or 2023
         result = conn.execute(text(f"""
             SELECT 
                 c.regcode,
@@ -344,22 +350,13 @@ def get_location_top_companies(
                 c.nace_text
             FROM companies c
             JOIN address_dimension a ON c.addressid = a.address_id
-            LEFT JOIN LATERAL (
-                SELECT turnover, profit, employees
-                FROM financial_reports
-                WHERE company_regcode = c.regcode
-                  AND turnover IS NOT NULL
-                  AND turnover != 'Infinity'::float 
-                  AND turnover != 'NaN'::float
-                ORDER BY year DESC
-                LIMIT 1
-            ) fr ON true
+            JOIN financial_reports fr ON c.regcode = fr.company_regcode AND fr.year = :year
             WHERE a.{column} = :name
               AND c.status = 'active'
               AND fr.turnover IS NOT NULL
             ORDER BY fr.turnover DESC
             LIMIT :limit
-        """), {"name": name, "limit": limit})
+        """), {"name": name, "limit": limit, "year": year})
         
         return [
             TopCompanyInLocation(
