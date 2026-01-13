@@ -519,19 +519,24 @@ def get_industry_detail(
         # This avoids summing up thousands of rows for every request
         
         # Check if we have materialized data for this code and year
+        # NOTE: industry_stats_materialized has nace_code as PRIMARY KEY (not composite with year)
+        # So there's only ONE row per nace_code with the latest year
+        # We need to verify the returned data_year matches requested year
         mat_stats = conn.execute(text("""
             SELECT 
                 total_turnover,
                 total_profit,
                 employee_count as total_employees,
                 active_companies,
-                turnover_growth
+                turnover_growth,
+                data_year
             FROM industry_stats_materialized
-            WHERE nace_code = :code 
-              AND data_year = :year
-        """), {"code": nace_code, "year": year}).fetchone()
+            WHERE nace_code = :code
+        """), {"code": nace_code}).fetchone()
         
-        if mat_stats:
+        # Only use mat_stats if the data year matches the requested year
+        # Otherwise fallback to dynamic query for historic data
+        if mat_stats and mat_stats.data_year == year:
             logger.info(f"Using materialized stats for industry {nace_code} year {year}")
             total_turnover = safe_float(mat_stats.total_turnover)
             total_profit = safe_float(mat_stats.total_profit)
@@ -770,39 +775,25 @@ def get_industry_detail(
 
         # 7. Financial History (Last 5 Years)
         # We want years: [year-4, year-3, year-2, year-1, year]
-        # Optimization: Aggregate from industry_stats_materialized if possible
+        # NOTE: industry_stats_materialized only stores latest year data (PK is nace_code only)
+        # So we MUST use dynamic query for multi-year history
         start_year = year - 4
         
-        # Try fetching history from materialized view
-        history_rows = []
-        if is_section:
-             history_rows = conn.execute(text("""
-                SELECT 
-                    data_year as year,
-                    total_turnover,
-                    total_profit
-                FROM industry_stats_materialized
-                WHERE nace_code = :code 
-                  AND data_year BETWEEN :start_year AND :end_year
-                ORDER BY data_year ASC
-             """), {"code": nace_code, "start_year": start_year, "end_year": year}).fetchall()
-        
-        if not history_rows:
-            # Fallback to dynamic history
-            history_query = f"""
-                SELECT 
-                    f.year,
-                    SUM(f.turnover) as total_turnover,
-                    SUM(f.profit) as total_profit
-                FROM companies c
-                JOIN financial_reports f ON f.company_regcode = c.regcode
-                WHERE {nace_filter}
-                  AND f.year BETWEEN :start_year AND :end_year
-                  AND f.turnover IS NOT NULL AND f.turnover < 1e15
-                GROUP BY f.year
-                ORDER BY f.year ASC
-            """
-            history_rows = conn.execute(text(history_query), {"code": nace_param, "code_len": code_len, "start_year": start_year, "end_year": year}).fetchall()
+        # Dynamic history query - aggregates financial_reports by year
+        history_query = f"""
+            SELECT 
+                f.year,
+                SUM(f.turnover) as total_turnover,
+                SUM(f.profit) as total_profit
+            FROM companies c
+            JOIN financial_reports f ON f.company_regcode = c.regcode
+            WHERE {nace_filter}
+              AND f.year BETWEEN :start_year AND :end_year
+              AND f.turnover IS NOT NULL AND f.turnover < 1e15
+            GROUP BY f.year
+            ORDER BY f.year ASC
+        """
+        history_rows = conn.execute(text(history_query), {"code": nace_param, "code_len": code_len, "start_year": start_year, "end_year": year}).fetchall()
 
         history_data = [
             {
