@@ -22,6 +22,16 @@ const nextConfig = {
         formats: ['image/avif', 'image/webp'],
     },
 
+    async redirects() {
+        return [
+            {
+                source: '/',
+                destination: '/lv',
+                permanent: true,
+            },
+        ];
+    },
+
     async rewrites() {
         // Default to Production, override with NEXT_PUBLIC_API_URL or BACKEND_URL env var
         const backendUrl = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || 'https://api.company360.lv';
