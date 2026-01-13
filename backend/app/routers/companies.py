@@ -283,7 +283,7 @@ def get_persons(regcode: int):
             SELECT person_name, role, share_percent, date_from, person_code, birth_date,
                    position, rights_of_representation, representation_with_at_least,
                    number_of_shares, share_nominal_value, share_currency, legal_entity_regcode,
-                   nationality, residence
+                   nationality, residence, entity_type
             FROM persons WHERE company_regcode = :r
         """), {"r": regcode}).fetchall()
         
@@ -294,20 +294,11 @@ def get_persons(regcode: int):
         calc_total_capital = sum((float(p.number_of_shares or 0) * float(p.share_nominal_value or 0)) for p in rows if p.role == 'member')
         total_capital = max(calc_total_capital, db_total_capital)
         
-        # Collect all legal entity regcodes to check if they exist in companies table
-        legal_entity_regcodes = [int(p.legal_entity_regcode) for p in rows if p.role == 'member' and p.legal_entity_regcode]
-        
-        # Check which legal entities have profiles in our database
-        existing_companies = set()
-        if legal_entity_regcodes:
-            existing_rows = conn.execute(text("""
-                SELECT regcode FROM companies WHERE regcode = ANY(:codes)
-            """), {"codes": legal_entity_regcodes}).fetchall()
-            existing_companies = {row.regcode for row in existing_rows}
-        
         ubos, members, officers = [], [], []
         for p in rows:
             birth_date = str(p.birth_date) if hasattr(p, 'birth_date') and p.birth_date else None
+            entity_type = p.entity_type if hasattr(p, 'entity_type') else None
+            
             if p.role == 'ubo':
                 ubos.append({
                     "name": p.person_name, "person_code": p.person_code, "nationality": p.nationality, "residence": p.residence,
@@ -325,14 +316,16 @@ def get_persons(regcode: int):
                 if share_value == 0 and percent > 0 and total_capital > 0:
                     share_value = total_capital * (percent / 100)
                 
-                # Check if this legal entity has a profile page
+                # Determine if entity has a profile page
+                # FOREIGN_ENTITY = no profile, others = has profile
                 legal_regcode = int(p.legal_entity_regcode) if p.legal_entity_regcode else None
-                has_profile = legal_regcode in existing_companies if legal_regcode else True  # Physical persons always have profiles
+                has_profile = entity_type != 'FOREIGN_ENTITY' if legal_regcode else True  # Physical persons always have profiles
                 
                 members.append({
                     "name": p.person_name, "person_code": p.person_code,
                     "legal_entity_regcode": legal_regcode,
-                    "has_profile": has_profile,  # NEW: indicates if company profile exists
+                    "has_profile": has_profile,  # Based on entity_type from DB
+                    "entity_type": entity_type,  # Pass through for debugging/future use
                     "number_of_shares": int(p.number_of_shares) if p.number_of_shares else None,
                     "share_value": round(share_value, 2), "share_currency": p.share_currency or "EUR",
                     "percent": round(percent, 2), "date_from": str(p.date_from) if p.date_from else None, "birth_date": birth_date
