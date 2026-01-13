@@ -106,7 +106,14 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                             axisLine={false}
                             tickLine={false}
                             tick={{ fill: '#6B7280', fontSize: 12 }}
-                            domain={[(dataMin: number) => Math.min(0, dataMin * 1.1), (dataMax: number) => Math.max(0, dataMax * 1.1)]}
+                            domain={[
+                                (dataMin: number) => {
+                                    // Calculate minimum including negative profits
+                                    const minProfit = Math.min(...data.map(d => d.profit ?? 0));
+                                    return Math.min(minProfit * 1.2, dataMin * 1.1, 0);
+                                },
+                                (dataMax: number) => Math.max(dataMax * 1.1, 0)
+                            ]}
                             tickFormatter={(value) => {
                                 if (value === 0) return '0 €';
                                 if (Math.abs(value) >= 1000000000) return `${(value / 1000000000).toFixed(0)}B`;
@@ -131,7 +138,6 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                             dataKey="profit"
                             name="profit"
                             barSize={32}
-                        // radius prop removed to ensure negative bars render correctly downwards
                         >
                             {data.map((entry, index) => (
                                 <Cell
