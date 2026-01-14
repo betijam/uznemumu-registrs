@@ -52,22 +52,26 @@ def calculate_territory_year_aggregates(conn, year: int = None):
         avg_salary, company_count
     )
     SELECT 
-        ct.municipality_id AS territory_id,
-        fr.year,
-        SUM(fr.turnover) AS total_revenue,
-        SUM(fr.profit) AS total_profit,
-        SUM(fr.employees) AS total_employees,
-        AVG(cm.avg_gross_salary) AS avg_salary,
+        t.id AS territory_id,
+        COALESCE(fr.year, {year or 2024}) as year,
+        SUM(CASE WHEN fr.turnover = 'NaN'::float OR fr.turnover > 1e15 THEN 0 ELSE fr.turnover END) AS total_revenue,
+        SUM(CASE WHEN fr.profit = 'NaN'::float OR fr.profit > 1e15 THEN 0 ELSE fr.profit END) AS total_profit,
+        SUM(CASE WHEN fr.employees > 1000000 THEN 0 ELSE fr.employees END) AS total_employees,
+        AVG(CASE WHEN cm.avg_gross_salary = 'NaN'::float OR cm.avg_gross_salary > 100000 THEN NULL ELSE cm.avg_gross_salary END) AS avg_salary,
         COUNT(DISTINCT c.regcode) AS company_count
     FROM companies c
-    INNER JOIN company_territories ct ON c.regcode = ct.company_id
-    INNER JOIN financial_reports fr ON c.regcode = fr.company_regcode
+    JOIN companies_with_address cwa ON c.regcode = cwa.regcode
+    JOIN territories t ON (
+        (t.level = 3 AND (t.name = cwa.city_name OR t.name = cwa.parish_name)) OR
+        (t.level = 2 AND (t.name = cwa.city_name OR t.name = cwa.municipality_name))
+    )
+    -- Left join to include companies without reports in the count
+    LEFT JOIN financial_reports fr ON c.regcode = fr.company_regcode AND fr.year = {year or 2024}
     LEFT JOIN company_computed_metrics cm 
         ON c.regcode = cm.company_regcode AND fr.year = cm.year
-    WHERE c.status = 'active'
-      AND ct.municipality_id IS NOT NULL
-      {year_filter}
-    GROUP BY ct.municipality_id, fr.year
+    WHERE (c.status IS NULL OR c.status = '' OR c.status IN ('active', 'A', 'AKTĪVS', 'reģistrēts'))
+      AND (t.valid_to IS NULL OR t.valid_to > NOW())
+    GROUP BY t.id, COALESCE(fr.year, {year or 2024})
     
     ON CONFLICT (territory_id, year)
     DO UPDATE SET
@@ -137,22 +141,26 @@ def calculate_territory_industry_aggregates(conn, year: int = None):
         total_revenue, total_profit, total_employees, company_count
     )
     SELECT 
-        ct.municipality_id AS territory_id,
+        t.id AS territory_id,
         c.nace_code AS industry_code,
         c.nace_text AS industry_name,
         fr.year,
-        SUM(fr.turnover) AS total_revenue,
-        SUM(fr.profit) AS total_profit,
-        SUM(fr.employees) AS total_employees,
+        SUM(CASE WHEN fr.turnover = 'NaN'::float OR fr.turnover > 1e15 THEN 0 ELSE fr.turnover END) AS total_revenue,
+        SUM(CASE WHEN fr.profit = 'NaN'::float OR fr.profit > 1e15 THEN 0 ELSE fr.profit END) AS total_profit,
+        SUM(CASE WHEN fr.employees > 1000000 THEN 0 ELSE fr.employees END) AS total_employees,
         COUNT(DISTINCT c.regcode) AS company_count
     FROM companies c
-    INNER JOIN company_territories ct ON c.regcode = ct.company_id
+    JOIN companies_with_address cwa ON c.regcode = cwa.regcode
+    JOIN territories t ON (
+        (t.level = 3 AND (t.name = cwa.city_name OR t.name = cwa.parish_name)) OR
+        (t.level = 2 AND (t.name = cwa.city_name OR t.name = cwa.municipality_name))
+    )
     INNER JOIN financial_reports fr ON c.regcode = fr.company_regcode
-    WHERE c.status = 'active'
-      AND ct.municipality_id IS NOT NULL
+    WHERE (c.status IS NULL OR c.status = '' OR c.status IN ('active', 'A', 'AKTĪVS', 'reģistrēts'))
+      AND (t.valid_to IS NULL OR t.valid_to > NOW())
       AND c.nace_code IS NOT NULL
       {year_filter}
-    GROUP BY ct.municipality_id, c.nace_code, c.nace_text, fr.year
+    GROUP BY t.id, c.nace_code, c.nace_text, fr.year
     
     ON CONFLICT (territory_id, industry_code, year)
     DO UPDATE SET

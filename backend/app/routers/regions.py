@@ -116,10 +116,16 @@ def get_regions_overview(
         response.headers["Cache-Control"] = "public, max-age=900"
     
     with engine.connect() as conn:
-        # Get latest year if not specified
+        # Get latest year if not specified - avoid incomplete years (like 2025)
         if not year:
-            result = conn.execute(text("SELECT MAX(year) FROM territory_year_aggregates"))
-            year = result.scalar() or 2023
+            # Get max year that has at least some significant data across many territories
+            result = conn.execute(text("""
+                SELECT year FROM territory_year_aggregates 
+                GROUP BY year 
+                HAVING COUNT(*) > 20
+                ORDER BY year DESC LIMIT 1
+            """))
+            year = result.scalar() or 2024
         
         # Sort column mapping
         sort_map = {
@@ -207,19 +213,34 @@ def get_territory_details(
         if not territory:
             raise HTTPException(status_code=404, detail="Territory not found")
         
-        # Get latest year if not specified
+        # Get latest year if not specified - avoid incomplete years
         if not year:
             result = conn.execute(text("""
-                SELECT MAX(year) FROM territory_year_aggregates WHERE territory_id = :id
+                SELECT MAX(year) FROM territory_year_aggregates 
+                WHERE territory_id = :id AND company_count > 50
             """), {"id": territory_id})
-            year = result.scalar() or 2023
+            year = result.scalar() or 2024
         
-        # Get current year stats
-        stats = conn.execute(text("""
-            SELECT *
-            FROM territory_year_aggregates
-            WHERE territory_id = :id AND year = :year
-        """), {"id": territory_id, "year": year}).fetchone()
+        # Get current year stats on the fly to match top companies logic
+        stats_query = """
+            WITH location_companies AS (
+                SELECT c.regcode
+                FROM companies c
+                JOIN address_dimension ad ON c.addressid = ad.address_id
+                WHERE (ad.city_name = :t_name OR ad.municipality_name = :t_name OR ad.parish_name = :t_name)
+                  AND (c.status IS NULL OR c.status = '' OR c.status IN ('active', 'A', 'AKTĪVS', 'reģistrēts'))
+            )
+            SELECT 
+                COUNT(*) as company_count,
+                SUM(CASE WHEN fr.turnover = 'NaN'::float OR fr.turnover > 1e15 THEN 0 ELSE fr.turnover END) as total_revenue,
+                SUM(CASE WHEN fr.profit = 'NaN'::float OR fr.profit > 1e15 THEN 0 ELSE fr.profit END) as total_profit,
+                SUM(CASE WHEN fr.employees > 1000000 THEN 0 ELSE fr.employees END) as total_employees,
+                AVG(CASE WHEN cm.avg_gross_salary = 'NaN'::float OR cm.avg_gross_salary > 100000 THEN NULL ELSE cm.avg_gross_salary END) as avg_salary
+            FROM location_companies lc
+            LEFT JOIN financial_reports fr ON lc.regcode = fr.company_regcode AND fr.year = :year
+            LEFT JOIN company_computed_metrics cm ON lc.regcode = cm.company_regcode AND fr.year = :year
+        """
+        stats = conn.execute(text(stats_query), {"t_name": territory.name, "year": year}).fetchone()
         
         # Get historical data (last 5 years)
         history = conn.execute(text("""
@@ -319,18 +340,31 @@ def get_territory_top_companies(
     """Get top companies in a territory by turnover"""
     
     with engine.connect() as conn:
-        # Get territory code
+        # Get territory info
         territory = conn.execute(text("""
-            SELECT code FROM territories WHERE id = :id
+            SELECT id, name, type, level FROM territories WHERE id = :id
         """), {"id": territory_id}).fetchone()
         
         if not territory:
             raise HTTPException(status_code=404, detail="Territory not found")
         
+        # Determine best year: Prioritize 2024
         if not year:
-            result = conn.execute(text("SELECT MAX(year) FROM financial_reports"))
-            year = result.scalar() or 2023
+            latest_agg_year = conn.execute(text("""
+                SELECT MAX(year) FROM territory_year_aggregates 
+                WHERE territory_id = :id AND company_count > 50
+            """), {"id": territory_id}).scalar()
+            year = latest_agg_year or 2024
         
+        # Filter companies by joining with companies_with_address on territory name
+        # We match based on level to ensure correct separation (City vs Novads)
+        if territory.level == 2:
+            geo_filter = "(cwa.city_name = :t_name OR cwa.municipality_name = :t_name)"
+        else:
+            geo_filter = "(cwa.city_name = :t_name OR cwa.parish_name = :t_name)"
+
+        # Filter companies by joining with address_dimension on territory name
+        # This matches the source used for the main overview
         result = conn.execute(text("""
             SELECT 
                 c.regcode,
@@ -340,13 +374,21 @@ def get_territory_top_companies(
                 fr.employees,
                 c.nace_text
             FROM companies c
+            JOIN address_dimension ad ON c.addressid = ad.address_id
             JOIN financial_reports fr ON c.regcode = fr.company_regcode
                AND fr.year = :year
-            WHERE c.atvk = :territory_code
-              AND (c.status = 'active' OR c.status = 'A' OR c.status ILIKE 'aktīvs' OR c.status IS NULL OR c.status = '')
+            WHERE (ad.city_name = :t_name OR ad.municipality_name = :t_name OR ad.parish_name = :t_name)
+              AND (c.status IS NULL OR c.status = '' OR c.status IN ('active', 'A', 'AKTĪVS', 'reģistrēts'))
+              AND fr.turnover IS NOT NULL 
+              AND fr.turnover != 'NaN'::float
+              AND fr.turnover < 1e15
             ORDER BY fr.turnover DESC NULLS LAST
             LIMIT :limit
-        """), {"territory_code": territory.code, "year": year, "limit": limit})
+        """), {
+            "t_name": territory.name, 
+            "year": year, 
+            "limit": limit
+        })
         
         return [
             TopCompany(
