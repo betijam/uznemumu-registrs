@@ -43,6 +43,7 @@ CREATE TABLE industry_leaders_cache (
 CREATE INDEX idx_leaders_nace_year ON industry_leaders_cache(nace_code, data_year);
 
 -- 2. POPULATE LEVEL 1 (SECTIONS A-U) for ALL YEARS
+-- 2. POPULATE LEVEL 1 (SECTIONS A-U) for ALL YEARS
 INSERT INTO industry_stats_materialized (
     nace_code, data_year, nace_level, nace_name, parent_code,
     total_turnover, total_profit, employee_count, active_companies,
@@ -50,6 +51,7 @@ INSERT INTO industry_stats_materialized (
 )
 WITH section_years AS (
     -- Get data for each section and each year found in financial reports
+    -- FILTER: Only valid 1-letter sections (A-Z)
     SELECT 
         c.nace_section as nace_code,
         f.year as data_year,
@@ -60,7 +62,7 @@ WITH section_years AS (
         COUNT(DISTINCT c.regcode) as active_companies
     FROM companies c
     JOIN financial_reports f ON f.company_regcode = c.regcode
-    WHERE c.nace_section IS NOT NULL
+    WHERE c.nace_section IS NOT NULL AND c.nace_section ~ '^[A-Z]$'
       AND c.status = 'active'
       AND f.turnover IS NOT NULL 
       AND f.turnover < 1e15
@@ -78,7 +80,7 @@ tax_data AS (
         SUM(t.avg_employees) as tax_employees
     FROM companies c
     JOIN tax_payments t ON t.company_regcode = c.regcode
-    WHERE c.nace_section IS NOT NULL
+    WHERE c.nace_section IS NOT NULL AND c.nace_section ~ '^[A-Z]$'
     GROUP BY c.nace_section, t.year
 )
 SELECT
@@ -107,7 +109,12 @@ SELECT
          ELSE NULL END as tax_burden
 FROM section_years s
 LEFT JOIN prev_year_stats prev ON s.nace_code = prev.nace_code AND prev.data_year = s.data_year - 1
-LEFT JOIN tax_data t ON t.nace_code = s.nace_code AND t.data_year = s.data_year;
+LEFT JOIN tax_data t ON t.nace_code = s.nace_code AND t.data_year = s.data_year
+ON CONFLICT (nace_code, data_year) DO UPDATE SET
+    total_turnover = EXCLUDED.total_turnover,
+    total_profit = EXCLUDED.total_profit,
+    active_companies = EXCLUDED.active_companies,
+    updated_at = NOW();
 
 -- 3. POPULATE LEVEL 2 (DIVISIONS 01-99) for ALL YEARS
 INSERT INTO industry_stats_materialized (
@@ -170,6 +177,11 @@ SELECT
          ELSE NULL END as tax_burden
 FROM division_years s
 LEFT JOIN prev_year_stats prev ON s.nace_code = prev.nace_code AND prev.data_year = s.data_year - 1
-LEFT JOIN tax_data t ON t.nace_code = s.nace_code AND t.data_year = s.data_year;
+LEFT JOIN tax_data t ON t.nace_code = s.nace_code AND t.data_year = s.data_year
+ON CONFLICT (nace_code, data_year) DO UPDATE SET
+    total_turnover = EXCLUDED.total_turnover,
+    total_profit = EXCLUDED.total_profit,
+    active_companies = EXCLUDED.active_companies,
+    updated_at = NOW();
 
 ANALYZE industry_stats_materialized;
