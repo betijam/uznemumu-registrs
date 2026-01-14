@@ -773,11 +773,20 @@ def get_industry_detail(
         if concentration_val > 40: concentration_level = "Vidēja"
         if concentration_val > 70: concentration_level = "Augsta"
 
-        # 7. Financial History (Last 5 Years)
-        # We want years: [year-4, year-3, year-2, year-1, year]
-        # NOTE: industry_stats_materialized only stores latest year data (PK is nace_code only)
-        # So we MUST use dynamic query for multi-year history
-        start_year = year - 4
+        # 7. Financial History (Last 5 Years with ACTUAL DATA)
+        # IMPORTANT: History should be independent of selected year
+        # We always show the last 5 years that have data for this industry
+        # First, find the max year with data for this industry
+        max_year_query = f"""
+            SELECT MAX(f.year) 
+            FROM companies c
+            JOIN financial_reports f ON f.company_regcode = c.regcode
+            WHERE {nace_filter}
+              AND f.turnover IS NOT NULL AND f.turnover < 1e15
+        """
+        max_year_result = conn.execute(text(max_year_query), {"code": nace_param, "code_len": code_len}).scalar()
+        history_end_year = max_year_result or year  # Fallback to selected year
+        history_start_year = history_end_year - 4
         
         # Dynamic history query - aggregates financial_reports by year
         history_query = f"""
@@ -793,7 +802,7 @@ def get_industry_detail(
             GROUP BY f.year
             ORDER BY f.year ASC
         """
-        history_rows = conn.execute(text(history_query), {"code": nace_param, "code_len": code_len, "start_year": start_year, "end_year": year}).fetchall()
+        history_rows = conn.execute(text(history_query), {"code": nace_param, "code_len": code_len, "start_year": history_start_year, "end_year": history_end_year}).fetchall()
 
         history_data = [
             {
