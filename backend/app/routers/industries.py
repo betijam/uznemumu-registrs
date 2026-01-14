@@ -123,10 +123,9 @@ def _get_overview_from_cache(conn):
             ROUND(AVG(avg_gross_salary)) as avg_salary,
             MAX(data_year) as data_year
         FROM industry_stats_materialized
-        WHERE nace_level = 1
+        WHERE nace_level = 0
         AND nace_code != '00'
         AND nace_name NOT ILIKE '%Cita nozare%'
-        AND data_year = (SELECT MAX(data_year) FROM industry_stats_materialized)
     """)).fetchone()
     
     # Get previous year for trends
@@ -160,10 +159,9 @@ def _get_overview_from_cache(conn):
     top_growth = conn.execute(text("""
         SELECT nace_code, nace_name, turnover_growth
         FROM industry_stats_materialized
-        WHERE nace_level = 2 
+        WHERE nace_level = 1 
         AND turnover_growth IS NOT NULL
         AND nace_code != '00'
-        AND data_year = (SELECT MAX(data_year) FROM industry_stats_materialized)
         AND nace_name NOT ILIKE '%Cita nozare%'
         ORDER BY turnover_growth DESC
         LIMIT 3
@@ -173,10 +171,9 @@ def _get_overview_from_cache(conn):
     top_salary = conn.execute(text("""
         SELECT nace_code, nace_name, avg_gross_salary
         FROM industry_stats_materialized
-        WHERE nace_level = 2 
+        WHERE nace_level = 1 
         AND avg_gross_salary IS NOT NULL
         AND nace_code != '00'
-        AND data_year = (SELECT MAX(data_year) FROM industry_stats_materialized)
         AND nace_name NOT ILIKE '%Cita nozare%'
         ORDER BY avg_gross_salary DESC
         LIMIT 3
@@ -186,10 +183,9 @@ def _get_overview_from_cache(conn):
     top_turnover = conn.execute(text("""
         SELECT nace_code, nace_name, total_turnover
         FROM industry_stats_materialized
-        WHERE nace_level = 2 
+        WHERE nace_level = 1 
         AND total_turnover IS NOT NULL
         AND nace_code != '00'
-        AND data_year = (SELECT MAX(data_year) FROM industry_stats_materialized)
         AND nace_name NOT ILIKE '%Cita nozare%'
         ORDER BY total_turnover DESC
         LIMIT 3
@@ -202,10 +198,9 @@ def _get_overview_from_cache(conn):
             total_turnover, turnover_growth, 
             avg_gross_salary, active_companies
         FROM industry_stats_materialized
-        WHERE nace_level = 2
+        WHERE nace_level = 1
         AND nace_code != '00'
         AND nace_name NOT ILIKE '%Cita nozare%'
-        AND data_year = (SELECT MAX(data_year) FROM industry_stats_materialized)
         ORDER BY nace_code
     """)).fetchall()
     
@@ -549,9 +544,11 @@ def get_industry_detail(
                 turnover_growth,
                 avg_gross_salary,
                 tax_burden
-            FROM industry_stats_materialized
-            WHERE nace_code = :code AND data_year = :year
-        """), {"code": nace_code, "year": year}).fetchone()
+            FROM industry_stats_history
+            WHERE nace_code = :code 
+              AND nace_level = :level
+              AND data_year = :year
+        """), {"code": nace_code, "year": year, "level": 0 if len(nace_code) <= 1 else 1}).fetchone()
         
         if mat_stats:
             logger.info(f"Using materialized stats for industry {nace_code} year {year}")
@@ -784,21 +781,41 @@ def get_industry_detail(
         history_end_year = max_year_result or year  # Fallback to selected year
         history_start_year = history_end_year - 4
         
-        # Dynamic history query - aggregates financial_reports by year
-        history_query = f"""
+        # Try to get financial history from pre-calculated history table (fast)
+        history_query = """
             SELECT 
-                f.year,
-                SUM(f.turnover) as total_turnover,
-                SUM(f.profit) as total_profit
-            FROM companies c
-            JOIN financial_reports f ON f.company_regcode = c.regcode
-            WHERE {nace_filter}
-              AND f.year BETWEEN :start_year AND :end_year
-              AND f.turnover IS NOT NULL AND f.turnover < 1e15
-            GROUP BY f.year
-            ORDER BY f.year ASC
+                data_year as year,
+                total_turnover,
+                total_profit
+            FROM industry_stats_history
+            WHERE nace_code = :code 
+              AND nace_level = :level
+              AND data_year BETWEEN :start_year AND :end_year
+            ORDER BY data_year ASC
         """
-        history_rows = conn.execute(text(history_query), {"code": nace_param, "code_len": code_len, "start_year": history_start_year, "end_year": history_end_year}).fetchall()
+        history_rows = conn.execute(text(history_query), {
+            "code": nace_code, 
+            "level": 0 if len(nace_code) <= 1 else 1,
+            "start_year": history_start_year, 
+            "end_year": history_end_year
+        }).fetchall()
+
+        # Fallback to dynamic aggregation if history table is empty for this specific code
+        if not history_rows:
+            history_query_dynamic = f"""
+                SELECT 
+                    f.year,
+                    SUM(f.turnover) as total_turnover,
+                    SUM(f.profit) as total_profit
+                FROM companies c
+                JOIN financial_reports f ON f.company_regcode = c.regcode
+                WHERE {nace_filter}
+                  AND f.year BETWEEN :start_year AND :end_year
+                  AND f.turnover IS NOT NULL AND f.turnover < 1e15
+                GROUP BY f.year
+                ORDER BY f.year ASC
+            """
+            history_rows = conn.execute(text(history_query_dynamic), {"code": nace_param, "code_len": code_len, "start_year": history_start_year, "end_year": history_end_year}).fetchall()
 
         history_data = [
             {

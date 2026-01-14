@@ -29,7 +29,7 @@ def get_home_dashboard():
         active_count = conn.execute(text("SELECT COUNT(*) FROM companies WHERE status = 'active'")).scalar()
         
         # Total Turnover (from industry_stats_materialized)
-        total_turnover = conn.execute(text("SELECT SUM(total_turnover) FROM industry_stats_materialized WHERE nace_level = 1")).scalar()
+        total_turnover = conn.execute(text("SELECT SUM(total_turnover) FROM industry_stats_materialized WHERE nace_level = 0")).scalar()
         
         # Total Employees (from tax_payments for most recent year)
         total_employees_row = conn.execute(text("""
