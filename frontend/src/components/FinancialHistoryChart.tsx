@@ -74,11 +74,7 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
     const domainMin = minVal < 0 ? minVal * 1.1 : 0;
     const domainMax = maxVal > 0 ? maxVal * 1.1 : 0;
 
-    // If all values are 0, set a default range to avoid flat line issues
-    const finalDomain = [
-        domainMin,
-        domainMax === 0 && domainMin === 0 ? 1000 : domainMax
-    ];
+
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
@@ -124,10 +120,12 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                             dy={10}
                         />
                         <YAxis
+                            yAxisId="left"
+                            type="number"
                             axisLine={false}
                             tickLine={false}
                             tick={{ fill: '#6B7280', fontSize: 12 }}
-                            domain={finalDomain}
+                            domain={[domainMin, domainMax === 0 && domainMin === 0 ? 1000 : domainMax]}
                             allowDataOverflow={false}
                             tickFormatter={(value) => {
                                 if (value === 0) return '0 €';
@@ -138,9 +136,10 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                             }}
                         />
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-                        <ReferenceLine y={0} stroke="#4B5563" strokeDasharray="3 3" />
+                        <ReferenceLine yAxisId="left" y={0} stroke="#4B5563" strokeDasharray="3 3" />
 
                         <Area
+                            yAxisId="left"
                             type="monotone"
                             dataKey="turnover"
                             name="turnover"
@@ -150,6 +149,7 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                             fill="url(#colorTurnover)"
                         />
                         <Bar
+                            yAxisId="left"
                             dataKey="profit"
                             name="profit"
                             barSize={32}
