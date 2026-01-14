@@ -92,7 +92,8 @@ def get_industries_overview(response: Response):
     Get macro-level industry analytics for the overview dashboard.
     Returns: macro KPIs, top lists (growth, salary, turnover), and all NACE sections.
     """
-    response.headers["Cache-Control"] = "public, max-age=3600"
+    # TEMPORARY: Disable caching to force fresh data download
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     
     with engine.connect() as conn:
         # Check if materialized table exists and has data
@@ -123,7 +124,7 @@ def _get_overview_from_cache(conn):
             ROUND(AVG(avg_gross_salary)) as avg_salary,
             MAX(data_year) as data_year
         FROM industry_stats_materialized
-        WHERE nace_level = 0
+        WHERE nace_level = 1
         AND nace_code != '00'
         AND nace_name NOT ILIKE '%Cita nozare%'
     """)).fetchone()
@@ -206,15 +207,15 @@ def _get_overview_from_cache(conn):
     
     return {
         "macro": {
-            "total_turnover": safe_float(macro.total_turnover if macro else 0),
-            "total_turnover_formatted": format_large_number(macro.total_turnover if macro else 0),
-            "turnover_growth": turnover_growth,
-            "total_employees": safe_int(macro.total_employees if macro else 0),
-            "employee_change": employee_change,
-            "avg_salary": safe_int(macro.avg_salary if macro else 0),
-            "total_profit": safe_float(macro.total_profit if macro else 0),
-            "total_profit_formatted": format_large_number(macro.total_profit if macro else 0),
-            "data_year": macro.data_year if macro else None
+            "total_turnover": float(macro.total_turnover) if macro and macro.total_turnover else 0.0,
+            "total_turnover_formatted": format_large_number(float(macro.total_turnover) if macro and macro.total_turnover else 0),
+            "turnover_growth": float(turnover_growth) if turnover_growth is not None else None,
+            "total_employees": int(macro.total_employees) if macro and macro.total_employees else 0,
+            "employee_change": float(employee_change) if employee_change is not None else None,
+            "avg_salary": int(macro.avg_salary) if macro and macro.avg_salary else 0,
+            "total_profit": float(macro.total_profit) if macro and macro.total_profit else 0.0,
+            "total_profit_formatted": format_large_number(float(macro.total_profit) if macro and macro.total_profit else 0),
+            "data_year": int(macro.data_year) if macro and macro.data_year else None
         },
         "top_growth": [
             {"nace_code": r.nace_code, "name": NACE_DIVISIONS.get(r.nace_code, r.nace_name), "growth_percent": safe_float(r.turnover_growth)}
