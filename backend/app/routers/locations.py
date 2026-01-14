@@ -239,8 +239,8 @@ def get_location_stats(
     # For parish, we still need to calculate on the fly as it's not in the materialized view (yet)
     if location_type == 'parish':
          with engine.connect() as conn:
-            # Get latest year first for explicit JOIN (much faster than LATERAL)
-            latest_year = conn.execute(text("SELECT MAX(year) FROM financial_reports")).scalar() or 2023
+            # Determine stable year
+            stable_year = 2024
             
             result = conn.execute(text(f"""
                 SELECT 
@@ -250,14 +250,23 @@ def get_location_stats(
                     SUM(fr.turnover) as total_revenue,
                     SUM(fr.profit) as total_profit,
                     AVG(fr.turnover) as avg_revenue_per_company,
-                    AVG(CASE WHEN fr.employees > 0 THEN fr.turnover / fr.employees ELSE NULL END) as avg_salary
+                    AVG(CASE WHEN fr.employees > 0 THEN (fr.turnover / 12) / fr.employees ELSE NULL END) as avg_salary
                 FROM companies c
                 JOIN address_dimension a ON c.addressid = a.address_id
-                LEFT JOIN financial_reports fr ON c.regcode = fr.company_regcode AND fr.year = :year
+                LEFT JOIN LATERAL (
+                    -- Prefer 2024, fallback to latest available if missing
+                    SELECT employees, turnover, profit
+                    FROM financial_reports
+                    WHERE company_regcode = c.regcode
+                      AND turnover > 0
+                      AND year >= 2023
+                    ORDER BY (year = :stable_year) DESC, year DESC
+                    LIMIT 1
+                ) fr ON true
                 WHERE a.parish_name = :name
-                  AND c.status = 'active'
+                  AND (c.status IS NULL OR c.status = '' OR c.status IN ('active', 'A', 'AKTĪVS', 'reģistrēts'))
                 GROUP BY a.parish_name
-            """), {"name": name, "year": latest_year})
+            """), {"name": name, "stable_year": stable_year})
             
             row = result.fetchone()
             if not row:
@@ -322,9 +331,11 @@ def get_location_top_companies(
     if response:
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     
-    print(f"DEBUG: Fetching top companies for {location_type} {name} using LATERAL approach")
-    logger.info(f"Fetching top companies for {location_type} {name} using LATERAL approach")
-    # Force rebuild trigger v3 - ensuring clean deploy path
+    print(f"DEPLOY_VERIFY_V5: Fetching top companies for {location_type} {name} (Default Year: 2024)")
+    logger.info(f"DEPLOY_VERIFY_V5: Fetching top companies for {location_type} {name}")
+    
+    # Use 2024 as default stable year
+    stable_year = year or 2024
     
     # Map type to column
     column_map = {
@@ -339,8 +350,7 @@ def get_location_top_companies(
     column = column_map[location_type]
     
     with engine.connect() as conn:
-        # 1. Primary query with address_dimension JOIN and LATERAL join for latest report
-        # This solves the "2 companies in Jūrmala" problem by taking 2024 data if 2025 is missing
+        # Optimized query favoring 2024 but falling back to latest if missing
         query = f"""
             SELECT 
                 c.regcode,
@@ -355,12 +365,10 @@ def get_location_top_companies(
                 SELECT turnover, profit, employees, year
                 FROM financial_reports
                 WHERE company_regcode = c.regcode
-                  AND turnover IS NOT NULL 
-                  AND turnover != 'NaN'::float
                   AND turnover > 0
-                  AND turnover < 1e15
+                  AND turnover != 'NaN'::float
                   AND year >= 2023
-                ORDER BY year DESC
+                ORDER BY (year = :stable_year) DESC, year DESC
                 LIMIT 1
             ) fr ON true
             WHERE a.{column} = :name
@@ -368,7 +376,7 @@ def get_location_top_companies(
             ORDER BY fr.turnover DESC
             LIMIT :limit
         """
-        result = conn.execute(text(query), {"name": name, "limit": limit})
+        result = conn.execute(text(query), {"name": name, "limit": limit, "stable_year": stable_year})
         rows = result.fetchall()
         
         # 2. Fallback: If address_dimension yielded insufficient results, try address text fallback

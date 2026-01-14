@@ -19,7 +19,11 @@ WITH latest_financials AS (
         END as profit,
         employees
     FROM financial_reports
-    WHERE year >= 2020
+    WHERE year >= 2023
+      AND turnover IS NOT NULL
+      AND turnover != 'NaN'::float
+      AND turnover != 'Infinity'::float
+      AND turnover > 0
     ORDER BY company_regcode, year DESC
 ),
 latest_taxes AS (

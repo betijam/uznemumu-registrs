@@ -215,11 +215,9 @@ def get_territory_details(
         
         # Get latest year if not specified - avoid incomplete years
         if not year:
-            result = conn.execute(text("""
-                SELECT MAX(year) FROM territory_year_aggregates 
-                WHERE territory_id = :id AND company_count > 50
-            """), {"id": territory_id})
-            year = result.scalar() or 2024
+            year = 2024
+            
+        print(f"DEPLOY_VERIFY: Fetching territory details for territory ID: {territory_id} for year {year}")
         
         # Get current year stats on the fly to match top companies logic
         stats_query = """
@@ -290,11 +288,9 @@ def get_territory_industries(
     """Get industry breakdown for a territory (top industries by revenue)"""
     
     with engine.connect() as conn:
+        # Default to 2024 as the latest stable year
         if not year:
-            result = conn.execute(text("""
-                SELECT MAX(year) FROM territory_industry_year_aggregates WHERE territory_id = :id
-            """), {"id": territory_id})
-            year = result.scalar() or 2023
+            year = 2024
         
         # Get total revenue for percentage calculation
         total = conn.execute(text("""
@@ -348,9 +344,12 @@ def get_territory_top_companies(
         if not territory:
             raise HTTPException(status_code=404, detail="Territory not found")
         
+        # Default to 2024 as stable year
+        stable_year = year or 2024
+        print(f"DEPLOY_VERIFY_V5: Fetching top companies for territory {territory.name} (Year: {stable_year})")
+
         # Filter companies by joining with address_dimension on territory name
-        # We use a LATERAL join to get the latest valid report for each company
-        # This fulfills the request for "latest data available for each company"
+        # We use a LATERAL join to get the latest valid report, prioritizing 2024
         result = conn.execute(text("""
             SELECT 
                 c.regcode,
@@ -368,9 +367,8 @@ def get_territory_top_companies(
                   AND turnover IS NOT NULL 
                   AND turnover != 'NaN'::float
                   AND turnover > 0
-                  AND turnover < 1e15
-                  AND year >= 2023 -- Only recent data
-                ORDER BY year DESC
+                  AND year >= 2023 
+                ORDER BY (year = :stable_year) DESC, year DESC
                 LIMIT 1
             ) fr ON true
             WHERE (ad.city_name = :t_name OR ad.municipality_name = :t_name OR ad.parish_name = :t_name)
@@ -379,7 +377,8 @@ def get_territory_top_companies(
             LIMIT :limit
         """), {
             "t_name": territory.name, 
-            "limit": limit
+            "limit": limit,
+            "stable_year": stable_year
         })
         
         return [
@@ -412,9 +411,9 @@ def compare_territories(
     year = request.year
     
     with engine.connect() as conn:
+        # Use 2024 as default latest stable year unless specific year is requested
         if not year:
-            result = conn.execute(text("SELECT MAX(year) FROM territory_year_aggregates"))
-            year = result.scalar() or 2023
+            year = 2024
         
         # Get data for all territories
         placeholders = ", ".join([f":id{i}" for i in range(len(request.territory_ids))])
