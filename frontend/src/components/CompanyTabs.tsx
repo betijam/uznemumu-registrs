@@ -13,6 +13,7 @@ import { RatingBadge } from './RatingBadge';
 import { Sparkline } from './Sparkline';
 import { GrowthIndicator } from './GrowthIndicator';
 import FinancialAnalysisTab from './FinancialAnalysisTab';
+import FinancialHistoryChart from './FinancialHistoryChart';
 
 // Helper function for formatting currency
 const formatCurrency = (value: number | null | undefined, decimals = 0) => {
@@ -206,7 +207,6 @@ export default function CompanyTabs({
     }, [company.officers]);
 
     const [copied, setCopied] = useState(false);
-    const [chartMode, setChartMode] = useState<'turnover' | 'profit'>('turnover');
 
     // Access Check
     // Default to true if property is missing (backward compatibility), but backend sends it.
@@ -531,73 +531,11 @@ ${signatory ? `${t('signing_person')}: ${signatory.name}, ${positionText}` : ''}
                                 {/* Two Column Layout: Chart + Market Position */}
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                     {/* Finanšu Dinamika Chart - 2 columns */}
-                                    <div className="lg:col-span-2 border border-gray-200 rounded-lg p-5 bg-white">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-semibold text-gray-900">{t('financial_dynamic')}</h3>
-                                            <div className="flex gap-1">
-                                                <button
-                                                    onClick={() => setChartMode('turnover')}
-                                                    className={`px-3 py-1 text-sm rounded-full transition-colors ${chartMode === 'turnover'
-                                                        ? 'bg-violet-100 text-violet-700 font-medium'
-                                                        : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                                                        }`}
-                                                >
-                                                    {t('turnover')}
-                                                </button>
-                                                <button
-                                                    onClick={() => setChartMode('profit')}
-                                                    className={`px-3 py-1 text-sm rounded-full transition-colors ${chartMode === 'profit'
-                                                        ? 'bg-emerald-100 text-emerald-700 font-medium'
-                                                        : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                                                        }`}
-                                                >
-                                                    {t('profit')}
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {isLoadingDetails ? (
-                                            <div className="h-64 flex items-end gap-3 px-4 animate-pulse">
-                                                {[1, 2, 3, 4, 5].map(i => (
-                                                    <div key={i} className="flex-1 bg-gray-100 rounded-t-lg" style={{ height: `${Math.random() * 50 + 20}%` }}></div>
-                                                ))}
-                                            </div>
-                                        ) : financialHistory.length > 0 ? (
-                                            <div className="h-64 flex items-end gap-3 px-4">
-                                                {(company.financial_history || []).slice(0, 5).reverse().map((f: any, idx: number) => {
-                                                    const dataKey = chartMode === 'turnover' ? 'turnover' : 'profit';
-                                                    const values = (company.financial_history || []).slice(0, 5).map((x: any) => Math.abs(x[dataKey] || 0));
-                                                    const maxValue = Math.max(...values, 1);
-                                                    const value = f[dataKey] || 0;
-                                                    const barHeight = Math.abs(value) ? (Math.abs(value) / maxValue) * 200 : 8;
-                                                    const isLatest = idx === (company.financial_history || []).slice(0, 5).length - 1;
-                                                    const isNegative = value < 0;
-                                                    const barColor = chartMode === 'profit'
-                                                        ? (isNegative ? 'bg-red-400 hover:bg-red-500' : (isLatest ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-300 hover:bg-emerald-400'))
-                                                        : (isLatest ? 'bg-violet-600 hover:bg-violet-700' : 'bg-violet-300 hover:bg-violet-400');
-
-                                                    return (
-                                                        <div key={f.year} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                                                            <div
-                                                                className={`w-full rounded-t-lg transition-all cursor-pointer ${barColor}`}
-                                                                style={{ height: `${Math.max(barHeight, 8)}px` }}
-                                                            >
-                                                                {/* Tooltip */}
-                                                                <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
-                                                                    <div className="font-semibold">{f.year}</div>
-                                                                    <div className={isNegative ? 'text-red-300' : ''}>{formatCurrency(value)}</div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="mt-2 text-sm text-gray-600">{f.year}</div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        ) : (
-                                            <div className="h-64 flex items-center justify-center text-gray-500">
-                                                {t('no_data')}
-                                            </div>
-                                        )}
+                                    {/* Finanšu Dinamika Chart - 2 columns */}
+                                    <div className="lg:col-span-2">
+                                        <FinancialHistoryChart
+                                            data={[...(company.financial_history || [])].slice(0, 5).reverse()}
+                                        />
                                     </div>
 
                                     {/* Tirgus Pozīcija - 1 column */}
