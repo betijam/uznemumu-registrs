@@ -260,6 +260,7 @@ def get_location_stats(
                     WHERE company_regcode = c.regcode
                       AND turnover > 0
                       AND year >= 2023
+                      AND year <= :stable_year
                     ORDER BY (year = :stable_year) DESC, year DESC
                     LIMIT 1
                 ) fr ON true
