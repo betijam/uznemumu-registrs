@@ -119,8 +119,8 @@ async def health_check_v6():
     """Definitive health check for V6 deployment verification"""
     return {
         "status": "online",
-        "version": "V7.1-PARISH-FIX",
-        "timestamp": "2026-01-15T00:08",
+        "version": "V7.2-NAN-FIX",
+        "timestamp": "2026-01-15T00:15",
         "db_priority": "2024-STRICT"
     }
 

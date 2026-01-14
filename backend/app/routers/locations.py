@@ -332,8 +332,8 @@ def get_location_top_companies(
     if response:
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     
-    print(f"CRITICAL_DEPLOY_V7: Fetching top companies for {location_type} {name} (Year <= {year or 2024})")
-    logger.error(f"CRITICAL_DEPLOY_V7: Fetching top companies for {location_type} {name}")
+    print(f"CRITICAL_DEPLOY_V7_2: Fetching top companies for {location_type} {name} (Year <= {year or 2024}, FILTER NAN)")
+    logger.error(f"CRITICAL_DEPLOY_V7_2: Fetching top companies for {location_type} {name}")
     
     # Use 2024 as default stable year
     stable_year = year or 2024
@@ -367,6 +367,7 @@ def get_location_top_companies(
                 FROM financial_reports
                 WHERE company_regcode = c.regcode
                   AND turnover > 0
+                  AND turnover != 'NaN'::float
                   AND year >= 2023
                   AND year <= :stable_year  -- Strict cap to prevent 2025/2026 incomplete data
                 ORDER BY (year = :stable_year) DESC, year DESC
@@ -398,6 +399,7 @@ def get_location_top_companies(
                     FROM financial_reports
                     WHERE company_regcode = c.regcode
                       AND turnover > 0
+                      AND turnover != 'NaN'::float
                       AND year >= 2023
                       AND year <= :stable_year -- Strict cap
                     ORDER BY (year = :stable_year) DESC, year DESC
