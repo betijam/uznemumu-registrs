@@ -584,6 +584,7 @@ def get_industry_detail(
                     FROM financial_reports
                     WHERE company_regcode = c.regcode AND year = :year
                       AND turnover IS NOT NULL AND turnover < 1e15
+                      AND turnover != 'NaN'::float
                 ) f ON true
                 WHERE {nace_filter}
                   AND c.status = 'active'
@@ -599,6 +600,7 @@ def get_industry_detail(
                     FROM financial_reports
                     WHERE company_regcode = c.regcode AND year = :prev_year
                       AND turnover IS NOT NULL AND turnover < 1e15
+                      AND turnover != 'NaN'::float
                 ) f ON true
                 WHERE {nace_filter}
                   AND c.status = 'active'
@@ -617,6 +619,8 @@ def get_industry_detail(
                     SELECT social_tax_vsaoi, avg_employees
                     FROM tax_payments
                     WHERE company_regcode = c.regcode AND year = :year
+                      AND social_tax_vsaoi != 'NaN'::float
+                      AND avg_employees != 'NaN'::float
                 ) t ON true
                 WHERE {nace_filter}
             """
@@ -714,6 +718,7 @@ def get_industry_detail(
                 WHERE {nace_filter}
                   AND c.status = 'active'
                   AND f.turnover IS NOT NULL AND f.turnover > 0 AND f.turnover < 1e15
+                  AND f.turnover != 'NaN'::float
                 ORDER BY f.turnover DESC
                 LIMIT 5
             """
@@ -748,7 +753,7 @@ def get_industry_detail(
                     SUM(t.total_tax_paid) as total_tax
                 FROM companies c
                 JOIN tax_payments t ON t.company_regcode = c.regcode AND t.year = :year
-                WHERE {nace_filter}
+                WHERE {nace_filter} AND t.total_tax_paid != 'NaN'::float
             """
             tax_data = conn.execute(text(tax_data_query), {"code": nace_param, "code_len": code_len, "year": year}).fetchone()
             
@@ -776,6 +781,7 @@ def get_industry_detail(
             JOIN financial_reports f ON f.company_regcode = c.regcode
             WHERE {nace_filter}
               AND f.turnover IS NOT NULL AND f.turnover < 1e15
+              AND f.turnover != 'NaN'::float
         """
         max_year_result = conn.execute(text(max_year_query), {"code": nace_param, "code_len": code_len}).scalar()
         history_end_year = max_year_result or year  # Fallback to selected year
