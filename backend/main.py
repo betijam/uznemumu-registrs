@@ -119,9 +119,9 @@ async def health_check_v6():
     """Definitive health check for V6 deployment verification"""
     return {
         "status": "online",
-        "version": "V6-ADDRESS-FIX",
-        "timestamp": "2026-01-14T23:30",
-        "db_priority": "2024"
+        "version": "V7-STRICT-YEAR",
+        "timestamp": "2026-01-15T00:05",
+        "db_priority": "2024-STRICT"
     }
 
 @app.get("/api/health")

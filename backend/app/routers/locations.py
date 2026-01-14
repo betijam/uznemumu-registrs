@@ -331,8 +331,8 @@ def get_location_top_companies(
     if response:
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     
-    print(f"CRITICAL_DEPLOY_V6: Fetching top companies for {location_type} {name} (Year: 2024 Priority)")
-    logger.error(f"CRITICAL_DEPLOY_V6: Fetching top companies for {location_type} {name}")
+    print(f"CRITICAL_DEPLOY_V7: Fetching top companies for {location_type} {name} (Year <= {year or 2024})")
+    logger.error(f"CRITICAL_DEPLOY_V7: Fetching top companies for {location_type} {name}")
     
     # Use 2024 as default stable year
     stable_year = year or 2024
@@ -367,12 +367,13 @@ def get_location_top_companies(
                 WHERE company_regcode = c.regcode
                   AND turnover > 0
                   AND year >= 2023
+                  AND year <= :stable_year  -- Strict cap to prevent 2025/2026 incomplete data
                 ORDER BY (year = :stable_year) DESC, year DESC
                 LIMIT 1
             ) fr ON true
             WHERE a.{column} = :name
               AND (c.status IS NULL OR c.status = '' OR c.status IN ('active', 'A', 'AKTĪVS', 'reģistrēts'))
-            ORDER BY fr.turnover DESC
+            ORDER BY fr.turnover DESC NULLS LAST
             LIMIT :limit
         """
         result = conn.execute(text(query), {"name": name, "limit": limit, "stable_year": stable_year})
@@ -397,13 +398,14 @@ def get_location_top_companies(
                     WHERE company_regcode = c.regcode
                       AND turnover > 0
                       AND year >= 2023
+                      AND year <= :stable_year -- Strict cap
                     ORDER BY (year = :stable_year) DESC, year DESC
                     LIMIT 1
                 ) fr ON true
                 WHERE c.address ILIKE :search_pattern
                   AND (c.status IS NULL OR c.status = '' OR c.status IN ('active', 'A', 'AKTĪVS', 'reģistrēts'))
                   AND c.regcode NOT IN :exclude_regcodes
-                ORDER BY fr.turnover DESC
+                ORDER BY fr.turnover DESC NULLS LAST
                 LIMIT :remaining_limit
             """
             
