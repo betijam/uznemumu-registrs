@@ -521,9 +521,7 @@ def get_industry_detail(
         # This avoids summing up thousands of rows for every request
         
         # Check if we have materialized data for this code and year
-        # NOTE: industry_stats_materialized has nace_code as PRIMARY KEY (not composite with year)
-        # So there's only ONE row per nace_code with the latest year
-        # We need to verify the returned data_year matches requested year
+        # Now supporting multi-year data with composite PK (nace_code, data_year)
         mat_stats = conn.execute(text("""
             SELECT 
                 total_turnover,
@@ -531,51 +529,29 @@ def get_industry_detail(
                 employee_count as total_employees,
                 active_companies,
                 turnover_growth,
-                data_year
+                avg_gross_salary,
+                tax_burden
             FROM industry_stats_materialized
-            WHERE nace_code = :code
-        """), {"code": nace_code}).fetchone()
+            WHERE nace_code = :code AND data_year = :year
+        """), {"code": nace_code, "year": year}).fetchone()
         
-        # Only use mat_stats if the data year matches the requested year
-        # Otherwise fallback to dynamic query for historic data
-        if mat_stats and mat_stats.data_year == year:
+        if mat_stats:
             logger.info(f"Using materialized stats for industry {nace_code} year {year}")
-            total_turnover = safe_float(mat_stats.total_turnover)
-            total_profit = safe_float(mat_stats.total_profit)
-            total_employees = safe_int(mat_stats.total_employees)
-            active_companies = mat_stats.active_companies
-            turnover_growth = safe_float(mat_stats.turnover_growth)
-            
-            # We still need tax and salary data as they might not be in the materialized view fully or we want parity
-            # But wait, industry_stats_materialized has avg_gross_salary!
-            
-            # For consistency, let's keep salary/tax dynamic OR fetch from mat view if we trust it.
-            # The materialized view has avg_gross_salary.
-            
-            salary_data = conn.execute(text("""
-                SELECT avg_gross_salary FROM industry_stats_materialized
-                WHERE nace_code = :code AND data_year = :year
-            """), {"code": nace_code, "year": year}).fetchone()
-            
-            industry_avg_salary = safe_float(salary_data.avg_gross_salary) if salary_data else None
-            
-            # Tax burden is not in materialized view usually? 
-            # Let's keep tax burden query (it's aggregative but usually tax_payments is smaller or indexed)
-            # Or accept it's slow. 
-            # For now, we will run the tax query dynamically as it wasn't in the mat view columns I saw earlier.
-            
-            # We don't need prev_stats logic because mat_stats has turnover_growth pre-calculated!
             
             # Dummy object for response construction later
             class StatsObj:
                 pass
             stats = StatsObj()
-            stats.total_turnover = total_turnover
-            stats.total_profit = total_profit
-            stats.total_employees = total_employees
-            stats.active_companies = active_companies
+            stats.total_turnover = safe_float(mat_stats.total_turnover)
+            stats.total_profit = safe_float(mat_stats.total_profit)
+            stats.total_employees = safe_int(mat_stats.total_employees)
+            stats.active_companies = mat_stats.active_companies
             
-            # We won't have prev_stats object but we have turnover_growth
+            turnover_growth = safe_float(mat_stats.turnover_growth)
+            industry_avg_salary = safe_float(mat_stats.avg_gross_salary)
+            tax_burden = safe_float(mat_stats.tax_burden)
+            
+            # We don't need separate queries for tax/salary anymore as they are in the view!
             
         else:
             # FALLBACK: Dynamic Calculation (Slow)
