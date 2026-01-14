@@ -61,33 +61,47 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
 
 
 
-    // Calculate domain for YAxis to ensure negative values are handled correctly
-    const turnoverValues = data.map(d => d.turnover !== null ? Number(d.turnover) : 0);
-    const profitValues = data.map(d => d.profit !== null ? Number(d.profit) : 0);
+    // Pre-process data to ensure all values are strictly numbers
+    const processedData = data.map(d => ({
+        ...d,
+        turnover: d.turnover !== null ? Number(d.turnover) : 0,
+        profit: d.profit !== null ? Number(d.profit) : 0,
+    }));
+
+    // Calculate strict min/max from numeric values
+    const turnoverValues = processedData.map(d => d.turnover);
+    const profitValues = processedData.map(d => d.profit);
     const allNumericValues = [...turnoverValues, ...profitValues];
 
+    // Always include 0 in the domain calculation to ensure baseline is part of the axis
     const minVal = Math.min(0, ...allNumericValues);
     const maxVal = Math.max(0, ...allNumericValues);
 
-    // Add margin (20% for negative, 10% for positive)
-    const domainMin = minVal < 0 ? minVal * 1.2 : 0;
-    const domainMax = maxVal > 0 ? maxVal * 1.1 : 0;
+    // Add padding (20% for negative, 10% for positive)
+    // We explicitly calculate domain ends
+    let domainMin = minVal < 0 ? minVal * 1.2 : 0;
+    let domainMax = maxVal > 0 ? maxVal * 1.1 : 0;
 
-    // Ensure we don't have a flat 0-0 domain
+    // Handle edge case where all values are 0
+    if (domainMin === 0 && domainMax === 0) {
+        domainMax = 1000;
+    }
+
+    // Explicitly set final variables to be used in render
     const finalDomainMin = domainMin;
-    const finalDomainMax = domainMax === 0 && domainMin === 0 ? 1000 : domainMax;
+    const finalDomainMax = domainMax;
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 relative">
             {/* DEBUG INFO - REMOVE AFTER FIXING */}
-            <div className="text-[10px] text-gray-400 mb-2 font-mono border-b border-gray-100 pb-2">
-                DEBUG: Min={minVal.toFixed(0)}, Max={maxVal.toFixed(0)},
-                Domain=[{finalDomainMin.toFixed(0)}, {finalDomainMax.toFixed(0)}],
-                DataPoints={data.length},
-                LastProfit={data[data.length - 1]?.profit ?? 'N/A'}
+            <div className="absolute top-0 left-0 bg-yellow-100 p-2 text-[10px] text-black z-50 opacity-80 pointer-events-none rounded-tl-xl border-b border-r border-yellow-200 shadow-sm">
+                <div><strong>DEBUG V2</strong></div>
+                <div>Min: {minVal.toFixed(0)} | Max: {maxVal.toFixed(0)}</div>
+                <div>Domain: [{finalDomainMin.toFixed(0)}, {finalDomainMax.toFixed(0)}]</div>
+                <div>Raw Data (Profit): {JSON.stringify(processedData.map(d => d.profit))}</div>
             </div>
 
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6 pt-2">
                 <div>
                     <h3 className="text-lg font-bold text-gray-900">Finanšu Dinamika</h3>
                     <p className="text-sm text-gray-500">Pēdējo 5 gadu tendences</p>
@@ -111,7 +125,7 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
             <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
-                        data={data}
+                        data={processedData}
                         margin={{ top: 10, right: 0, left: 0, bottom: 0 }}
                     >
                         <defs>

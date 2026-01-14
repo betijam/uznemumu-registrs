@@ -8,6 +8,21 @@ import math
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# Helper functions
+def safe_float(val):
+    if val is None: return 0.0
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return 0.0
+
+def safe_int(val):
+    if val is None: return 0
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return 0
+
 # NACE Section mappings (Level 1 codes A-U)
 NACE_SECTIONS = {
     "A": {"name": "Lauksaimniecība un Mežsaimniecība", "icon": ""},
