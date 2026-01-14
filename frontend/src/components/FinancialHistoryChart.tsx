@@ -1,6 +1,7 @@
 'use client';
 
 import { ComposedChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
+import { useState } from 'react';
 
 interface FinancialHistoryProps {
     data: {
@@ -61,72 +62,92 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
 
 
 
-    // Pre-process data to ensure all values are strictly numbers and split profit
+    const [chartMode, setChartMode] = useState<'turnover' | 'profit'>('turnover');
+
+    // Pre-process data
     const processedData = data.map(d => {
         const t = d.turnover !== null ? Number(d.turnover) : 0;
         const p = d.profit !== null ? Number(d.profit) : 0;
         return {
             ...d,
             turnover: t,
-            profit: p, // Keep original for tooltip if needed, or use profitPos/Neg
+            profit: p,
             profitPos: p >= 0 ? p : 0,
             profitNeg: p < 0 ? p : 0
         };
     });
 
-    // Calculate strict min/max from numeric values
-    const turnoverValues = processedData.map(d => d.turnover);
-    const profitValues = processedData.map(d => d.profit);
-    const allNumericValues = [...turnoverValues, ...profitValues];
+    // Calculate domain based on active mode
+    const activeValues = processedData.map(d =>
+        chartMode === 'turnover' ? d.turnover : d.profit
+    );
 
-    // Always include 0 in the domain calculation to ensure baseline is part of the axis
-    const minVal = Math.min(0, ...allNumericValues);
-    const maxVal = Math.max(0, ...allNumericValues);
+    const minVal = Math.min(0, ...activeValues);
+    const maxVal = Math.max(0, ...activeValues);
 
-    // Add padding (20% for negative, 10% for positive)
-    // We explicitly calculate domain ends
     let domainMin = minVal < 0 ? minVal * 1.2 : 0;
+    // For turnover, usually 0 based, but maybe dynamic if needed. Current logic:
+    // Profit often has negative, Turnover usually positive.
     let domainMax = maxVal > 0 ? maxVal * 1.1 : 0;
 
-    // Handle edge case where all values are 0
     if (domainMin === 0 && domainMax === 0) {
         domainMax = 1000;
     }
 
-    // Explicitly set final variables to be used in render
     const finalDomainMin = domainMin;
     const finalDomainMax = domainMax;
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 relative">
-            {/* DEBUG INFO - REMOVE AFTER FIXING */}
-            <div className="absolute top-0 left-0 bg-yellow-100 p-2 text-[10px] text-black z-50 opacity-80 pointer-events-none rounded-tl-xl border-b border-r border-yellow-200 shadow-sm">
-                <div><strong>DEBUG V3 (Split Bars)</strong></div>
-                <div>Min: {minVal.toFixed(0)} | Max: {maxVal.toFixed(0)}</div>
-                <div>Domain: [{finalDomainMin.toFixed(0)}, {finalDomainMax.toFixed(0)}]</div>
-                <div>Raw P: {JSON.stringify(data.slice(-2).map(d => d.profit))}</div>
-                <div>Proc P: {JSON.stringify(processedData.slice(-2).map(d => d.profit))}</div>
-            </div>
-
             <div className="flex items-center justify-between mb-6 pt-2">
                 <div>
                     <h3 className="text-lg font-bold text-gray-900">Finanšu Dinamika</h3>
                     <p className="text-sm text-gray-500">Pēdējo 5 gadu tendences</p>
                 </div>
-                <div className="flex items-center gap-4 text-xs font-medium">
+
+                {/* Mode Toggle Buttons */}
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setChartMode('turnover')}
+                        className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${chartMode === 'turnover'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                            }`}
+                    >
+                        Apgrozījums
+                    </button>
+                    <button
+                        onClick={() => setChartMode('profit')}
+                        className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${chartMode === 'profit'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                            }`}
+                    >
+                        Peļņa
+                    </button>
+                </div>
+            </div>
+
+            {/* Legend - Dynamic based on mode */}
+            <div className="flex items-center gap-4 text-xs font-medium mb-4 justify-end">
+                {chartMode === 'turnover' && (
                     <div className="flex items-center gap-1.5">
                         <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
                         <span className="text-gray-600">Apgrozījums</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-                        <span className="text-gray-600">Peļņa (+)</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-                        <span className="text-gray-600">Zaudējumi (-)</span>
-                    </div>
-                </div>
+                )}
+                {chartMode === 'profit' && (
+                    <>
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+                            <span className="text-gray-600">Peļņa (+)</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                            <span className="text-gray-600">Zaudējumi (-)</span>
+                        </div>
+                    </>
+                )}
             </div>
 
             <div className="h-[300px] w-full">
@@ -168,32 +189,42 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
                         <ReferenceLine yAxisId="left" y={0} stroke="#4B5563" strokeDasharray="3 3" />
 
-                        <Area
-                            yAxisId="left"
-                            type="monotone"
-                            dataKey="turnover"
-                            name="turnover"
-                            stroke="#3B82F6"
-                            strokeWidth={2}
-                            fillOpacity={1}
-                            fill="url(#colorTurnover)"
-                        />
-                        <Bar
-                            yAxisId="left"
-                            dataKey="profitPos"
-                            name="profit"
-                            barSize={32}
-                            fill="#10B981"
-                            stackId="profitStack"
-                        />
-                        <Bar
-                            yAxisId="left"
-                            dataKey="profitNeg"
-                            name="profit"
-                            barSize={32}
-                            fill="#EF4444"
-                            stackId="profitStack"
-                        />
+                        {chartMode === 'turnover' && (
+                            <Area
+                                yAxisId="left"
+                                type="monotone"
+                                dataKey="turnover"
+                                name="turnover"
+                                stroke="#3B82F6"
+                                strokeWidth={2}
+                                fillOpacity={1}
+                                fill="url(#colorTurnover)"
+                                animationDuration={500}
+                            />
+                        )}
+
+                        {chartMode === 'profit' && (
+                            <>
+                                <Bar
+                                    yAxisId="left"
+                                    dataKey="profitPos"
+                                    name="profit"
+                                    barSize={32}
+                                    fill="#10B981"
+                                    stackId="profitStack"
+                                    animationDuration={500}
+                                />
+                                <Bar
+                                    yAxisId="left"
+                                    dataKey="profitNeg"
+                                    name="profit"
+                                    barSize={32}
+                                    fill="#EF4444"
+                                    stackId="profitStack"
+                                    animationDuration={500}
+                                />
+                            </>
+                        )}
                     </ComposedChart>
                 </ResponsiveContainer>
             </div>
