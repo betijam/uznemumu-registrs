@@ -40,9 +40,9 @@ async def lifespan(app: FastAPI):
         time.sleep(5) # Allow server to start up fully
         try:
             from update_db_schema import update_materialized_view
-            logger.error("🔄 [DEPLOY_V5] Checking and updating DB schema in background...")
+            logger.error("🔥 [CRITICAL_DEPLOY_V6] FORCE REFRESHING VIEWS...")
             update_materialized_view()
-            logger.error("✅ [DEPLOY_V5] DB Schema update complete.")
+            logger.error("✅ [CRITICAL_DEPLOY_V6] BACKGROUND TASK STARTED.")
 
             # Run critical migrations
             try: 
@@ -114,15 +114,23 @@ app.include_router(waitlist.router) # Waitlist functionality
 app.include_router(favorites.router) # Favorites/watchlist
 app.include_router(history.router) # Recently viewed history
 
-@app.get("/health")
-def health_check():
-    """Health check endpoint showing service status"""
+@app.get("/api/health-v6")
+async def health_check_v6():
+    """Definitive health check for V6 deployment verification"""
+    return {
+        "status": "online",
+        "version": "V6-ADDRESS-FIX",
+        "timestamp": "2026-01-14T23:30",
+        "db_priority": "2024"
+    }
+
+@app.get("/api/health")
+async def health_check():
+    """Backward compatible health check"""
     return {
         "status": "ok",
-        "version": "V5-FINAL-2024-PRIORITY",
-        "deployed_at": "2026-01-14T23:15",
-        "mode": "etl-enabled" if ENABLE_ETL_SCHEDULER else "api-only",
-        "scheduler": "running" if (ENABLE_ETL_SCHEDULER and scheduler.running) else "disabled"
+        "version": "V6-ADDRESS-FIX",
+        "mode": "etl-enabled" if ENABLE_ETL_SCHEDULER else "api-only"
     }
 
 @app.get("/")

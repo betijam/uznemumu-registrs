@@ -59,7 +59,7 @@ SELECT
     -- Avg Revenue per company
     CASE WHEN COUNT(DISTINCT c.regcode) > 0 THEN SUM(f.turnover) / COUNT(DISTINCT c.regcode) ELSE NULL END as avg_revenue_per_company,
     
-    ARRAY_AGG(c.regcode ORDER BY f.turnover DESC NULLS LAST) FILTER (WHERE f.turnover IS NOT NULL) as top_company_codes
+    ARRAY_AGG(c.regcode::text ORDER BY f.turnover DESC NULLS LAST) FILTER (WHERE f.turnover IS NOT NULL) as top_company_codes
     
 FROM companies c
 JOIN address_dimension a ON c.addressid = a.address_id
@@ -91,7 +91,7 @@ SELECT
     
     CASE WHEN COUNT(DISTINCT c.regcode) > 0 THEN SUM(f.turnover) / COUNT(DISTINCT c.regcode) ELSE NULL END as avg_revenue_per_company,
     
-    ARRAY_AGG(c.regcode ORDER BY f.turnover DESC NULLS LAST) FILTER (WHERE f.turnover IS NOT NULL) as top_company_codes
+    ARRAY_AGG(c.regcode::text ORDER BY f.turnover DESC NULLS LAST) FILTER (WHERE f.turnover IS NOT NULL) as top_company_codes
     
 FROM companies c
 JOIN address_dimension a ON c.addressid = a.address_id
