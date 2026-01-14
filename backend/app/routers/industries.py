@@ -265,6 +265,9 @@ def _compute_overview_on_the_fly(conn):
                 SELECT turnover, profit, employees
                 FROM financial_reports
                 WHERE company_regcode = c.regcode
+                  AND turnover != 'NaN'::float
+                  AND profit != 'NaN'::float
+                  AND employees != 'NaN'::float
                 ORDER BY year DESC
                 LIMIT 1
             ) f ON true
@@ -280,6 +283,8 @@ def _compute_overview_on_the_fly(conn):
             LEFT JOIN LATERAL (
                 SELECT social_tax_vsaoi, avg_employees
                 FROM tax_payments WHERE company_regcode = c.regcode
+                  AND social_tax_vsaoi != 'NaN'::float
+                  AND avg_employees != 'NaN'::float
                 ORDER BY year DESC LIMIT 1
             ) t ON true
             WHERE c.nace_section IS NOT NULL
