@@ -331,8 +331,8 @@ def get_location_top_companies(
     if response:
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     
-    print(f"DEPLOY_VERIFY_V5: Fetching top companies for {location_type} {name} (Default Year: 2024)")
-    logger.error(f"DEPLOY_VERIFY_V5: Fetching top companies for {location_type} {name}")
+    print(f"CRITICAL_DEPLOY_V6: Fetching top companies for {location_type} {name} (Year: 2024 Priority)")
+    logger.error(f"CRITICAL_DEPLOY_V6: Fetching top companies for {location_type} {name}")
     
     # Use 2024 as default stable year
     stable_year = year or 2024
@@ -361,12 +361,11 @@ def get_location_top_companies(
                 c.nace_text
             FROM companies c
             JOIN address_dimension a ON c.addressid = a.address_id
-            JOIN LATERAL (
+            LEFT JOIN LATERAL (
                 SELECT turnover, profit, employees, year
                 FROM financial_reports
                 WHERE company_regcode = c.regcode
                   AND turnover > 0
-                  AND turnover != 'NaN'::float
                   AND year >= 2023
                 ORDER BY (year = :stable_year) DESC, year DESC
                 LIMIT 1
@@ -392,21 +391,18 @@ def get_location_top_companies(
                     fr.employees,
                     c.nace_text
                 FROM companies c
-                JOIN LATERAL (
+                LEFT JOIN LATERAL (
                     SELECT turnover, profit, employees, year
                     FROM financial_reports
                     WHERE company_regcode = c.regcode
-                      AND turnover IS NOT NULL 
-                      AND turnover != 'NaN'::float
                       AND turnover > 0
-                      AND turnover < 1e15
                       AND year >= 2023
-                    ORDER BY year DESC
+                    ORDER BY (year = :stable_year) DESC, year DESC
                     LIMIT 1
                 ) fr ON true
                 WHERE c.address ILIKE :search_pattern
                   AND (c.status IS NULL OR c.status = '' OR c.status IN ('active', 'A', 'AKTĪVS', 'reģistrēts'))
-                  AND c.regcode != ALL(:exclude_regcodes)
+                  AND c.regcode NOT IN :exclude_regcodes
                 ORDER BY fr.turnover DESC
                 LIMIT :remaining_limit
             """
