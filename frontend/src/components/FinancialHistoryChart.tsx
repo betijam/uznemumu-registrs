@@ -190,40 +190,31 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                         <ReferenceLine yAxisId="left" y={0} stroke="#4B5563" strokeDasharray="3 3" />
 
                         {chartMode === 'turnover' && (
-                            <Area
+                            <Bar
                                 yAxisId="left"
-                                type="monotone"
                                 dataKey="turnover"
                                 name="turnover"
-                                stroke="#3B82F6"
-                                strokeWidth={2}
-                                fillOpacity={1}
-                                fill="url(#colorTurnover)"
+                                barSize={32}
+                                fill="#3B82F6"
                                 animationDuration={500}
                             />
                         )}
 
                         {chartMode === 'profit' && (
-                            <>
-                                <Bar
-                                    yAxisId="left"
-                                    dataKey="profitPos"
-                                    name="profit"
-                                    barSize={32}
-                                    fill="#10B981"
-                                    animationDuration={500}
-                                    minPointSize={2}
-                                />
-                                <Bar
-                                    yAxisId="left"
-                                    dataKey="profitNeg"
-                                    name="profit"
-                                    barSize={32}
-                                    fill="#EF4444"
-                                    animationDuration={500}
-                                    minPointSize={2}
-                                />
-                            </>
+                            <Bar
+                                yAxisId="left"
+                                dataKey="profit"
+                                name="profit"
+                                barSize={32}
+                                animationDuration={500}
+                            >
+                                {processedData.map((entry, index) => (
+                                    <Cell
+                                        key={`cell-${index}`}
+                                        fill={entry.profit >= 0 ? '#10B981' : '#EF4444'}
+                                    />
+                                ))}
+                            </Bar>
                         )}
                     </ComposedChart>
                 </ResponsiveContainer>
