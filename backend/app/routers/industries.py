@@ -126,6 +126,7 @@ def _get_overview_from_cache(conn):
         WHERE nace_level = 1
         AND nace_code != '00'
         AND nace_name NOT ILIKE '%Cita nozare%'
+        AND data_year = (SELECT MAX(data_year) FROM industry_stats_materialized)
     """)).fetchone()
     
     # Get previous year for trends
@@ -159,9 +160,10 @@ def _get_overview_from_cache(conn):
     top_growth = conn.execute(text("""
         SELECT nace_code, nace_name, turnover_growth
         FROM industry_stats_materialized
-        WHERE nace_level = 1 
+        WHERE nace_level = 2 
         AND turnover_growth IS NOT NULL
         AND nace_code != '00'
+        AND data_year = (SELECT MAX(data_year) FROM industry_stats_materialized)
         AND nace_name NOT ILIKE '%Cita nozare%'
         ORDER BY turnover_growth DESC
         LIMIT 3
@@ -171,9 +173,10 @@ def _get_overview_from_cache(conn):
     top_salary = conn.execute(text("""
         SELECT nace_code, nace_name, avg_gross_salary
         FROM industry_stats_materialized
-        WHERE nace_level = 1 
+        WHERE nace_level = 2 
         AND avg_gross_salary IS NOT NULL
         AND nace_code != '00'
+        AND data_year = (SELECT MAX(data_year) FROM industry_stats_materialized)
         AND nace_name NOT ILIKE '%Cita nozare%'
         ORDER BY avg_gross_salary DESC
         LIMIT 3
@@ -183,9 +186,10 @@ def _get_overview_from_cache(conn):
     top_turnover = conn.execute(text("""
         SELECT nace_code, nace_name, total_turnover
         FROM industry_stats_materialized
-        WHERE nace_level = 1 
+        WHERE nace_level = 2 
         AND total_turnover IS NOT NULL
         AND nace_code != '00'
+        AND data_year = (SELECT MAX(data_year) FROM industry_stats_materialized)
         AND nace_name NOT ILIKE '%Cita nozare%'
         ORDER BY total_turnover DESC
         LIMIT 3
@@ -198,9 +202,10 @@ def _get_overview_from_cache(conn):
             total_turnover, turnover_growth, 
             avg_gross_salary, active_companies
         FROM industry_stats_materialized
-        WHERE nace_level = 1
+        WHERE nace_level = 2
         AND nace_code != '00'
         AND nace_name NOT ILIKE '%Cita nozare%'
+        AND data_year = (SELECT MAX(data_year) FROM industry_stats_materialized)
         ORDER BY nace_code
     """)).fetchall()
     

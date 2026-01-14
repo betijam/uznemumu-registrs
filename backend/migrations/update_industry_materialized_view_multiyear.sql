@@ -1,5 +1,6 @@
 -- Refactor industry_stats_materialized for multi-year support
 -- and populate with Level 1 (Sections) and Level 2 (Divisions) data for 2018-2025
+-- FIX: Explicitly map NACE codes to Sections (A-U) because source data lacks Section letters
 
 -- 1. DROP and RECREATE tables with correct Schema
 DROP TABLE IF EXISTS industry_stats_materialized CASCADE;
@@ -42,52 +43,78 @@ CREATE TABLE industry_leaders_cache (
 
 CREATE INDEX idx_leaders_nace_year ON industry_leaders_cache(nace_code, data_year);
 
--- 2. POPULATE LEVEL 1 (SECTIONS A-U) for ALL YEARS
--- 2. POPULATE LEVEL 1 (SECTIONS A-U) for ALL YEARS
+-- 2. POPULATE LEVEL 1 (SECTIONS A-U) with MAPPING
 INSERT INTO industry_stats_materialized (
     nace_code, data_year, nace_level, nace_name, parent_code,
     total_turnover, total_profit, employee_count, active_companies,
     turnover_growth, total_tax_paid, avg_gross_salary, tax_burden
 )
-WITH section_years AS (
-    -- Get data for each section and each year found in financial reports
-    -- FILTER: Only valid 1-letter sections (A-Z)
+WITH company_sections AS (
     SELECT 
-        c.nace_section as nace_code,
+        c.regcode,
+        CASE 
+            WHEN LEFT(c.nace_code, 2) BETWEEN '01' AND '03' THEN 'A'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '05' AND '09' THEN 'B'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '10' AND '33' THEN 'C'
+            WHEN LEFT(c.nace_code, 2) = '35' THEN 'D'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '36' AND '39' THEN 'E'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '41' AND '43' THEN 'F'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '45' AND '47' THEN 'G'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '49' AND '53' THEN 'H'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '55' AND '56' THEN 'I'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '58' AND '63' THEN 'J'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '64' AND '66' THEN 'K'
+            WHEN LEFT(c.nace_code, 2) = '68' THEN 'L'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '69' AND '75' THEN 'M'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '77' AND '82' THEN 'N'
+            WHEN LEFT(c.nace_code, 2) = '84' THEN 'O'
+            WHEN LEFT(c.nace_code, 2) = '85' THEN 'P'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '86' AND '88' THEN 'Q'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '90' AND '93' THEN 'R'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '94' AND '96' THEN 'S'
+            WHEN LEFT(c.nace_code, 2) BETWEEN '97' AND '98' THEN 'T'
+            WHEN LEFT(c.nace_code, 2) = '99' THEN 'U'
+            ELSE NULL -- Unknown
+        END as section_code
+    FROM companies c
+    WHERE c.status = 'active' AND c.nace_code IS NOT NULL
+),
+section_years AS (
+    SELECT 
+        cs.section_code as nace_code,
         f.year as data_year,
-        MAX(c.nace_section_text) as nace_name,
+        NULL::VARCHAR as nace_name, -- Let backend fill from dict
         SUM(f.turnover) as total_turnover,
         SUM(f.profit) as total_profit,
         SUM(COALESCE(f.employees, 0)) as employee_count,
-        COUNT(DISTINCT c.regcode) as active_companies
-    FROM companies c
-    JOIN financial_reports f ON f.company_regcode = c.regcode
-    WHERE c.nace_section IS NOT NULL AND c.nace_section ~ '^[A-Z]$'
-      AND c.status = 'active'
+        COUNT(DISTINCT cs.regcode) as active_companies
+    FROM company_sections cs
+    JOIN financial_reports f ON f.company_regcode = cs.regcode
+    WHERE cs.section_code IS NOT NULL
       AND f.turnover IS NOT NULL 
       AND f.turnover < 1e15
-    GROUP BY c.nace_section, f.year
+    GROUP BY cs.section_code, f.year
 ),
 prev_year_stats AS (
     SELECT nace_code, data_year, total_turnover FROM section_years
 ),
 tax_data AS (
     SELECT 
-        c.nace_section as nace_code,
+        cs.section_code as nace_code,
         t.year as data_year,
         SUM(t.total_tax_paid) as total_tax,
         SUM(t.social_tax_vsaoi) as vsaoi,
         SUM(t.avg_employees) as tax_employees
-    FROM companies c
-    JOIN tax_payments t ON t.company_regcode = c.regcode
-    WHERE c.nace_section IS NOT NULL AND c.nace_section ~ '^[A-Z]$'
-    GROUP BY c.nace_section, t.year
+    FROM company_sections cs
+    JOIN tax_payments t ON t.company_regcode = cs.regcode
+    WHERE cs.section_code IS NOT NULL
+    GROUP BY cs.section_code, t.year
 )
 SELECT
     s.nace_code,
     s.data_year,
     1 as nace_level,
-    s.nace_name,
+    COALESCE(s.nace_name, s.nace_code),
     NULL as parent_code,
     s.total_turnover::BIGINT,
     s.total_profit::BIGINT,
@@ -116,7 +143,7 @@ ON CONFLICT (nace_code, data_year) DO UPDATE SET
     active_companies = EXCLUDED.active_companies,
     updated_at = NOW();
 
--- 3. POPULATE LEVEL 2 (DIVISIONS 01-99) for ALL YEARS
+-- 3. POPULATE LEVEL 2 (DIVISIONS 01-99)
 INSERT INTO industry_stats_materialized (
     nace_code, data_year, nace_level, nace_name, parent_code,
     total_turnover, total_profit, employee_count, active_companies,
@@ -126,7 +153,7 @@ WITH division_years AS (
     SELECT 
         LEFT(c.nace_code, 2) as nace_code,
         f.year as data_year,
-        MAX(c.nace_text) as nace_name, -- Approximate name from one company
+        MAX(c.nace_text) as nace_name, -- Approximate name
         SUM(f.turnover) as total_turnover,
         SUM(f.profit) as total_profit,
         SUM(COALESCE(f.employees, 0)) as employee_count,
@@ -158,9 +185,31 @@ SELECT
     s.nace_code,
     s.data_year,
     2 as nace_level,
-    -- In a real scenario, we'd join a NACE dictionary, but here we fallback or use max(text)
     COALESCE(s.nace_name, 'Division ' || s.nace_code) as nace_name, 
-    NULL as parent_code, -- Could be mapped to section but complex
+    -- Map Parent Code (Section) for hierarchy
+    CASE 
+        WHEN s.nace_code BETWEEN '01' AND '03' THEN 'A'
+        WHEN s.nace_code BETWEEN '05' AND '09' THEN 'B'
+        WHEN s.nace_code BETWEEN '10' AND '33' THEN 'C'
+        WHEN s.nace_code = '35' THEN 'D'
+        WHEN s.nace_code BETWEEN '36' AND '39' THEN 'E'
+        WHEN s.nace_code BETWEEN '41' AND '43' THEN 'F'
+        WHEN s.nace_code BETWEEN '45' AND '47' THEN 'G'
+        WHEN s.nace_code BETWEEN '49' AND '53' THEN 'H'
+        WHEN s.nace_code BETWEEN '55' AND '56' THEN 'I'
+        WHEN s.nace_code BETWEEN '58' AND '63' THEN 'J'
+        WHEN s.nace_code BETWEEN '64' AND '66' THEN 'K'
+        WHEN s.nace_code = '68' THEN 'L'
+        WHEN s.nace_code BETWEEN '69' AND '75' THEN 'M'
+        WHEN s.nace_code BETWEEN '77' AND '82' THEN 'N'
+        WHEN s.nace_code = '84' THEN 'O'
+        WHEN s.nace_code = '85' THEN 'P'
+        WHEN s.nace_code BETWEEN '86' AND '88' THEN 'Q'
+        WHEN s.nace_code BETWEEN '90' AND '93' THEN 'R'
+        WHEN s.nace_code BETWEEN '94' AND '96' THEN 'S'
+        WHEN s.nace_code BETWEEN '97' AND '98' THEN 'T'
+        WHEN s.nace_code = '99' THEN 'U'
+    END as parent_code,
     s.total_turnover::BIGINT,
     s.total_profit::BIGINT,
     s.employee_count::INT,
