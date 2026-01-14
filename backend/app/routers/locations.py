@@ -11,11 +11,14 @@ Endpoints:
 - GET /api/locations/{type}/{name}/stats - Get statistics for a location
 """
 
+import logging
 from fastapi import APIRouter, Depends, Query, HTTPException, Response
 from sqlalchemy import text
 from typing import List, Optional
 from pydantic import BaseModel
 from app.core.database import engine
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/locations", tags=["locations"])
 
@@ -314,7 +317,7 @@ def get_location_top_companies(
 ):
     """
     Get top companies in a specific location by turnover.
-    Refactored to use explicit year JOIN for performance (avoids active scan).
+    Refactored to use live financial reports for accuracy and "latest available data" logic.
     """
     if response:
         response.headers["Cache-Control"] = "public, max-age=3600"
@@ -322,63 +325,77 @@ def get_location_top_companies(
     # Map type to column
     column_map = {
         "city": "city_name",
-        "municipality": "municipality_name"
+        "municipality": "municipality_name",
+        "parish": "parish_name"
     }
     
     if location_type not in column_map:
-        raise HTTPException(status_code=400, detail="Invalid location_type. Use: city or municipality")
+        raise HTTPException(status_code=400, detail="Invalid location_type. Use: city, municipality, or parish")
     
     column = column_map[location_type]
     
     with engine.connect() as conn:
-        # OPTIMIZATION: Use company_stats_materialized which has latest data per company
-        # This avoids missing companies that haven't filed report for the very latest global year
-        
-        # 1. Try primary query with address_dimension JOIN
-        primary_query = f"""
+        # 1. Primary query with address_dimension JOIN and LATERAL join for latest report
+        # This solves the "2 companies in Jūrmala" problem by taking 2024 data if 2025 is missing
+        query = f"""
             SELECT 
                 c.regcode,
                 c.name,
-                s.turnover,
-                s.profit,
-                s.employees,
+                fr.turnover,
+                fr.profit,
+                fr.employees,
                 c.nace_text
             FROM companies c
             JOIN address_dimension a ON c.addressid = a.address_id
-            JOIN company_stats_materialized s ON c.regcode = s.regcode
+            JOIN LATERAL (
+                SELECT turnover, profit, employees, year
+                FROM financial_reports
+                WHERE company_regcode = c.regcode
+                  AND turnover IS NOT NULL 
+                  AND turnover != 'NaN'::float
+                  AND turnover > 0
+                  AND turnover < 1e15
+                  AND year >= 2023
+                ORDER BY year DESC
+                LIMIT 1
+            ) fr ON true
             WHERE a.{column} = :name
-              AND c.status = 'active'
-            ORDER BY s.turnover DESC
+              AND (c.status IS NULL OR c.status = '' OR c.status IN ('active', 'A', 'AKTĪVS', 'reģistrēts'))
+            ORDER BY fr.turnover DESC
             LIMIT :limit
         """
-        result = conn.execute(text(primary_query), {"name": name, "limit": limit})
+        result = conn.execute(text(query), {"name": name, "limit": limit})
         rows = result.fetchall()
         
-        # 2. Fallback: If address_dimension yielded insufficient results (less than limit), 
-        # try text search on address field to fill gaps or specific cases like mis-linked addresses
+        # 2. Fallback: If address_dimension yielded insufficient results, try address text fallback
         if len(rows) < limit:
-            logger.info(f"Insufficient results ({len(rows)}) from address_dimension for {location_type}={name}, trying address fallback")
+            exclude_regcodes = [r.regcode for r in rows] or [-1]
             
-            exclude_regcodes = [r.regcode for r in rows]
-            
-            # Simple fix for list of regcodes in ANY()
-            if not exclude_regcodes:
-                exclude_regcodes = [-1] 
-
             fallback_query = """
                 SELECT 
                     c.regcode,
                     c.name,
-                    s.turnover,
-                    s.profit,
-                    s.employees,
+                    fr.turnover,
+                    fr.profit,
+                    fr.employees,
                     c.nace_text
                 FROM companies c
-                JOIN company_stats_materialized s ON c.regcode = s.regcode
+                JOIN LATERAL (
+                    SELECT turnover, profit, employees, year
+                    FROM financial_reports
+                    WHERE company_regcode = c.regcode
+                      AND turnover IS NOT NULL 
+                      AND turnover != 'NaN'::float
+                      AND turnover > 0
+                      AND turnover < 1e15
+                      AND year >= 2023
+                    ORDER BY year DESC
+                    LIMIT 1
+                ) fr ON true
                 WHERE c.address ILIKE :search_pattern
-                  AND c.status = 'active'
+                  AND (c.status IS NULL OR c.status = '' OR c.status IN ('active', 'A', 'AKTĪVS', 'reģistrēts'))
                   AND c.regcode != ALL(:exclude_regcodes)
-                ORDER BY s.turnover DESC
+                ORDER BY fr.turnover DESC
                 LIMIT :remaining_limit
             """
             
@@ -390,12 +407,10 @@ def get_location_top_companies(
             }).fetchall()
             
             rows.extend(fallback_rows)
-            
-            # Re-sort combined results just in case
+            # Re-sort combined
             rows.sort(key=lambda x: safe_float(x.turnover) or 0, reverse=True)
             rows = rows[:limit]
 
-        
         return [
             TopCompanyInLocation(
                 regcode=row.regcode,

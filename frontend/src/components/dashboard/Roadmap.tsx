@@ -110,15 +110,15 @@ export default function Roadmap() {
 
                     <div className="relative z-10">
                         <h3 className="text-2xl md:text-3xl font-bold mb-4">
-                            Vēlies pirmais izmēģināt PRO?
+                            {t('newsletter_title')}
                         </h3>
                         <p className="text-slate-300 mb-8 max-w-2xl mx-auto">
-                            Piesakies jaunumiem un saņem īpašu piedāvājumu starta dienā.
+                            {t('newsletter_subtitle')}
                         </p>
 
                         {status === 'success' ? (
                             <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4 max-w-md mx-auto">
-                                <p className="text-green-300 font-semibold">✓ Paldies! Mēs ar jums sazināsimies.</p>
+                                <p className="text-green-300 font-semibold">{t('newsletter_success')}</p>
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
@@ -126,7 +126,7 @@ export default function Roadmap() {
                                     type="email"
                                     required
                                     className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    placeholder="tavs@epasts.lv"
+                                    placeholder={t('newsletter_placeholder')}
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     disabled={status === 'loading'}
@@ -136,12 +136,12 @@ export default function Roadmap() {
                                     disabled={status === 'loading'}
                                     className="px-6 py-3 bg-white text-slate-900 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50"
                                 >
-                                    {status === 'loading' ? '...' : 'Pieteikties'}
+                                    {status === 'loading' ? '...' : t('newsletter_button')}
                                 </button>
                             </form>
                         )}
                         {status === 'error' && (
-                            <p className="mt-2 text-sm text-red-400">Kļūda. Mēģiniet vēlāk.</p>
+                            <p className="mt-2 text-sm text-red-400">{t('newsletter_error')}</p>
                         )}
                     </div>
                 </div>
