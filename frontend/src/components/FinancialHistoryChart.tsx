@@ -62,24 +62,31 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
 
 
     // Calculate domain for YAxis to ensure negative values are handled correctly
-    const allValues = data.flatMap(d => {
-        const vals = [];
-        if (d.turnover !== null) vals.push(d.turnover);
-        if (d.profit !== null) vals.push(d.profit);
-        return vals;
-    });
+    const turnoverValues = data.map(d => d.turnover !== null ? Number(d.turnover) : 0);
+    const profitValues = data.map(d => d.profit !== null ? Number(d.profit) : 0);
+    const allNumericValues = [...turnoverValues, ...profitValues];
 
-    const minVal = Math.min(0, ...allValues);
-    const maxVal = Math.max(0, ...allValues);
+    const minVal = Math.min(0, ...allNumericValues);
+    const maxVal = Math.max(0, ...allNumericValues);
 
-    // Add margin
-    const domainMin = minVal < 0 ? minVal * 1.1 : 0;
+    // Add margin (20% for negative, 10% for positive)
+    const domainMin = minVal < 0 ? minVal * 1.2 : 0;
     const domainMax = maxVal > 0 ? maxVal * 1.1 : 0;
 
-
+    // Ensure we don't have a flat 0-0 domain
+    const finalDomainMin = domainMin;
+    const finalDomainMax = domainMax === 0 && domainMin === 0 ? 1000 : domainMax;
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+            {/* DEBUG INFO - REMOVE AFTER FIXING */}
+            <div className="text-[10px] text-gray-400 mb-2 font-mono border-b border-gray-100 pb-2">
+                DEBUG: Min={minVal.toFixed(0)}, Max={maxVal.toFixed(0)},
+                Domain=[{finalDomainMin.toFixed(0)}, {finalDomainMax.toFixed(0)}],
+                DataPoints={data.length},
+                LastProfit={data[data.length - 1]?.profit ?? 'N/A'}
+            </div>
+
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h3 className="text-lg font-bold text-gray-900">Finanšu Dinamika</h3>
@@ -127,13 +134,13 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                             axisLine={false}
                             tickLine={false}
                             tick={{ fill: '#6B7280', fontSize: 12 }}
-                            domain={[domainMin, domainMax === 0 && domainMin === 0 ? 1000 : domainMax]}
+                            domain={[finalDomainMin, finalDomainMax]}
                             allowDataOverflow={false}
                             tickFormatter={(value) => {
                                 if (value === 0) return '0 €';
-                                if (Math.abs(value) >= 1000000000) return `${(value / 1000000000).toFixed(0)}B`;
-                                if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(0)}M`;
-                                if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                                if (Math.abs(value) >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
+                                if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+                                if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
                                 return value;
                             }}
                         />
