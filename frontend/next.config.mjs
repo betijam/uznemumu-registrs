@@ -34,8 +34,8 @@ const nextConfig = {
 
     async rewrites() {
         // Default to Production, override with NEXT_PUBLIC_API_URL or BACKEND_URL env var
-        // FORCE correct staging backend for verification
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || 'https://uznemumu-registrs-staging.up.railway.app';
+        // Default to Production, override with NEXT_PUBLIC_API_URL or BACKEND_URL env var
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || 'https://api.company360.lv';
         console.log('Proxying /api requests to:', backendUrl);
         return [
             {
