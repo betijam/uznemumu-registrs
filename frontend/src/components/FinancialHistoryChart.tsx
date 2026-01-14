@@ -211,8 +211,8 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                                     name="profit"
                                     barSize={32}
                                     fill="#10B981"
-                                    stackId="profitStack"
                                     animationDuration={500}
+                                    minPointSize={2}
                                 />
                                 <Bar
                                     yAxisId="left"
@@ -220,8 +220,8 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                                     name="profit"
                                     barSize={32}
                                     fill="#EF4444"
-                                    stackId="profitStack"
                                     animationDuration={500}
+                                    minPointSize={2}
                                 />
                             </>
                         )}
