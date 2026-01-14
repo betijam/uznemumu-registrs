@@ -59,6 +59,8 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
         );
     }
 
+    console.log('FinancialHistoryChart data:', data);
+
     // Calculate domain for YAxis to ensure negative values are handled correctly
     const allValues = data.flatMap(d => {
         const vals = [];

@@ -408,6 +408,8 @@ def get_industry_detail(
         
         code_len = len(nace_code)
         
+        logger.info(f"DEBUG: Industry Detail - nace={nace_code}, is_section={is_section}, filter={nace_filter}, year={year}")
+        
         # Year selection: Use materialized view for fast year lookup if available
         # This avoids expensive scans of financial_reports table
         
@@ -788,6 +790,8 @@ def get_industry_detail(
         history_end_year = max_year_result or year  # Fallback to selected year
         history_start_year = history_end_year - 4
         
+        logger.info(f"DEBUG: History Range for {nace_code}: {history_start_year} - {history_end_year} (Max Year DB: {max_year_result})")
+        
         # Dynamic history query - aggregates financial_reports by year
         history_query = f"""
             SELECT 
@@ -803,6 +807,10 @@ def get_industry_detail(
             ORDER BY f.year ASC
         """
         history_rows = conn.execute(text(history_query), {"code": nace_param, "code_len": code_len, "start_year": history_start_year, "end_year": history_end_year}).fetchall()
+        
+        logger.info(f"DEBUG: History Rows Found: {len(history_rows)}")
+        for r in history_rows:
+            logger.info(f"DEBUG: Row {r.year}: T={r.total_turnover}, P={r.total_profit}")
 
         history_data = [
             {
