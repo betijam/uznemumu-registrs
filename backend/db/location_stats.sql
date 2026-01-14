@@ -67,7 +67,7 @@ LEFT JOIN latest_financials f ON c.regcode = f.company_regcode
 LEFT JOIN latest_taxes t ON c.regcode = t.company_regcode
 WHERE a.city_name IS NOT NULL
   AND a.city_name != 'Rīga'  -- Rīga ir gan pilsēta, gan novads
-  AND c.status = 'active'
+  AND (c.status IS NULL OR c.status = '' OR c.status IN ('active', 'A', 'AKTĪVS', 'reģistrēts'))
 GROUP BY a.city_name
 
 UNION ALL
@@ -100,7 +100,7 @@ LEFT JOIN latest_taxes t ON c.regcode = t.company_regcode
 WHERE a.municipality_name IS NOT NULL
   -- No additional filter - includes all companies where municipality_name exists,
   -- regardless of whether city_name is also set
-  AND c.status = 'active'
+  AND (c.status IS NULL OR c.status = '' OR c.status IN ('active', 'A', 'AKTĪVS', 'reģistrēts'))
 GROUP BY a.municipality_name
 
 UNION ALL
@@ -132,7 +132,7 @@ JOIN address_dimension a ON c.addressid = a.address_id
 LEFT JOIN latest_financials f ON c.regcode = f.company_regcode
 LEFT JOIN latest_taxes t ON c.regcode = t.company_regcode
 WHERE (a.city_name = 'Rīga' OR a.municipality_name = 'Rīga')
-  AND c.status = 'active';
+  AND (c.status IS NULL OR c.status = '' OR c.status IN ('active', 'A', 'AKTĪVS', 'reģistrēts'));
 
 -- Create indexes for fast lookups
 CREATE INDEX idx_location_stats_type_name ON public.location_statistics(location_type, location_name);
