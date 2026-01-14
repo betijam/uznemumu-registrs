@@ -322,7 +322,9 @@ def get_location_top_companies(
     if response:
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     
+    print(f"DEBUG: Fetching top companies for {location_type} {name} using LATERAL approach")
     logger.info(f"Fetching top companies for {location_type} {name} using LATERAL approach")
+    # Force rebuild trigger v3 - ensuring clean deploy path
     
     # Map type to column
     column_map = {
