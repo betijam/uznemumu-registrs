@@ -40,9 +40,9 @@ async def lifespan(app: FastAPI):
         time.sleep(5) # Allow server to start up fully
         try:
             from update_db_schema import update_materialized_view
-            logger.info("🔄 Checking and updating DB schema (materialized views) in background...")
+            logger.error("🔄 [DEPLOY_V5] Checking and updating DB schema in background...")
             update_materialized_view()
-            logger.info("✅ DB Schema update complete.")
+            logger.error("✅ [DEPLOY_V5] DB Schema update complete.")
 
             # Run critical migrations
             try: 
@@ -119,6 +119,8 @@ def health_check():
     """Health check endpoint showing service status"""
     return {
         "status": "ok",
+        "version": "V5-FINAL-2024-PRIORITY",
+        "deployed_at": "2026-01-14T23:15",
         "mode": "etl-enabled" if ENABLE_ETL_SCHEDULER else "api-only",
         "scheduler": "running" if (ENABLE_ETL_SCHEDULER and scheduler.running) else "disabled"
     }

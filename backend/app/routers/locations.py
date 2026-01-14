@@ -332,7 +332,7 @@ def get_location_top_companies(
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     
     print(f"DEPLOY_VERIFY_V5: Fetching top companies for {location_type} {name} (Default Year: 2024)")
-    logger.info(f"DEPLOY_VERIFY_V5: Fetching top companies for {location_type} {name}")
+    logger.error(f"DEPLOY_VERIFY_V5: Fetching top companies for {location_type} {name}")
     
     # Use 2024 as default stable year
     stable_year = year or 2024
