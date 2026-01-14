@@ -320,7 +320,9 @@ def get_location_top_companies(
     Refactored to use live financial reports for accuracy and "latest available data" logic.
     """
     if response:
-        response.headers["Cache-Control"] = "public, max-age=3600"
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    
+    logger.info(f"Fetching top companies for {location_type} {name} using LATERAL approach")
     
     # Map type to column
     column_map = {
