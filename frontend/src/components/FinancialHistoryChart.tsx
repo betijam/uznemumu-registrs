@@ -61,12 +61,18 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
 
 
 
-    // Pre-process data to ensure all values are strictly numbers
-    const processedData = data.map(d => ({
-        ...d,
-        turnover: d.turnover !== null ? Number(d.turnover) : 0,
-        profit: d.profit !== null ? Number(d.profit) : 0,
-    }));
+    // Pre-process data to ensure all values are strictly numbers and split profit
+    const processedData = data.map(d => {
+        const t = d.turnover !== null ? Number(d.turnover) : 0;
+        const p = d.profit !== null ? Number(d.profit) : 0;
+        return {
+            ...d,
+            turnover: t,
+            profit: p, // Keep original for tooltip if needed, or use profitPos/Neg
+            profitPos: p >= 0 ? p : 0,
+            profitNeg: p < 0 ? p : 0
+        };
+    });
 
     // Calculate strict min/max from numeric values
     const turnoverValues = processedData.map(d => d.turnover);
@@ -95,10 +101,11 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 relative">
             {/* DEBUG INFO - REMOVE AFTER FIXING */}
             <div className="absolute top-0 left-0 bg-yellow-100 p-2 text-[10px] text-black z-50 opacity-80 pointer-events-none rounded-tl-xl border-b border-r border-yellow-200 shadow-sm">
-                <div><strong>DEBUG V2</strong></div>
+                <div><strong>DEBUG V3 (Split Bars)</strong></div>
                 <div>Min: {minVal.toFixed(0)} | Max: {maxVal.toFixed(0)}</div>
                 <div>Domain: [{finalDomainMin.toFixed(0)}, {finalDomainMax.toFixed(0)}]</div>
-                <div>Raw Data (Profit): {JSON.stringify(processedData.map(d => d.profit))}</div>
+                <div>Raw P: {JSON.stringify(data.slice(-2).map(d => d.profit))}</div>
+                <div>Proc P: {JSON.stringify(processedData.slice(-2).map(d => d.profit))}</div>
             </div>
 
             <div className="flex items-center justify-between mb-6 pt-2">
@@ -173,17 +180,20 @@ export default function FinancialHistoryChart({ data }: FinancialHistoryProps) {
                         />
                         <Bar
                             yAxisId="left"
-                            dataKey="profit"
+                            dataKey="profitPos"
                             name="profit"
                             barSize={32}
-                        >
-                            {data.map((entry, index) => (
-                                <Cell
-                                    key={`cell-${index}`}
-                                    fill={entry.profit !== null && entry.profit >= 0 ? '#10B981' : '#EF4444'}
-                                />
-                            ))}
-                        </Bar>
+                            fill="#10B981"
+                            stackId="profitStack"
+                        />
+                        <Bar
+                            yAxisId="left"
+                            dataKey="profitNeg"
+                            name="profit"
+                            barSize={32}
+                            fill="#EF4444"
+                            stackId="profitStack"
+                        />
                     </ComposedChart>
                 </ResponsiveContainer>
             </div>
