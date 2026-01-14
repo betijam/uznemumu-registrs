@@ -139,8 +139,8 @@ def _get_overview_from_cache(conn):
     
     turnover_growth = None
     try:
-        curr_turnover = safe_float(macro.total_turnover) or 0
-        prev_turnover = safe_float(prev_year.prev_turnover) or 0
+        curr_turnover = safe_float(macro.total_turnover if macro else 0) or 0
+        prev_turnover = safe_float(prev_year.prev_turnover if prev_year else 0) or 0
         if curr_turnover > 0 and prev_turnover > 0:
             turnover_growth = round(((curr_turnover - prev_turnover) / prev_turnover) * 100, 1)
     except Exception:
@@ -148,8 +148,8 @@ def _get_overview_from_cache(conn):
     
     employee_change = None
     try:
-        curr_employees = safe_float(macro.total_employees) or 0
-        prev_employees = safe_float(prev_year.prev_employees) or 0
+        curr_employees = safe_float(macro.total_employees if macro else 0) or 0
+        prev_employees = safe_float(prev_year.prev_employees if prev_year else 0) or 0
         if curr_employees > 0 and prev_employees > 0:
             employee_change = round(((curr_employees - prev_employees) / prev_employees) * 100, 1)
     except Exception:
@@ -206,15 +206,15 @@ def _get_overview_from_cache(conn):
     
     return {
         "macro": {
-            "total_turnover": safe_float(macro.total_turnover),
-            "total_turnover_formatted": format_large_number(macro.total_turnover),
+            "total_turnover": safe_float(macro.total_turnover if macro else 0),
+            "total_turnover_formatted": format_large_number(macro.total_turnover if macro else 0),
             "turnover_growth": turnover_growth,
-            "total_employees": safe_int(macro.total_employees),
+            "total_employees": safe_int(macro.total_employees if macro else 0),
             "employee_change": employee_change,
-            "avg_salary": safe_int(macro.avg_salary),
-            "total_profit": safe_float(macro.total_profit),
-            "total_profit_formatted": format_large_number(macro.total_profit),
-            "data_year": macro.data_year
+            "avg_salary": safe_int(macro.avg_salary if macro else 0),
+            "total_profit": safe_float(macro.total_profit if macro else 0),
+            "total_profit_formatted": format_large_number(macro.total_profit if macro else 0),
+            "data_year": macro.data_year if macro else None
         },
         "top_growth": [
             {"nace_code": r.nace_code, "name": NACE_DIVISIONS.get(r.nace_code, r.nace_name), "growth_percent": safe_float(r.turnover_growth)}
