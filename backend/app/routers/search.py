@@ -151,34 +151,49 @@ def search_companies(q: str = "", nace: str = None):
             where_conditions.append("nace_section = :nace")
             params["nace"] = nace
         
-        # D) SIMILARITY RANKING (🚀 Key improvement)
-        # Full query string for similarity calculation
-        clean_query_str = " ".join(name_words)
-        params["full_query"] = clean_query_str
-        
-        # ORDER BY logic:
-        # 1. Active companies first
-        # 2. Exact prefix match (starts with query)
-        # 3. SIMILARITY score (pg_trgm magic - how closely text matches)
-        # 4. Shorter names first (if searching "Lido", prefer "Lido" over "Lido Restaurants Ltd")
-        order_by = """
-            CASE WHEN status = 'active' THEN 0 ELSE 1 END,
-            CASE 
-                WHEN immutable_unaccent(lower(name)) LIKE immutable_unaccent(lower(:full_query)) || '%' THEN 0
-                WHEN immutable_unaccent(lower(name_in_quotes)) LIKE immutable_unaccent(lower(:full_query)) || '%' THEN 0
-                ELSE 1 
-            END,
-            SIMILARITY(immutable_unaccent(lower(name)), immutable_unaccent(lower(:full_query))) DESC,
-            length(name) ASC
-        """
+    # SIMILARITY RANKING & FINANCIAL WEIGHT
+    # Full query string for similarity calculation
+    clean_query_str = " ".join(name_words)
+    params["full_query"] = clean_query_str
+    
+    # ORDER BY logic:
+    # 1. Exact match in quotes (e.g. searching "Tet" matches "Tet" exactly)
+    # 2. Starts with query (Prefix match on name_in_quotes)
+    # 3. Active status
+    # 4. Financial Relevance (Turnover) - Big companies first
+    # 5. Text Similarity
+    
+    order_by = """
+        CASE 
+            WHEN immutable_unaccent(lower(c.name_in_quotes)) = immutable_unaccent(lower(:full_query)) THEN 0 
+            WHEN immutable_unaccent(lower(c.name)) = immutable_unaccent(lower(:full_query)) THEN 0
+            ELSE 1 
+        END,
+        CASE 
+            WHEN immutable_unaccent(lower(c.name_in_quotes)) LIKE immutable_unaccent(lower(:full_query)) || '%' THEN 0
+            ELSE 1 
+        END,
+        CASE WHEN c.status = 'active' THEN 0 ELSE 1 END,
+        f.turnover DESC NULLS LAST,
+        SIMILARITY(immutable_unaccent(lower(c.name)), immutable_unaccent(lower(:full_query))) DESC
+    """
     
     where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
     
+    # Updated SQL to join financials
     sql = f"""
-    SELECT regcode, name, name_in_quotes, "type" as company_type, type_text,
-           address, status, registration_date, 
-           nace_section, nace_section_text
-    FROM companies
+    SELECT c.regcode, c.name, c.name_in_quotes, c."type" as company_type, c.type_text,
+           c.address, c.status, c.registration_date, 
+           c.nace_section, c.nace_section_text,
+           f.turnover
+    FROM companies c
+    LEFT JOIN LATERAL (
+        SELECT turnover 
+        FROM financial_reports 
+        WHERE company_regcode = c.regcode 
+        ORDER BY year DESC 
+        LIMIT 1
+    ) f ON true
     WHERE {where_clause}
     ORDER BY {order_by}
     LIMIT 50;
