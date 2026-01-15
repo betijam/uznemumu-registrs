@@ -104,10 +104,11 @@ def process_finance(statements_path: str, balance_path: str, income_path: str):
             'id': 'statement_id',
             'legal_entity_registration_number': 'company_regcode', 
             'year': 'year',
-            'employees': 'employees'
+            'employees': 'employees',
+            'rounded_to_nearest': 'rounded_to_nearest'
         })
         
-        base_cols = ['statement_id', 'company_regcode', 'year', 'employees']
+        base_cols = ['statement_id', 'company_regcode', 'year', 'employees', 'rounded_to_nearest']
         for c in base_cols:
             if c not in df_stm.columns:
                 df_stm[c] = None
@@ -226,6 +227,20 @@ def process_finance(statements_path: str, balance_path: str, income_path: str):
                         lambda x: income_data.get(x, {}).get(col)
                     )
                 
+                # Apply scaling regarding rounded_to_nearest
+                # If rounded_to_nearest == 'THOUSANDS', multiply financial columns by 1000
+                if 'rounded_to_nearest' in df_merged.columns:
+                    mask_thousands = df_merged['rounded_to_nearest'] == 'THOUSANDS'
+                    if mask_thousands.any():
+                        fin_cols = [
+                            'turnover', 'profit', 'interest_expenses', 'depreciation_expenses', 'provision_for_income_taxes',
+                            'total_assets', 'total_current_assets', 'cash_balance', 'inventories', 
+                            'current_liabilities', 'non_current_liabilities', 'equity'
+                        ]
+                        for col in fin_cols:
+                            if col in df_merged.columns:
+                                df_merged.loc[mask_thousands, col] = df_merged.loc[mask_thousands, col] * 1000
+
                 # Calculate financial ratios
                 df_merged = calculate_financial_ratios(df_merged)
                 
@@ -245,7 +260,7 @@ def process_finance(statements_path: str, balance_path: str, income_path: str):
                 
                 # Final columns selection
                 final_cols = [
-                    'company_regcode', 'year', 'employees', 'taxes_paid',
+                    'company_regcode', 'year', 'employees', 'taxes_paid', 'rounded_to_nearest',
                     # Income Statement
                     'turnover', 'profit', 'interest_expenses', 'depreciation_expenses', 'provision_for_income_taxes',
                     # Balance Sheet
