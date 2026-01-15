@@ -154,6 +154,7 @@ def search_hint(q: str):
         primary_name = " ".join(name_words) if name_words else q.strip()
         
         # Use unaccented lower comparison to hit our new GIN/Trigram indexes
+        # Use unaccented lower comparison to hit our new GIN/Trigram indexes
         conditions = []
         params = {"q_raw": primary_name}
         
@@ -162,30 +163,31 @@ def search_hint(q: str):
             conditions.append(f"immutable_unaccent(lower(name)) LIKE immutable_unaccent(lower(:word{i}))")
             params[f"word{i}"] = f"%{word}%"
             
-            if type_words:
-                type_cond = " OR ".join([f"LOWER(\"type\") = :type{i}" for i in range(len(type_words))])
-                conditions.append(f"({type_cond})")
-                for i, tw in enumerate(type_words):
-                    params[f"type{i}"] = tw.lower()
-            
-            where_clause = " AND ".join(conditions) if conditions else "1=1"
-            
-            # Ranking: Active > Exact/Prefix > Turnover (Denormalized column)
-            company_sql = f"""
-                SELECT name, name_in_quotes, "type" as company_type, regcode
-                FROM companies 
-                WHERE {where_clause}
-                ORDER BY 
-                    CASE WHEN status = 'active' THEN 0 ELSE 1 END,
-                    CASE 
-                        WHEN immutable_unaccent(lower(name_in_quotes)) = immutable_unaccent(lower(:q_raw)) THEN 0 
-                        WHEN immutable_unaccent(lower(name_in_quotes)) LIKE immutable_unaccent(lower(:q_raw)) || '%' THEN 1
-                        ELSE 2 
-                    END,
-                    latest_turnover DESC NULLS LAST
-                LIMIT 7
-            """
-            companies = conn.execute(text(company_sql), params).fetchall()
+        if type_words:
+            type_cond = " OR ".join([f"LOWER(\"type\") = :type{i}" for i in range(len(type_words))])
+            conditions.append(f"({type_cond})")
+            for i, tw in enumerate(type_words):
+                params[f"type{i}"] = tw.lower()
+        
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
+        
+        # Ranking: Active -> Exact Match -> Prefix Match -> Turnover
+        company_sql = f"""
+            SELECT name, name_in_quotes, "type" as company_type, regcode, latest_turnover
+            FROM companies 
+            WHERE {where_clause}
+            ORDER BY 
+                CASE WHEN status = 'active' THEN 0 ELSE 1 END,
+                CASE 
+                    WHEN immutable_unaccent(lower(name_in_quotes)) = immutable_unaccent(lower(:q_raw)) THEN 0
+                    WHEN immutable_unaccent(lower(name)) = immutable_unaccent(lower(:q_raw)) THEN 0
+                    WHEN immutable_unaccent(lower(name_in_quotes)) LIKE immutable_unaccent(lower(:q_raw)) || '%' THEN 1
+                    ELSE 2 
+                END,
+                latest_turnover DESC NULLS LAST
+            LIMIT 7
+        """
+        companies = conn.execute(text(company_sql), params).fetchall()
         
         # 2. Search Persons - same flexible matching
         # 2. Search Persons - Optimized with functional index
