@@ -38,7 +38,7 @@ export default function CompanySearchBar({ onSelectCompany, onSelectPerson }: Co
     // Debounced search
     const searchAll = useCallback(
         debounce(async (query: string) => {
-            if (query.length < 2) {
+            if (query.length < 1) { // 🚀 Immediate search starting from 1 char
                 setResults({ companies: [], persons: [] });
                 return;
             }
@@ -62,7 +62,7 @@ export default function CompanySearchBar({ onSelectCompany, onSelectPerson }: Co
             } finally {
                 setIsSearching(false);
             }
-        }, 150),
+        }, 100), // ⚡ Faster response time
         []
     );
 
