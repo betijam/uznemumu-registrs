@@ -37,7 +37,7 @@ export default function SearchInput({ className = "" }: { className?: string }) 
     // Debounce search
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (query.length >= 2) {
+            if (query.length >= 1) { // 🚀 Immediate search starting from 1 char
                 fetch(`/api/home/search-hint?q=${encodeURIComponent(query)}`)
                     .then(res => res.json())
                     .then(data => {
@@ -53,7 +53,7 @@ export default function SearchInput({ className = "" }: { className?: string }) 
                 setHints({ companies: [], persons: [] });
                 setShowHints(false);
             }
-        }, 200);
+        }, 100); // ⚡ Faster response time
 
         return () => clearTimeout(timer);
     }, [query]);

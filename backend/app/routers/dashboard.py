@@ -130,6 +130,13 @@ def search_hint(q: str):
             'ps': ['ps', 'pilnsabiedrība'],
         }
         
+        if not query_words:
+            companies = []
+        else:
+            # OPTIMIZED SEARCH: Match name words + Prioritized ranking
+            conditions = []
+            params = {"q_raw": q.strip()}
+            
         # Filter out known abbreviations from search words (will match via type column)
         name_words = []
         type_words = []
@@ -139,18 +146,21 @@ def search_hint(q: str):
                 type_words.append(word_lower)
             else:
                 name_words.append(word)
-        
-        if len(query_words) == 0:
-            companies = []
-        else:
-            # OPTIMIZED SEARCH: Match name words + Prioritized ranking
-            conditions = []
-            params = {"q_raw": " ".join(name_words)}
+
+        if not name_words and not type_words:
+            return {"companies": [], "persons": []}
             
-            # Use unaccented lower comparison to hit our new GIN/Trigram indexes
-            for i, word in enumerate(name_words):
-                conditions.append(f"immutable_unaccent(lower(name)) LIKE immutable_unaccent(lower(:word{i}))")
-                params[f"word{i}"] = f"%{word}%"
+        # Use name_words for ranking, but fall back to all words if searching only SIA etc.
+        primary_name = " ".join(name_words) if name_words else q.strip()
+        
+        # Use unaccented lower comparison to hit our new GIN/Trigram indexes
+        conditions = []
+        params = {"q_raw": primary_name}
+        
+        words_to_match = name_words if name_words else query_words
+        for i, word in enumerate(words_to_match):
+            conditions.append(f"immutable_unaccent(lower(name)) LIKE immutable_unaccent(lower(:word{i}))")
+            params[f"word{i}"] = f"%{word}%"
             
             if type_words:
                 type_cond = " OR ".join([f"LOWER(\"type\") = :type{i}" for i in range(len(type_words))])
