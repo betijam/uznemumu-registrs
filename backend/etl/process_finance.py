@@ -109,6 +109,34 @@ def process_finance(statements_path: str, balance_path: str, income_path: str):
             'type': 'source_type'
         })
         
+        # --- NEW SMART FILTERING LOGIC ---
+        # 1. Define priority: UGP (2) > NULL (1) > UKGP (0)
+        # This ensures we pick individual reports over consolidated ones if both exist.
+        def get_priority(st):
+            st_str = str(st).upper() if pd.notnull(st) else ""
+            if st_str == 'UGP': return 2
+            if st_str == 'UKGP': return 0
+            return 1 # Default for NULL or others
+            
+        df_stm['sort_priority'] = df_stm['source_type'].apply(get_priority)
+        
+        # 2. Sort so that the best record is LAST for each (company, year)
+        df_stm = df_stm.sort_values(['company_regcode', 'year', 'sort_priority'])
+        
+        # 3. Deduplicate keeping only the highest priority
+        initial_len = len(df_stm)
+        df_stm = df_stm.drop_duplicates(subset=['company_regcode', 'year'], keep='last')
+        
+        # 4. Final safety check: if we explicitly want to exclude any remaining UKGP
+        # (Only if individual records are strictly required)
+        df_stm = df_stm[df_stm['source_type'] != 'UKGP']
+        
+        logger.info(f"Deduplicated statements: {initial_len} -> {len(df_stm)} rows (Prioritized UGP over UKGP)")
+        
+        # Remove helper column
+        df_stm = df_stm.drop(columns=['sort_priority'])
+        # --- END SMART FILTERING ---
+
         base_cols = ['statement_id', 'company_regcode', 'year', 'employees', 'rounded_to_nearest', 'source_type']
         for c in base_cols:
             if c not in df_stm.columns:

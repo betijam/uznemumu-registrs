@@ -57,55 +57,54 @@ def fast_update_source_type(csv_path):
         # 3. Read CSV and Stream to DB using COPY
         logger.info(f"📖 Reading CSV {csv_path} and streaming to DB...")
         
-        total_rows = 0
-        
-        # Use Pandas to parse CSV efficiently, but only relevant columns
-        # We assume headers: id;legal_entity_registration_number;year;...;source_type;...
+        # We need to process the whole CSV to apply priority correctly
         use_cols = ['legal_entity_registration_number', 'year', 'source_type']
         
-        # Generator to process in chunks
-        csv_iterator = pd.read_csv(
+        # We'll load the whole CSV metdata into memory to do proper UGP prioritization
+        # This is safe because it's only ~2M rows of strings/ints (few hundred MBs)
+        df_csv = pd.read_csv(
             csv_path, 
             sep=';', 
-            usecols=lambda c: c in use_cols, # Robust selection
-            dtype={'legal_entity_registration_number': str, 'year': 'Int32', 'source_type': str},
-            chunksize=CHUNK_SIZE
+            usecols=use_cols,
+            dtype={'legal_entity_registration_number': str, 'year': 'Int32', 'source_type': str}
         )
         
-        for i, chunk in enumerate(csv_iterator):
-            # Clean/Rename
-            chunk = chunk.rename(columns={
-                'legal_entity_registration_number': 'regcode',
-                # source_type is already correct
-            })
-            
-            # Filter: we only care if source_type is NOT NULL (or if we want to overwrite everything)
-            # Actually, we should update everything to ensure correctness.
-            # But let's convert NaN to None for SQL
-            chunk = chunk.where(pd.notnull(chunk), None)
-            
-            # Prepare buffer for COPY
-            s_buf = io.StringIO()
-            chunk[['regcode', 'year', 'source_type']].to_csv(s_buf, index=False, header=False, sep='\t')
-            s_buf.seek(0)
-            
-            # Execute COPY
-            cur.copy_from(s_buf, STAGING_TABLE, columns=('regcode', 'year', 'source_type'), null="")
-            
-            total_rows += len(chunk)
-            if (i + 1) % 5 == 0:
-                logger.info(f"   ↳ Buffered {total_rows} rows...")
-                
-        logger.info(f"✅ Finished buffering {total_rows} rows to Staging Table.")
+        # Clean
+        df_csv = df_csv.rename(columns={'legal_entity_registration_number': 'regcode'})
         
-        # 4. Create Index on Staging Table (Critical for UPDATE performance)
+        # --- UGP PRIORITY LOGIC ---
+        def get_priority(st):
+            st_str = str(st).upper() if pd.notnull(st) else ""
+            if st_str == 'UGP': return 2
+            if st_str == 'UKGP': return 0
+            return 1
+            
+        logger.info("⚖️ Applying UGP priority logic...")
+        df_csv['priority'] = df_csv['source_type'].apply(get_priority)
+        
+        # Sort so highest priority is LAST
+        df_csv = df_csv.sort_values(['regcode', 'year', 'priority'])
+        
+        # Deduplicate: only one label per company/year
+        df_csv = df_csv.drop_duplicates(subset=['regcode', 'year'], keep='last')
+        
+        logger.info(f"✅ Prepared {len(df_csv)} unique labels for update.")
+        
+        # Prepare buffer for COPY
+        s_buf = io.StringIO()
+        df_csv[['regcode', 'year', 'source_type']].to_csv(s_buf, index=False, header=False, sep='\t')
+        s_buf.seek(0)
+        
+        # Execute COPY
+        cur.copy_from(s_buf, STAGING_TABLE, columns=('regcode', 'year', 'source_type'), null="")
+        
+        # 4. Index for speed
         logger.info("⚡ Indexing staging table...")
         cur.execute(f"CREATE INDEX idx_staging_update ON {STAGING_TABLE}(regcode, year);")
         
-        # 5. Execute Bulk UPDATE in Batches (Sharding)
-        logger.info("🔥 Executing Batch UPDATE on financial_reports...")
+        # 5. Execute Bulk UPDATE in Batches
+        logger.info("🔥 Executing Batch UPDATE on financial_reports using (regcode, year)...")
         
-        # Split into 10 chunks based on regcode modulo to keep transactions smaller
         BATCHES = 10
         total_updated = 0
         
@@ -122,8 +121,15 @@ def fast_update_source_type(csv_path):
             """)
             count = cur.rowcount
             total_updated += count
-            raw_conn.commit() # Commit each batch immediately
+            raw_conn.commit()
             logger.info(f"   ✅ Batch {i+1}/{BATCHES} done. Updated {count} rows.")
+
+        logger.info(f"✨ Total rows updated: {total_updated}")
+        
+        # Cleanup
+        logger.info("🧹 Cleaning up staging table...")
+        cur.execute(f"DROP TABLE IF EXISTS {STAGING_TABLE}")
+        raw_conn.commit()
 
         logger.info(f"✨ Total rows updated: {total_updated}")
         
