@@ -102,7 +102,7 @@ stats_raw AS (
         COUNT(DISTINCT cs.regcode) as companies
     FROM company_sections cs
     JOIN financial_reports f ON f.company_regcode = cs.regcode
-    WHERE cs.section_code IS NOT NULL
+    WHERE cs.section_code IS NOT NULL AND (f.source_type IS NULL OR f.source_type = 'UGP')
     GROUP BY cs.section_code, f.year
     UNION ALL
     -- Divisions (Level 1)
@@ -118,7 +118,7 @@ stats_raw AS (
         COUNT(DISTINCT cs.regcode) as companies
     FROM company_sections cs
     JOIN financial_reports f ON f.company_regcode = cs.regcode
-    WHERE LENGTH(cs.division_code) = 2
+    WHERE LENGTH(cs.division_code) = 2 AND (f.source_type IS NULL OR f.source_type = 'UGP')
     GROUP BY cs.division_code, f.year
 ),
 tax_data AS (

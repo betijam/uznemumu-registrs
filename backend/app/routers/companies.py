@@ -64,6 +64,7 @@ def bulk_fetch_financials(conn, regcodes: list, year: int) -> dict:
         SELECT company_regcode, turnover, profit, employees, total_assets
         FROM financial_reports
         WHERE company_regcode = ANY(:codes) AND year = :y
+          AND (source_type IS NULL OR source_type = 'UGP')
     """), {"codes": valid_codes, "y": year}).fetchall()
     
     # Convert to dict for O(1) lookup
@@ -122,7 +123,7 @@ def get_financial_history(regcode: int):
                    cfo_im_net_operating_cash_flow, cff_net_financing_cash_flow, cfi_acquisition_of_fixed_assets_intangible_assets,
                    cfo_im_income_taxes_paid
             FROM financial_reports 
-            WHERE company_regcode = :r 
+            WHERE company_regcode = :r AND (source_type IS NULL OR source_type = 'UGP') 
             ORDER BY year DESC
         """), {"r": regcode}).fetchall()
         
@@ -600,6 +601,7 @@ async def get_company_quick(regcode: str, response: Response, request: Request):
                 SELECT year, turnover, profit, employees 
                 FROM financial_reports 
                 WHERE company_regcode = c.regcode 
+                  AND (source_type IS NULL OR source_type = 'UGP')
                 ORDER BY year DESC LIMIT 1
             ) f ON true
             LEFT JOIN company_ratings r ON r.company_regcode = c.regcode

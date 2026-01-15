@@ -105,10 +105,11 @@ def process_finance(statements_path: str, balance_path: str, income_path: str):
             'legal_entity_registration_number': 'company_regcode', 
             'year': 'year',
             'employees': 'employees',
-            'rounded_to_nearest': 'rounded_to_nearest'
+            'rounded_to_nearest': 'rounded_to_nearest',
+            'type': 'source_type'
         })
         
-        base_cols = ['statement_id', 'company_regcode', 'year', 'employees', 'rounded_to_nearest']
+        base_cols = ['statement_id', 'company_regcode', 'year', 'employees', 'rounded_to_nearest', 'source_type']
         for c in base_cols:
             if c not in df_stm.columns:
                 df_stm[c] = None
@@ -260,7 +261,7 @@ def process_finance(statements_path: str, balance_path: str, income_path: str):
                 
                 # Final columns selection
                 final_cols = [
-                    'company_regcode', 'year', 'employees', 'taxes_paid', 'rounded_to_nearest',
+                    'company_regcode', 'year', 'employees', 'taxes_paid', 'rounded_to_nearest', 'source_type',
                     # Income Statement
                     'turnover', 'profit', 'interest_expenses', 'depreciation_expenses', 'provision_for_income_taxes',
                     # Balance Sheet

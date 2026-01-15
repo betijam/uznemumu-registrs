@@ -154,7 +154,7 @@ def search_hint(q: str):
         primary_name = " ".join(name_words) if name_words else q.strip()
         
         # Use unaccented lower comparison to hit our new GIN/Trigram indexes
-        # Use unaccented lower comparison to hit our new GIN/Trigram indexes
+
         conditions = []
         params = {"q_raw": primary_name}
         
