@@ -164,6 +164,7 @@ def search_companies(q: str = "", nace: str = None):
     # 5. Text Similarity
     
     order_by = """
+        CASE WHEN c.status = 'active' THEN 0 ELSE 1 END,
         CASE 
             WHEN immutable_unaccent(lower(c.name_in_quotes)) = immutable_unaccent(lower(:full_query)) THEN 0 
             WHEN immutable_unaccent(lower(c.name)) = immutable_unaccent(lower(:full_query)) THEN 0
@@ -173,27 +174,19 @@ def search_companies(q: str = "", nace: str = None):
             WHEN immutable_unaccent(lower(c.name_in_quotes)) LIKE immutable_unaccent(lower(:full_query)) || '%' THEN 0
             ELSE 1 
         END,
-        CASE WHEN c.status = 'active' THEN 0 ELSE 1 END,
-        f.turnover DESC NULLS LAST,
+        c.latest_turnover DESC NULLS LAST,
         SIMILARITY(immutable_unaccent(lower(c.name)), immutable_unaccent(lower(:full_query))) DESC
     """
     
     where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
     
-    # Updated SQL to join financials
+    # Optimized SQL - No Joins needed!
     sql = f"""
     SELECT c.regcode, c.name, c.name_in_quotes, c."type" as company_type, c.type_text,
            c.address, c.status, c.registration_date, 
            c.nace_section, c.nace_section_text,
-           f.turnover
+           c.latest_turnover as turnover
     FROM companies c
-    LEFT JOIN LATERAL (
-        SELECT turnover 
-        FROM financial_reports 
-        WHERE company_regcode = c.regcode 
-        ORDER BY year DESC 
-        LIMIT 1
-    ) f ON true
     WHERE {where_clause}
     ORDER BY {order_by}
     LIMIT 50;
