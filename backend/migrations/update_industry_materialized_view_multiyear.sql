@@ -165,7 +165,7 @@ LEFT JOIN tax_data t ON t.nace_code = s.nace_code AND t.nace_level = s.nace_leve
 INSERT INTO industry_stats_materialized
 SELECT DISTINCT ON (nace_code) *
 FROM industry_stats_history
-WHERE data_year >= 2023
+WHERE data_year = 2024
 ORDER BY nace_code, data_year DESC;
 
 ANALYZE industry_stats_materialized;
