@@ -210,3 +210,110 @@ async def check_favorite(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to check favorite status"
         )
+
+class DashboardFavoriteResponse(BaseModel):
+    id: str
+    entity_id: str
+    entity_type: str
+    entity_name: str
+    created_at: datetime
+    # Extra fields
+    regcode: Optional[int] = None
+    status: Optional[str] = None
+    turnover: Optional[float] = None
+    profit: Optional[float] = None
+    employees: Optional[int] = None
+    company_count: Optional[int] = None # For persons
+
+
+@router.get("/dashboard-list", response_model=List[DashboardFavoriteResponse])
+async def get_dashboard_favorites(
+    current_user: Any = Depends(get_current_user)
+):
+    """Get rich list of user's favorites for dashboard"""
+    try:
+        from typing import Optional
+        
+        with engine.connect() as conn:
+            # Fetch favorites
+            favs = conn.execute(
+                text("""
+                SELECT id, entity_id, entity_type, entity_name, created_at
+                FROM favorites
+                WHERE user_id = :user_id
+                ORDER BY created_at DESC
+                """),
+                {"user_id": current_user.id}
+            ).fetchall()
+            
+            if not favs:
+                return []
+
+            # Separate IDs by type
+            company_ids = [int(f.entity_id) for f in favs if f.entity_type == 'company' and f.entity_id.isdigit()]
+            person_hashes = [f.entity_id for f in favs if f.entity_type == 'person']
+
+            # Fetch Company Data
+            company_map = {}
+            if company_ids:
+                query = text("""
+                    SELECT 
+                        c.regcode, 
+                        c.status,
+                        fr.turnover,
+                        fr.profit,
+                        fr.employees
+                    FROM companies c
+                    LEFT JOIN LATERAL (
+                        SELECT turnover, profit, employees
+                        FROM financial_reports
+                        WHERE company_regcode = c.regcode
+                          AND year = (
+                              SELECT MAX(year) 
+                              FROM financial_reports 
+                              WHERE company_regcode = c.regcode
+                          )
+                        LIMIT 1
+                    ) fr ON true
+                    WHERE c.regcode = ANY(:ids)
+                """)
+                rows = conn.execute(query, {"ids": company_ids}).fetchall()
+                for r in rows:
+                    company_map[str(r.regcode)] = {
+                        "regcode": r.regcode,
+                        "status": r.status,
+                        "turnover": r.turnover,
+                        "profit": r.profit,
+                        "employees": r.employees
+                    }
+
+            results = []
+            for f in favs:
+                entry = {
+                    "id": str(f.id),
+                    "entity_id": f.entity_id,
+                    "entity_type": f.entity_type,
+                    "entity_name": f.entity_name,
+                    "created_at": f.created_at
+                }
+                
+                if f.entity_type == 'company' and f.entity_id in company_map:
+                    data = company_map[f.entity_id]
+                    entry.update({
+                        "regcode": data["regcode"],
+                        "status": data["status"],
+                        "turnover": data["turnover"],
+                        "profit": data["profit"],
+                        "employees": data["employees"]
+                    })
+                
+                results.append(DashboardFavoriteResponse(**entry))
+            
+            return results
+        
+    except Exception as e:
+        logger.error(f"Error fetching dashboard favorites: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to fetch favorites"
+        )
