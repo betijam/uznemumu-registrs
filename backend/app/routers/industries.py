@@ -666,11 +666,7 @@ def get_industry_detail(
 
         # 3. Market Share Base (Total Industry Turnover)
         # Use value from stats block
-        total_industry_turnover = safe_float(stats.total_turnover if hasattr(stats, 'total_turnover') else 0) or 0 
-        # Note: If we used materialized view, stats is a dummy obj or we used variables. 
-        # Let's reconcile:
-        if mat_stats:
-             total_industry_turnover = total_turnover # Variable from mat block
+        total_industry_turnover = safe_float(getattr(stats, 'total_turnover', 0)) or 0
              
         # 4. TOP 5 Leaders with Market Share
         # OPTIMIZATION: Try cache first, fallback to dynamic query
@@ -928,13 +924,13 @@ def get_industry_detail(
             "icon": nace_icon,
             "year": year,
             "stats": {
-                "total_turnover": safe_float(stats.total_turnover if hasattr(stats, 'total_turnover') else total_turnover),
-                "total_turnover_formatted": format_large_number(stats.total_turnover if hasattr(stats, 'total_turnover') else total_turnover),
+                "total_turnover": safe_float(getattr(stats, 'total_turnover', 0)),
+                "total_turnover_formatted": format_large_number(safe_float(getattr(stats, 'total_turnover', 0))),
                 "turnover_growth": turnover_growth,
-                "total_profit": safe_float(stats.total_profit if hasattr(stats, 'total_profit') else total_profit),
-                "total_profit_formatted": format_large_number(stats.total_profit if hasattr(stats, 'total_profit') else total_profit),
-                "active_companies": (stats.active_companies if hasattr(stats, 'active_companies') else active_companies) or 0,
-                "total_employees": safe_int(stats.total_employees if hasattr(stats, 'total_employees') else total_employees),
+                "total_profit": safe_float(getattr(stats, 'total_profit', 0)),
+                "total_profit_formatted": format_large_number(safe_float(getattr(stats, 'total_profit', 0))),
+                "active_companies": getattr(stats, 'active_companies', 0) or 0,
+                "total_employees": safe_int(getattr(stats, 'total_employees', 0)),
                 "avg_salary": industry_avg_salary,
                 "national_avg_salary": national_avg_salary,
                 "salary_ratio": salary_ratio,
