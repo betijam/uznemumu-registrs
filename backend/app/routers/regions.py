@@ -219,26 +219,19 @@ def get_territory_details(
             
         print(f"DEPLOY_VERIFY: Fetching territory details for territory ID: {territory_id} for year {year}")
         
-        # Get current year stats on the fly to match top companies logic
+        # OPTIMIZED: Get stats from pre-calculated aggregates (territory_year_aggregates)
+        # instead of heavy on-the-fly JOINs with companies table.
         stats_query = """
-            WITH location_companies AS (
-                SELECT c.regcode
-                FROM companies c
-                JOIN address_dimension ad ON c.addressid = ad.address_id
-                WHERE (ad.city_name = :t_name OR ad.municipality_name = :t_name OR ad.parish_name = :t_name)
-                  AND (c.status IS NULL OR c.status = '' OR c.status IN ('active', 'A', 'AKTĪVS', 'reģistrēts'))
-            )
             SELECT 
-                COUNT(*) as company_count,
-                SUM(CASE WHEN fr.turnover IS NULL OR fr.turnover = 'NaN'::float OR fr.turnover > 1e15 THEN 0 ELSE fr.turnover END) as total_revenue,
-                SUM(CASE WHEN fr.profit IS NULL OR fr.profit = 'NaN'::float OR fr.profit > 1e15 THEN 0 ELSE fr.profit END) as total_profit,
-                SUM(CASE WHEN fr.employees IS NULL OR fr.employees > 1000000 THEN 0 ELSE fr.employees END) as total_employees,
-                AVG(CASE WHEN cm.avg_gross_salary IS NULL OR cm.avg_gross_salary = 'NaN'::float OR cm.avg_gross_salary > 100000 THEN NULL ELSE cm.avg_gross_salary END) as avg_salary
-            FROM location_companies lc
-            LEFT JOIN financial_reports fr ON lc.regcode = fr.company_regcode AND fr.year = :year
-            LEFT JOIN company_computed_metrics cm ON lc.regcode = cm.company_regcode AND cm.year = :year
+                company_count,
+                total_revenue,
+                total_profit,
+                total_employees,
+                avg_salary
+            FROM territory_year_aggregates
+            WHERE territory_id = :id AND year = :year
         """
-        stats = conn.execute(text(stats_query), {"t_name": territory.name, "year": year}).fetchone()
+        stats = conn.execute(text(stats_query), {"id": territory_id, "year": year}).fetchone()
         
         # Get historical data (last 5 years)
         history = conn.execute(text("""
