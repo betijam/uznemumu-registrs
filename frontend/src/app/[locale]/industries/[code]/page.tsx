@@ -73,7 +73,10 @@ export default function IndustryDetailPage({ params }: { params: Promise<{ code:
     // Generate years: [CurrentYear-1, ..., 2021]
     const currentYear = new Date().getFullYear();
     const availableYears = Array.from({ length: (currentYear - 1) - 2021 + 1 }, (_, i) => (currentYear - 1) - i);
-    const [selectedYear, setSelectedYear] = useState<number>(availableYears[0]); // Default to latest complete year
+    const [selectedYear, setSelectedYear] = useState<number>(() => {
+        // User request: Default to 2024 as 2025 data is not yet fully available
+        return availableYears.includes(2024) ? 2024 : availableYears[0];
+    });
 
     const fetchData = async (year: number) => {
         setLoading(true);
