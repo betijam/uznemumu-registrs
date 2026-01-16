@@ -360,19 +360,19 @@ def search_industries(q: str = Query(..., min_length=1), limit: int = Query(10, 
     Returns matching industries by code or name.
     """
     with engine.connect() as conn:
-        # Search in NACE sections from companies table
+        # OPTIMIZED: Search in industry_stats_materialized instead of full companies table
+        # This is much faster as it only scans ~100-600 rows instead of 200k+
         results = conn.execute(text("""
             SELECT DISTINCT 
-                nace_section as code,
-                nace_section_text as name,
-                1 as level
-            FROM companies
-            WHERE nace_section IS NOT NULL
-              AND (
-                  LOWER(nace_section) LIKE LOWER(:q) || '%'
-                  OR LOWER(nace_section_text) LIKE '%' || LOWER(:q) || '%'
+                nace_code as code,
+                nace_name as name,
+                nace_level as level
+            FROM industry_stats_materialized
+            WHERE (
+                  LOWER(nace_code) LIKE LOWER(:q) || '%'
+                  OR LOWER(nace_name) LIKE '%' || LOWER(:q) || '%'
               )
-            ORDER BY nace_section
+            ORDER BY nace_code
             LIMIT :limit
         """), {"q": q, "limit": limit}).fetchall()
         
@@ -381,7 +381,7 @@ def search_industries(q: str = Query(..., min_length=1), limit: int = Query(10, 
             "results": [
                 {
                     "code": r.code,
-                    "name": NACE_SECTIONS.get(r.code, {}).get("name", r.name),
+                    "name": NACE_SECTIONS.get(r.code, {}).get("name", r.name), # Prefer standardized name
                     "icon": NACE_SECTIONS.get(r.code, {}).get("icon", "📊"),
                     "level": r.level
                 }
