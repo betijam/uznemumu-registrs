@@ -4,7 +4,7 @@ Favorites router for user watchlist functionality
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, text
-from typing import List, Any
+from typing import List, Any, Optional
 from datetime import datetime
 import logging
 
@@ -232,8 +232,6 @@ async def get_dashboard_favorites(
 ):
     """Get rich list of user's favorites for dashboard"""
     try:
-        from typing import Optional
-        
         with engine.connect() as conn:
             # Fetch favorites
             favs = conn.execute(
