@@ -15,23 +15,31 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 
 @router.get("/geojson")
 async def get_geojson():
-    """Return the Latvia regions GeoJSON data"""
+    """Return the Latvia regions GeoJSON data (Optimized: Stream file directly)"""
     filepath = os.path.join(STATIC_DIR, "lv-enriched.json")
     if os.path.exists(filepath):
-        with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return JSONResponse(content=data)
+        # Serve file directly without parsing/serializing JSON (much faster/less RAM)
+        # Cache for 24 hours
+        return FileResponse(
+            filepath, 
+            media_type="application/json", 
+            headers={"Cache-Control": "public, max-age=86400"}
+        )
     return JSONResponse(content={"error": f"GeoJSON file not found at {filepath}"}, status_code=404)
 
 
 @router.get("/cities")
 async def get_cities():
-    """Return cities data for the map overlay"""
+    """Return cities data for the map overlay (Optimized: Stream file directly)"""
     filepath = os.path.join(STATIC_DIR, "cities.json")
     if os.path.exists(filepath):
-        with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return JSONResponse(content=data)
+        # Serve file directly
+        # Cache for 24 hours
+        return FileResponse(
+            filepath, 
+            media_type="application/json", 
+            headers={"Cache-Control": "public, max-age=86400"}
+        )
     return JSONResponse(content={"error": f"Cities file not found at {filepath}"}, status_code=404)
 
 

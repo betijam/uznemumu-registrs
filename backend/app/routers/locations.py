@@ -332,8 +332,7 @@ def get_location_top_companies(
     if response:
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     
-    print(f"CRITICAL_DEPLOY_V7_2: Fetching top companies for {location_type} {name} (Year <= {year or 2024}, FILTER NAN)")
-    logger.error(f"CRITICAL_DEPLOY_V7_2: Fetching top companies for {location_type} {name}")
+    # logger.error(f"CRITICAL_DEPLOY_V7_2: Fetching top companies for {location_type} {name}")
     
     # Use 2024 as default stable year
     stable_year = year or 2024

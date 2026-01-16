@@ -217,7 +217,7 @@ def get_territory_details(
         if not year:
             year = 2024
             
-        print(f"DEPLOY_VERIFY: Fetching territory details for territory ID: {territory_id} for year {year}")
+
         
         # OPTIMIZED: Get stats from pre-calculated aggregates (territory_year_aggregates)
         # instead of heavy on-the-fly JOINs with companies table.
@@ -339,12 +339,6 @@ def get_territory_top_companies(
         
         # Default to 2024 as stable year
         stable_year = year or 2024
-        print(f"CRITICAL_DEPLOY_V7_2: Fetching territory top companies for {territory_id}")
-        # The original instruction had a syntax error in the logger.error line.
-        # Assuming the intent was to log the same message as the print statement,
-        # but with the territory name and year, and correcting the syntax.
-        # If 'logger' is not defined, this line will cause a NameError.
-        # For now, commenting it out to ensure syntactical correctness of the output.
         # logger.error(f"CRITICAL_DEPLOY_V7_2: Fetching territory top companies for {territory_id} {territory.name} (Year: {stable_year})")
 
         # Filter companies by joining with address_dimension on territory name
